@@ -268,9 +268,14 @@ end
 
 local function targetMacro(names, friendly, plate)
     local lines = {}
-    for k = #names, 1, -1 do lines[#lines + 1] = "/targetexact " .. names[k] end
-    -- the closest fitting one by its nameplate wins over the names (the last line run wins)
-    if plate then lines[#lines + 1] = "/target [@" .. plate .. ",exists,nodead] " .. plate end
+    if plate then
+        -- the closest fitting one by its nameplate first; the names only when that didn't give a target (the
+        -- game doesn't reliably take a second target change in one press)
+        lines[1] = "/target [@" .. plate .. ",exists,nodead] " .. plate
+        for k = #names, 1, -1 do lines[#lines + 1] = "/targetexact [noexists][dead] " .. names[k] end
+    else
+        for k = #names, 1, -1 do lines[#lines + 1] = "/targetexact " .. names[k] end
+    end
     local tail = "\n/targetlasttarget [dead]"
     -- a mark on what you found, picked by what was actually targeted: an orange circle on friendly NPCs and
     -- players, a skull on enemies. Only a macro may do this (Lua gets blocked); "!" keeps an existing mark
@@ -279,7 +284,8 @@ local function targetMacro(names, friendly, plate)
     -- on quest mobs (not when it looks for an NPC to talk to): tag it
     if not friendly then tail = tail .. tagLine() end
     local text = table.concat(lines, "\n")
-    while #text + #tail > 255 and #lines > 1 do table.remove(lines, 1); text = table.concat(lines, "\n") end
+    -- too long: the lowest-priority names go (with a nameplate pick that line stays first)
+    while #text + #tail > 255 and #lines > 1 do table.remove(lines, plate and 2 or 1); text = table.concat(lines, "\n") end
     return text .. tail
 end
 

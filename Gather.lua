@@ -53,6 +53,9 @@ local function spots(map)
     for name, s in pairs(ItineraryDB.gatherFound and ItineraryDB.gatherFound[map] or {}) do
         if want(name) then parse(s, list, name, "found") end
     end
+    for name, s in pairs(ItineraryDB.gatherSeen and ItineraryDB.gatherSeen[map] or {}) do
+        if want(name) then parse(s, list, name, "seen") end
+    end
     for _, p in ipairs(list) do p.id = map .. ":" .. p.x .. ":" .. p.y end
     cache.key, cache.list = key, list
     return list
@@ -247,7 +250,7 @@ local function remember(name, map, x, y)
     ItineraryDB.gatherFound[map] = z
     z[name] = (z[name] and (z[name] .. ";") or "") .. string.format("%.2f,%.2f", x, y)
     cache.key = nil
-    ns.print("new " .. name .. " spot remembered")
+    if ns.gatherOn() then ns.print("new " .. name .. " spot remembered") end
 end
 
 local f = CreateFrame("Frame")
@@ -322,3 +325,73 @@ lf:SetScript("OnEvent", function()
         C_Timer.After(2, function() ns.gatherPins(true); if ns.refresh then ns.refresh() end end)
     end
 end)
+
+---------------------------------------------------------------- silent: herbs and veins you pass close by
+-- Every character, any profession, gather mode on or off: when a herb or ore vein becomes your soft
+-- interact target (it's within about 20 yards), where you stood is noted (ItineraryDB.gatherSeen, the
+-- average of where you were while it stayed targeted). Not as exact as gathering it, so it's kept apart and
+-- merged more loosely when the data is rebuilt (tools/bake_nodes.py). Nothing is said in chat.
+do
+    local cur -- { guid, name, map, sx, sy, n, t }
+    local done = {} -- GUIDs already noted this session
+    local function nodeOf(guid)
+        local D = ns.GATHER_DATA
+        if not (D and guid) then return nil end
+        local kind, _, _, _, _, id = strsplit("-", guid)
+        if kind ~= "GameObject" then return nil end
+        local name = D.ids and D.ids[tonumber(id)]
+        if not name and UnitName then
+            local n = UnitName("softinteract")
+            if n and D.kinds[n] then name = n end
+        end
+        return name
+    end
+    local function commit()
+        local c = cur
+        cur = nil
+        if not (c and c.n > 0) or done[c.guid] then return end
+        done[c.guid] = true
+        local x, y = c.sx / c.n, c.sy / c.n
+        local D = ns.GATHER_DATA
+        -- known already (shipped, gathered or seen) within ~25 yards: nothing new
+        local function near(str)
+            for px, py in (str or ""):gmatch("([%d%.]+),([%d%.]+)") do
+                if math.abs(tonumber(px) - x) < 1 and math.abs(tonumber(py) - y) < 1 then return true end
+            end
+        end
+        if near(D.zones[c.map] and D.zones[c.map][c.name]) then return end
+        if near(ItineraryDB.gatherFound and ItineraryDB.gatherFound[c.map] and ItineraryDB.gatherFound[c.map][c.name]) then return end
+        ItineraryDB.gatherSeen = ItineraryDB.gatherSeen or {}
+        local z = ItineraryDB.gatherSeen[c.map] or {}
+        ItineraryDB.gatherSeen[c.map] = z
+        if near(z[c.name]) then return end
+        z[c.name] = (z[c.name] and (z[c.name] .. ";") or "") .. string.format("%.2f,%.2f", x, y)
+        cache.key = nil
+    end
+    local function look()
+        if not (ItineraryDB and UnitGUID) then return end
+        local guid = UnitGUID("softinteract")
+        if cur and cur.guid ~= guid then commit() end
+        if not guid or done[guid] then return end
+        if not cur then
+            local name = nodeOf(guid)
+            if not name then done[guid] = true return end -- not a node: don't look again
+            cur = { guid = guid, name = name, sx = 0, sy = 0, n = 0 }
+        end
+        local map, x, y = here()
+        if not map then return end
+        if cur.map and cur.map ~= map then commit() return end
+        cur.map, cur.sx, cur.sy, cur.n = map, cur.sx + x, cur.sy + y, cur.n + 1
+        if cur.n >= 20 then commit() end -- ten seconds next to it is plenty
+    end
+    local sf = CreateFrame("Frame")
+    pcall(sf.RegisterEvent, sf, "PLAYER_SOFT_INTERACT_CHANGED")
+    sf:SetScript("OnEvent", function() pcall(look) end)
+    local acc = 0
+    sf:SetScript("OnUpdate", function(_, e)
+        acc = acc + e
+        if acc < 0.5 then return end
+        acc = 0
+        pcall(look)
+    end)
+end

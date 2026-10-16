@@ -205,6 +205,8 @@ and prices.
 - The zone's spots show on the minimap (green: herbs, orange: ore; faded: visited) and on the world map.
 - The panel shows how many spots are left in the zone, how many nodes you gathered and your rate per hour.
 - Every node you gather that isn't known yet is remembered, for all your characters, and used from then on.
+  Herbs and veins that come within about 20 yards are noted too, silently, on every character - whatever
+  your professions and with gather mode off.
 - Your leveling route waits where you left it. While gather mode is on, the panel shows only gathering:
   no route instructions, along-the-way objectives, quest items or route pins.
 - Needs the `Itinerary_Data` folder next to Itinerary.

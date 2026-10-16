@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### New
+- Herb and ore spots are noted silently on every character (any profession, gather mode on or off): the nodes
+  you gather, and the ones that come within about 20 yards (soft target). They feed gather mode and the next
+  Itinerary_Data (1.1: node object ids).
 - **Open the training window** (Settings > Trainer, on): talking to a trainer you came to train at (the
   route's trainer stop or a trainer instruction) skips the dialogue and opens the training window, so with Buy
   class skills on it's one click. Hold Shift to see the dialogue.

@@ -512,7 +512,7 @@ local function markValuableReward(tries)
         local icon = b.Icon or b.icon or _G[(b:GetName() or "") .. "IconTexture"] or b
         local box = CreateFrame("Frame", nil, b)
         box:SetSize(18, 18)
-        box:SetPoint("CENTER", icon, "TOPLEFT", 2, -2)
+        box:SetPoint("CENTER", icon, "TOPRIGHT", -2, -2)
         box:SetFrameLevel((b:GetFrameLevel() or 1) + 5)
         local shadow = box:CreateTexture(nil, "BACKGROUND")
         shadow:SetPoint("CENTER"); shadow:SetSize(20, 20)

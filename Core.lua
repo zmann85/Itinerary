@@ -1078,7 +1078,18 @@ end
 -- An along-the-way quest objective ends where the route gets a step of its own for that quest: from
 -- there the main step shows the objectives, so it isn't repeated underneath.
 local function takenOver(s, cur)
-    if not cur or cur.along or not s.q or not cur.q then return false end
+    if not cur or cur.along or not cur.q then return false end
+    -- a collect for one quest ("4 Chunks of Boar Meat" for Pie for Billy, ended by that quest's turn-in): the
+    -- quest's own step shows the same objective
+    if s.t == "do" and s.col and not s.q and s.cond and (cur.t == "complete" or cur.t == "turnin") then
+        for _, c in ipairs(s.cond) do
+            if c[1] == "open" then
+                for _, b in ipairs(cur.q) do if c[2] == b then return true end end
+            end
+        end
+        return false
+    end
+    if not s.q then return false end
     if s.t ~= "complete" and not s.col then return false end
     if cur.t ~= "complete" and cur.t ~= "turnin" then return false end
     for _, a in ipairs(s.q) do
@@ -1113,12 +1124,15 @@ function ns.alongActive(i)
     local cur = steps[i]
     for j = (first or 1), math.min(i, #steps) do
         local s = steps[j]
-        if s.along and (not s.till or s.till >= i) and not ns.stepDone(j) and not (j ~= i and takenOver(s, cur))
+        -- (an item collect taken over by the current step still counts as its tier below)
+        local tier = s.t == "do" and s.col and #s.col == 1
+        if s.along and (not s.till or s.till >= i) and not ns.stepDone(j) and (tier or not (j ~= i and takenOver(s, cur)))
            and not (j ~= i and comingUp(s, steps, i)) and not ((s.need or s.buffItem) and ns.itemStepIdle(s)) then
             out[#out + 1] = j
         end
     end
-    -- the guide's tiers of one item ("4 Chunks of Boar Meat", then 10, then 50 for Cooking): only the next one
+    -- the guide's tiers of one item ("4 Chunks of Boar Meat", then 10, then 50 for Cooking): only the next one,
+    -- and none while that one is your current step's own objective
     local low = {}
     for _, j in ipairs(out) do
         local s = steps[j]
@@ -1130,7 +1144,8 @@ function ns.alongActive(i)
     local kept = {}
     for _, j in ipairs(out) do
         local s = steps[j]
-        if not (s.t == "do" and s.col and #s.col == 1 and low[s.col[1][1]] ~= j) then kept[#kept + 1] = j end
+        local tier = s.t == "do" and s.col and #s.col == 1
+        if not (tier and (low[s.col[1][1]] ~= j or (j ~= i and takenOver(s, cur)))) then kept[#kept + 1] = j end
     end
     return kept
 end

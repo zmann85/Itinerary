@@ -1116,31 +1116,54 @@ function ns.applyGatherTracking()
         if not trackSaid then trackSaid = true; ns.print("gathering tracking: this game client has no tracking list to switch") end
         return
     end
+    -- a gathering profession just learned (or the first time Itinerary sees it) takes over the tracking once;
+    -- after that, something else you track is left alone
+    local fresh = c.trackFor ~= want
     local idx
     for _, t in ipairs(list) do
-        if t.active and t.name and t.name ~= "" and t.name ~= NONE then return end -- something is tracked: yours
-        if t.name == want then idx = t.i end
+        if t.name == want then
+            idx = t.i
+            if t.active then c.trackFor = want; return true end
+        end
     end
-    if idx and C_Minimap.SetTracking then
+    if not idx then return end -- not in the list yet (just learned): the next try gets it
+    if not fresh then
+        for _, t in ipairs(list) do
+            if t.active and t.name and t.name ~= "" and t.name ~= NONE then return true end -- something is tracked: yours
+        end
+    end
+    if C_Minimap.SetTracking then
         local ok = pcall(C_Minimap.SetTracking, idx, true)
-        if not ok and not trackSaid then trackSaid = true; ns.print("gathering tracking: the game didn't let Itinerary switch it on - click " .. want .. " in your spellbook") end
+        if ok then
+            c.trackFor = want
+            if fresh then ns.print("gathering tracking: " .. want .. " on") end
+            return true
+        elseif not trackSaid then trackSaid = true; ns.print("gathering tracking: the game didn't let Itinerary switch it on - click " .. want .. " in your spellbook") end
     end
 end
 
 do
     local tf = CreateFrame("Frame")
     for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "PLAYER_UNGHOST", "PLAYER_ALIVE", "SKILL_LINES_CHANGED",
-                         "LEARNED_SPELL_IN_TAB" }) do pcall(tf.RegisterEvent, tf, e) end
+                         "LEARNED_SPELL_IN_TAB", "LEARNED_SPELL_IN_SKILL_LINE", "SPELLS_CHANGED", "CHAT_MSG_SKILL" }) do
+        pcall(tf.RegisterEvent, tf, e)
+    end
     local pending
     tf:SetScript("OnEvent", function(_, event)
         if not (ItineraryDB and ItineraryCharDB) then return end
         if event == "PLAYER_LOGIN" then ns.applyNodeIcons() end
-        -- a moment later, once the game has its tracking state (and never in a loop with its own update)
+        -- a moment later, once the game has its tracking state (and never in a loop with its own update);
+        -- a spell just learned can take a few seconds to show up in the tracking list, so try a few times
         if pending then return end
         pending = true
-        C_Timer.After(1, function()
-            pending = false
-            if not (InCombatLockdown and InCombatLockdown()) then pcall(ns.applyGatherTracking) end
-        end)
+        local tries = { 1, 3, 8 }
+        local function try(n)
+            C_Timer.After(tries[n] - (tries[n - 1] or 0), function()
+                local ok, done = true, nil
+                if not (InCombatLockdown and InCombatLockdown()) then ok, done = pcall(ns.applyGatherTracking) end
+                if (done or not ok or n == #tries) then pending = false else try(n + 1) end
+            end)
+        end
+        try(1)
     end)
 end

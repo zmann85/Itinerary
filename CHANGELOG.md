@@ -27,6 +27,8 @@
 - Coldridge Valley crowded start: The Troll Cave, The Stolen Journal and Senir's Observations (and The
   Adventurer) are back in; A New Threat is picked up after the mail delivery and worked on along the way, and
   handed in before Senir's Observations only if it's done by then.
+- Gathering tracking switches on right after you learn Mining or Herbalism (it tries again for a few
+  seconds until the game lists the new tracking), also over another tracking that was on, once.
 - A turn-in the route only does "if it's done by now" isn't listed as one to go back for when you passed it.
 - Steps for an item you need to have (RestedXP `.itemcount`) only show while you have it (or, for "fewer
   than", while you don't). "Eat the Herb Baked Eggs" instructions get the eggs on an item button and stay

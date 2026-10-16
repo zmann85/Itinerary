@@ -85,6 +85,8 @@
   cause small stutters).
 
 ### Fixed
+- An along-the-way objective stays listed, with its counts, when the route reaches its turn-in before you've
+  finished it (Wolves Across The Border in Northshire); it hands over only once the quest is done.
 - Setting your hearthstone at an innkeeper you also hand a quest in to (Goldshire on the human route) is a step
   again, and so is the hearth back there later. The same for a flight path, a flight, a hearth or a junk sale the
   guide does at a quest NPC.

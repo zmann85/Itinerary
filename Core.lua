@@ -1177,7 +1177,11 @@ local function takenOver(s, cur)
     if s.t ~= "complete" and not s.col then return false end
     if cur.t ~= "complete" and cur.t ~= "turnin" then return false end
     for _, a in ipairs(s.q) do
-        for _, b in ipairs(cur.q) do if a == b then return true end end
+        for _, b in ipairs(cur.q) do
+            -- a turn-in only takes over once the quest is finished: before that the along-the-way entry keeps
+            -- its counts (and the target button its mobs) - the turn-in itself shows none
+            if a == b and (cur.t == "complete" or (onQuest(a) and readyToTurnIn(a))) then return true end
+        end
     end
     return false
 end

@@ -1376,7 +1376,13 @@ function ns.refresh()
         panel.icon:SetTexture(ICON[s.t])
         panel.title:SetText(title(s))
         local dt = detail(s)
-        local left = ns.stepTimeLeft(s)
+        -- a quest timer goes on the instruction that runs until the turn-in when there is one (more
+        -- prominent there), else on your step
+        local onInstr = false
+        if not detour then
+            for _, j in ipairs(ns.alongActive(i)) do if ns.stepTimeLeft(steps[j]) then onInstr = true break end end
+        end
+        local left = not onInstr and ns.stepTimeLeft(s)
         if left then
             ns.timerTick, ns.timerOnStep = true, true
             dt = "|cffff9933Time left " .. ns.timeText(left) .. "|r" .. ((dt and dt ~= "") and ("\n" .. dt) or "")
@@ -1423,7 +1429,7 @@ function ns.refresh()
         local go = st.trainRec and st.m and st.x and { m = st.m, x = st.x, y = st.y, npc = st.npc } or nil
         local spells = st.trainRec and ns.trainerSpec(st) or nil
         if st.trainRec and st.cls then desc = ns.affordText() end
-        -- (not twice: when your step shows the timer already, the instruction doesn't)
+        -- (not twice: when your step shows the timer, because no instruction has it, nothing else does)
         local left = not ns.timerOnStep and ns.stepTimeLeft(st)
         if left then
             ns.timerTick = true

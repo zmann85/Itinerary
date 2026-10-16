@@ -25,7 +25,7 @@
 
 ### Changed
 - Timed quests (Durnan's Scalding Mornbrew and the like): the time left from the game's quest timer shows on
-  your step, or on the instruction that runs until it, counting down.
+  the instruction that runs until its turn-in (or on your step when there is none), counting down.
 - Coldridge Valley crowded start: The Troll Cave, The Stolen Journal and Senir's Observations (and The
   Adventurer) are back in; A New Threat is picked up after the mail delivery and worked on along the way, and
   handed in before Senir's Observations only if it's done by then.

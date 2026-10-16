@@ -260,6 +260,8 @@ function ns.targetDebug()
     end
     local ok, plate = pcall(nearestPlate, names, friendly)
     ns.print("pick: " .. tostring(ok and plate or ("error: " .. tostring(plate))))
+    ns.print("button: " .. tostring(target and target:IsShown()) .. ", combat " .. tostring(InCombatLockdown()) .. ", macro:")
+    print((target and target:GetAttribute("macrotext") or "none"):gsub("\n", " | "))
     end)
     if not ok then ns.print("target debug error: " .. tostring(err)) end
 end

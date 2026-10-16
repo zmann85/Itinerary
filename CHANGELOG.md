@@ -80,6 +80,8 @@
   cause small stutters).
 
 ### Fixed
+- The guide's vendor visits ("Vendor trash" at a named vendor, "Sell junk", buying from someone) are done when you
+  open that vendor; before, only the starting-area ones were.
 - The class trainer instruction no longer shows when its tooltip says there's nothing new: both now go by the
   trainer's recorded list against your spellbook.
 - Class trainer instructions in every starting area: with Itinerary_Data all class trainers are known (before,

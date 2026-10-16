@@ -1123,9 +1123,16 @@ local function vendorStepDone()
     -- the current step, or a "Sell junk" recommendation running next to it
     local list = { c.step }
     if ns.alongActive then for _, j in ipairs(ns.alongActive(c.step)) do list[#list + 1] = j end end
+    local npc = UnitName and UnitName("npc")
     for _, j in ipairs(list) do
         local s = ns.steps()[j]
         if s and s.vendor then c.manual[j] = true end
+        -- the guide's vendor visits (".vendor", "Vendor trash at Rallic Finn"): done when you open that vendor
+        -- (a "Vendor trash" step with no NPC: any vendor). Steps that buy something finish on their items instead.
+        if s and s.t == "do" and not s.col and not s.need then
+            local junk = s.name and (s.name:find("^Vendor trash") or s.name:find("^Sell ") or s.name:find("[Vv]endor"))
+            if (s.npc and npc and s.npc == npc) or (junk and not s.npc) then c.manual[j] = true end
+        end
     end
     if ns.update then ns.update() end
 end

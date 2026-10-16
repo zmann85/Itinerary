@@ -1100,17 +1100,36 @@ local function trackingList()
     end
     return out
 end
+-- what gathering tracking saw, for /iti track (and the last 30 tries in ItineraryDB.trackLog)
+local function trackLog(msg)
+    if not ItineraryDB then return end
+    local l = ItineraryDB.trackLog or {}
+    ItineraryDB.trackLog = l
+    l[#l + 1] = (date and date("%H:%M:%S") or "") .. " " .. msg
+    while #l > 30 do table.remove(l, 1) end
+end
+ns.trackLog = trackLog
+function ns.trackState()
+    local M = C_Minimap
+    local parts = { "C_Minimap " .. tostring(M ~= nil), "SetTracking " .. tostring(M and M.SetTracking ~= nil),
+        "types " .. tostring(M and M.GetNumTrackingTypes and M.GetNumTrackingTypes()),
+        "texture " .. tostring(GetTrackingTexture and GetTrackingTexture()),
+        "dead " .. tostring(UnitIsDeadOrGhost and UnitIsDeadOrGhost("player")),
+        "mining " .. tostring(ns.profKnown("mining")) }
+    for _, t in ipairs(trackingList() or {}) do parts[#parts + 1] = tostring(t.name) .. (t.active and "*" or "") end
+    return table.concat(parts, ", ")
+end
 function ns.applyGatherTracking()
     local a = ItineraryDB and ItineraryDB.auto
     local c = C()
-    if not (a and a.gatherTrack ~= false and c and c.prof and c.prof.list) then return end
-    if UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") then return end
+    if not (a and a.gatherTrack ~= false and c and c.prof and c.prof.list) then trackLog("setting off or no professions picked") return end
+    if UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") then trackLog("dead") return end
     -- the gathering profession you have that has a tracking spell, the first you picked first
     local want
     for _, k in ipairs(c.prof.list) do
         if TRACK[k] and ns.profKnown(k) then want = TRACK[k]; break end
     end
-    if not want then return end
+    if not want then trackLog("no gathering profession with tracking known") return end
     local list = trackingList()
     if not list then
         if not trackSaid then trackSaid = true; ns.print("gathering tracking: this game client has no tracking list to switch") end
@@ -1128,7 +1147,8 @@ function ns.applyGatherTracking()
                 -- switch it off and on again, once per resurrection
                 local tex = GetTrackingTexture and GetTrackingTexture()
                 local stale = ns.trackAfterDeath and (GetTrackingTexture == nil or tex == nil)
-                if not stale then c.trackFor = want; ns.trackAfterDeath = nil; return true end
+                if not stale then c.trackFor = want; ns.trackAfterDeath = nil; trackLog("on: " .. ns.trackState()) return true end
+                trackLog("stale after death, off and on: " .. ns.trackState())
                 ns.trackAfterDeath = nil
                 pcall(C_Minimap.SetTracking, idx, false)
                 C_Timer.After(0.3, function() pcall(C_Minimap.SetTracking, idx, true) end)
@@ -1136,14 +1156,15 @@ function ns.applyGatherTracking()
             end
         end
     end
-    if not idx then return end -- not in the list yet (just learned): the next try gets it
+    if not idx then trackLog("not in the list: " .. ns.trackState()) return end -- not in the list yet (just learned): the next try gets it
     if not fresh then
         for _, t in ipairs(list) do
-            if t.active and t.name and t.name ~= "" and t.name ~= NONE then return true end -- something is tracked: yours
+            if t.active and t.name and t.name ~= "" and t.name ~= NONE then trackLog("other tracking on: " .. ns.trackState()) return true end -- something is tracked: yours
         end
     end
     if C_Minimap.SetTracking then
-        local ok = pcall(C_Minimap.SetTracking, idx, true)
+        local ok, err = pcall(C_Minimap.SetTracking, idx, true)
+        trackLog("SetTracking " .. idx .. " -> " .. tostring(ok) .. " " .. tostring(err or "") .. ": " .. ns.trackState())
         if ok then
             c.trackFor = want
             ns.trackAfterDeath = nil
@@ -1164,6 +1185,7 @@ do
     tf:SetScript("OnEvent", function(_, event)
         if not (ItineraryDB and ItineraryCharDB) then return end
         if event == "PLAYER_LOGIN" then ns.applyNodeIcons() end
+        if event ~= "SPELLS_CHANGED" then trackLog("event " .. event) end
         if event == "PLAYER_DEAD" then ns.trackAfterDeath = true return end
         -- back alive: a chain still waiting from when you released (as a ghost) mustn't swallow this one
         if event == "PLAYER_UNGHOST" or event == "PLAYER_ALIVE" then pending = false end
@@ -1176,6 +1198,7 @@ do
             C_Timer.After(tries[n] - (tries[n - 1] or 0), function()
                 local ok, done = true, nil
                 if not (InCombatLockdown and InCombatLockdown()) then ok, done = pcall(ns.applyGatherTracking) end
+                if not ok then trackLog("error: " .. tostring(done)) end
                 if (done or not ok or n == #tries) then pending = false else try(n + 1) end
             end)
         end

@@ -1914,6 +1914,9 @@ SlashCmdList.ITINERARY = function(input)
         if ns.refreshPins then ns.refreshPins() end
         ns.print("map pins " .. (ItineraryDB.pins and "shown" or "hidden"))
     elseif cmd == "minimap" then if ns.toggleMinimap then ns.toggleMinimap() end
+    elseif cmd == "track" then
+        if ns.trackState then ns.print("tracking: " .. ns.trackState()) end
+        for _, l in ipairs(ItineraryDB.trackLog or {}) do print("  " .. l) end
     elseif cmd == "gather" then if ns.gatherToggle then ns.gatherToggle() end
     elseif cmd == "settings" or cmd == "options" or cmd == "config" then if ns.openSettings then ns.openSettings(true) end
     elseif cmd == "edit" or cmd == "editor" then if ns.openEditor then ns.openEditor(true) end

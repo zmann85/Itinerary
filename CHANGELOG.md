@@ -31,6 +31,9 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
+- Steps the guide marks for a profession you know (Rough Stones to blacksmith into sharpening stones) only show
+  when you know it.
+- The same objectives twice along the way (with and without a side quest like Lost Book): only the fuller one.
 - A guide's tiers of one item (4 Chunks of Boar Meat for Pie for Billy, then 10 and 50 for Cooking) show one at a
   time under along the way, and a quest's collect goes away once that quest is handed in.
 - Pie for Billy has a step to get the boar meat before its turn-in (the guide only collected it along the way).

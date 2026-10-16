@@ -825,6 +825,8 @@ local function notApplicable(s)
         if rc and rc ~= class then return true end
     end
     if ns.profStepIrrelevant and ns.profStepIrrelevant(s) then return true end
+    -- a step only for those who know a profession (the guide's ".train 2018,3": Blacksmith your Rough Stones)
+    if s.needProf and ns.profKnown and not ns.profKnown(s.needProf) then return true end
     if s.cond then
         -- getting back (hearth, "Return to ...") is still needed when the quest it waits for was skipped
         local travel = s.t == "hearth" or (s.t == "go" and s.name and s.name:find("^Return to"))
@@ -1141,11 +1143,33 @@ function ns.alongActive(i)
             if not low[id] or n < steps[low[id]].col[1][2] then low[id] = j end
         end
     end
+    -- the same objectives twice (the guide's version without a side quest and the one with it, "if you have
+    -- Lost Book"): only the bigger one
+    local function within(a, b)
+        if #a.q >= #b.q then return false end
+        for _, q in ipairs(a.q) do
+            local f = false
+            for _, x in ipairs(b.q) do if x == q then f = true break end end
+            if not f then return false end
+        end
+        return true
+    end
+    local sub = {}
+    for _, j in ipairs(out) do
+        local a = steps[j]
+        if a.t == "complete" and a.q then
+            for _, k in ipairs(out) do
+                local b = steps[k]
+                if k ~= j and b.t == "complete" and b.q and within(a, b) then sub[j] = true break end
+            end
+        end
+    end
     local kept = {}
     for _, j in ipairs(out) do
         local s = steps[j]
         local tier = s.t == "do" and s.col and #s.col == 1
-        if not (tier and (low[s.col[1][1]] ~= j or (j ~= i and takenOver(s, cur)))) then kept[#kept + 1] = j end
+        local drop = sub[j] or (tier and (low[s.col[1][1]] ~= j or (j ~= i and takenOver(s, cur))))
+        if not drop then kept[#kept + 1] = j end
     end
     return kept
 end

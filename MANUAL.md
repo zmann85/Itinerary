@@ -114,6 +114,8 @@ Settings > Keys, or in the game's key bindings under *Itinerary*.
   - **Enemies**: it targets the nearest of the step's mobs, marks it with a **skull**, and tags it with
     an instant spell (Judgement, Earth Shock, Shadow Word: Pain, Moonfire, Arcane Shot, Fire Blast,
     Curse of Agony, Throw, Charge…). Spam it on a contested spawn to tag it first.
+    With enemy nameplates on, it picks the closest one that's worth it: alive, not tagged by someone else,
+    and not already fighting another player (out of combat; in combat the last pick stays).
   - **NPCs**: it targets the NPC you need to talk to and marks them with an orange circle. Press the key
     again to talk to them. That's handy for taking a contested escort quest first.
 

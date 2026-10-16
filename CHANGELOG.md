@@ -31,6 +31,8 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
+- Target button: with enemy nameplates on, it targets the closest fitting mob (alive, not tagged by someone
+  else, not fighting another player) instead of whichever the game finds first.
 - Buying class skills: before level 10 only the worthwhile skills are bought.
 - Timed quests (Durnan's Scalding Mornbrew and the like): the time left from the game's quest timer shows on
   the instruction that runs until its turn-in (or on your step when there is none), counting down.

@@ -199,9 +199,40 @@ local function tagLine()
 end
 ns.tagSpells = TAG
 
-local function targetMacro(names, friendly)
+-- The closest one worth taking among the names, from the nameplates you can see (nameplates on): alive, not
+-- tagged by someone else, not already fighting another player. How close comes in steps (10, 11, 28 yards,
+-- further) - what the game lets an addon know. nil: no nameplate fits (then the names decide).
+local function nearestPlate(names, friendly)
+    if not (C_NamePlate and C_NamePlate.GetNamePlates) then return nil end
+    local want = {}
+    for _, n in ipairs(names) do want[n] = true end
+    local best, bestScore
+    for _, p in ipairs(C_NamePlate.GetNamePlates() or {}) do
+        local u = p.namePlateUnitToken or (p.UnitFrame and p.UnitFrame.unit)
+        if u and UnitExists(u) and want[UnitName(u) or ""] and not UnitIsDead(u) and not UnitIsPlayer(u) then
+            local ok = friendly or (UnitCanAttack("player", u) and not (UnitIsTapDenied and UnitIsTapDenied(u)))
+            if ok then
+                local d = 4
+                if CheckInteractDistance then
+                    if CheckInteractDistance(u, 3) then d = 1
+                    elseif CheckInteractDistance(u, 2) then d = 2
+                    elseif CheckInteractDistance(u, 4) then d = 3 end
+                end
+                -- busy with someone else (in combat, not with you): only when nothing else is there
+                local busy = not friendly and UnitAffectingCombat(u) and not UnitIsUnit(u .. "target", "player")
+                local score = d * 10 + (busy and 50 or 0)
+                if not bestScore or score < bestScore then best, bestScore = u, score end
+            end
+        end
+    end
+    return best
+end
+
+local function targetMacro(names, friendly, plate)
     local lines = {}
     for k = #names, 1, -1 do lines[#lines + 1] = "/targetexact " .. names[k] end
+    -- the closest fitting one by its nameplate wins over the names (the last line run wins)
+    if plate then lines[#lines + 1] = "/target [@" .. plate .. ",exists,nodead] " .. plate end
     local tail = "\n/targetlasttarget [dead]"
     -- a mark on what you found, picked by what was actually targeted: an orange circle on friendly NPCs and
     -- players, a skull on enemies. Only a macro may do this (Lua gets blocked); "!" keeps an existing mark
@@ -212,6 +243,25 @@ local function targetMacro(names, friendly)
     local text = table.concat(lines, "\n")
     while #text + #tail > 255 and #lines > 1 do table.remove(lines, 1); text = table.concat(lines, "\n") end
     return text .. tail
+end
+
+-- out of combat the button follows the nearest fitting mob a few times a second (a secure button can't
+-- change in combat: there the last pick and the names stay)
+do
+    local acc = 0
+    local tf = CreateFrame("Frame")
+    tf:SetScript("OnUpdate", function(_, e)
+        acc = acc + e
+        if acc < 0.3 then return end
+        acc = 0
+        if not (target and target.names and target:IsShown()) or InCombatLockdown() then return end
+        local ok, plate = pcall(nearestPlate, target.names, target.friendly)
+        local text = targetMacro(target.names, target.friendly, ok and plate or nil)
+        if text ~= target.lastMacro then
+            target.lastMacro = text
+            target:SetAttribute("macrotext", text)
+        end
+    end)
 end
 
 -- the key bound to a button, short (S-1, C-F, M4 ...)
@@ -271,7 +321,8 @@ local function update()
     if #names > 0 then
         target.names, target.friendly = names, friendly
         target:SetAttribute("type", "macro")
-        target:SetAttribute("macrotext", targetMacro(names, friendly))
+        target.lastMacro = targetMacro(names, friendly)
+        target:SetAttribute("macrotext", target.lastMacro)
         target.icon:SetTexture(friendly and "Interface\\Icons\\Ability_EyeOfTheOwl" or "Interface\\Icons\\Ability_Hunter_SniperShot")
         target.hotkey:SetText(hotkey(target))
         target:Show()

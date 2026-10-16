@@ -35,26 +35,75 @@ local function parse(s, out, name, src)
     end
 end
 
--- the spots of a zone you can gather, cached per zone and skill
+-- which data: "ship" (Itinerary_Data's spawn spots), "own" (ours: the spots baked from beta finds plus every
+-- node gathered or passed on this account) or "both"
+function ns.gatherSource() return (ItineraryDB and ItineraryDB.gatherSrc) or "both" end
+
+-- our own spots of a zone and node: { {x, y}, ... } from the baked own data, gathered nodes and sightings
+local function ownPoints(map, name)
+    local out = {}
+    local O = ns.GATHER_OWN and ns.GATHER_OWN.zones and ns.GATHER_OWN.zones[map]
+    local function add(str)
+        for x, y in (str or ""):gmatch("([%d%.]+),([%d%.]+)") do
+            x, y = tonumber(x), tonumber(y)
+            local dup = false
+            for _, p in ipairs(out) do if math.abs(p[1] - x) < 0.6 and math.abs(p[2] - y) < 0.6 then dup = true break end end
+            if not dup then out[#out + 1] = { x, y } end
+        end
+    end
+    add(O and O[name])
+    local F = ItineraryDB.gatherFound and ItineraryDB.gatherFound[map]
+    add(F and F[name])
+    local S = ItineraryDB.gatherSeen and ItineraryDB.gatherSeen[map]
+    add(S and S[name])
+    return out
+end
+local function ownNames(map)
+    local names = {}
+    local O = ns.GATHER_OWN and ns.GATHER_OWN.zones and ns.GATHER_OWN.zones[map]
+    for n in pairs(O or {}) do names[n] = true end
+    for _, t in ipairs({ ItineraryDB.gatherFound, ItineraryDB.gatherSeen }) do
+        for n in pairs(t and t[map] or {}) do names[n] = true end
+    end
+    return names
+end
+
+-- the spots of a zone you can gather, cached per zone, skill and data choice. p.src: "ship" (only in the
+-- shipped data) or "own" (in ours; with both, a shipped spot we confirmed counts as ours)
 local cache = {}
 local function spots(map)
     local D = loadData()
     local sk = skills()
-    local key = map .. ":" .. tostring(sk.herb) .. ":" .. tostring(sk.ore)
+    local src = ns.gatherSource()
+    local key = map .. ":" .. tostring(sk.herb) .. ":" .. tostring(sk.ore) .. ":" .. src
     if cache.key == key then return cache.list end
     local list = {}
     local function want(name)
         local k = D and D.kinds[name]
         return k and sk[k[1]] and sk[k[1]] >= k[2]
     end
-    for name, s in pairs(D and D.zones[map] or {}) do
-        if want(name) then parse(s, list, name, "data") end
+    if src ~= "own" then
+        for name, s in pairs(D and D.zones[map] or {}) do
+            if want(name) then parse(s, list, name, "ship") end
+        end
     end
-    for name, s in pairs(ItineraryDB.gatherFound and ItineraryDB.gatherFound[map] or {}) do
-        if want(name) then parse(s, list, name, "found") end
-    end
-    for name, s in pairs(ItineraryDB.gatherSeen and ItineraryDB.gatherSeen[map] or {}) do
-        if want(name) then parse(s, list, name, "seen") end
+    if src ~= "ship" then
+        for name in pairs(ownNames(map)) do
+            if want(name) then
+                for _, o in ipairs(ownPoints(map, name)) do
+                    local merged = false
+                    if src == "both" then
+                        for _, p in ipairs(list) do
+                            if p.name == name and p.src == "ship" and math.abs(p.x - o[1]) < 1 and math.abs(p.y - o[2]) < 1 then
+                                p.src, merged = "own", true
+                                break
+                            end
+                        end
+                    end
+                    if not merged then list[#list + 1] = { x = o[1], y = o[2], name = name, src = "own" } end
+                end
+            end
+        end
     end
     for _, p in ipairs(list) do p.id = map .. ":" .. p.x .. ":" .. p.y end
     cache.key, cache.list = key, list
@@ -134,7 +183,7 @@ function ns.gatherStep()
     for _, q in ipairs(list) do if not seen(q) then left = left + 1 end end
     base.name = p.name
     base.m, base.x, base.y, base.dist = map, p.x, p.y, d
-    base.note = "Where it can spawn" .. (p.src == "found" and " (found in game)" or "")
+    base.note = "Where it can spawn" .. (p.src == "own" and " (our own data)" or "")
         .. ". Being there moves on to the next spot; › skips this one."
     local rate = ""
     if state.since and state.gathered > 0 then
@@ -143,6 +192,13 @@ function ns.gatherStep()
     end
     base.where = string.format("%d of %d spots left  ·  %d gathered%s", left, #list, state.gathered, rate)
     return base
+end
+
+function ns.setGatherSource(v)
+    ItineraryDB.gatherSrc = v
+    cache.key, state.target = nil, nil
+    if ns.gatherPins then ns.gatherPins(true) end
+    if ns.refresh then ns.refresh() end
 end
 
 function ns.gatherSkip()
@@ -180,8 +236,10 @@ end
 local HBDP = LibStub and LibStub("HereBeDragons-Pins-2.0", true)
 local PINREF = {}
 local pool, used = {}, 0
-local COLOR = { herb = { 0.35, 0.95, 0.45 }, ore = { 1, 0.62, 0.25 } }
-local function pin(kind, dim, size)
+-- shipped data: herbs green, ore orange; our own data: herbs blue, ore pink
+local COLOR = { ship = { herb = { 0.35, 0.95, 0.45 }, ore = { 1, 0.62, 0.25 } },
+                own = { herb = { 0.35, 0.75, 1 }, ore = { 1, 0.45, 0.85 } } }
+local function pin(kind, dim, size, src)
     used = used + 1
     local f = pool[used]
     if not f then
@@ -192,7 +250,8 @@ local function pin(kind, dim, size)
         pool[used] = f
     end
     f:SetSize(size, size)
-    local c = COLOR[kind] or COLOR.herb
+    local set = COLOR[src] or COLOR.ship
+    local c = set[kind] or set.herb
     f.tex:SetVertexColor(c[1], c[2], c[3], dim and 0.35 or 0.95)
     return f
 end
@@ -218,11 +277,11 @@ function ns.gatherPins(force)
     for k, e in ipairs(near) do
         if k > MINIPINS then break end
         local kind = D.kinds[e.p.name] and D.kinds[e.p.name][1]
-        HBDP:AddMinimapIconMap(PINREF, pin(kind, seen(e.p), 9), map, e.p.x / 100, e.p.y / 100, true, true)
+        HBDP:AddMinimapIconMap(PINREF, pin(kind, seen(e.p), 9, e.p.src), map, e.p.x / 100, e.p.y / 100, true, true)
     end
     for _, p in ipairs(list) do
         local kind = D.kinds[p.name] and D.kinds[p.name][1]
-        HBDP:AddWorldMapIconMap(PINREF, pin(kind, seen(p), 8), map, p.x / 100, p.y / 100)
+        HBDP:AddWorldMapIconMap(PINREF, pin(kind, seen(p), 8, p.src), map, p.x / 100, p.y / 100)
     end
 end
 
@@ -230,20 +289,15 @@ end
 local function remember(name, map, x, y)
     local D = loadData()
     if not (D and D.kinds[name] and map) then return end
-    -- already known within a few yards (shipped or found): nothing new
+    -- the spot you're at counts as visited (gather mode moves on)
     for _, p in ipairs(spots(map)) do
-        if p.name == name and math.abs(p.x - x) < 0.6 and math.abs(p.y - y) < 0.6 then
-            state.visited[p.id] = GetTime()
-            return
-        end
+        if p.name == name and math.abs(p.x - x) < 0.6 and math.abs(p.y - y) < 0.6 then state.visited[p.id] = GetTime() end
     end
-    -- known for a skill you don't have yet: look there too
-    for n, s in pairs(D.zones[map] or {}) do
-        if n == name then
-            for px, py in s:gmatch("([%d%.]+),([%d%.]+)") do
-                if math.abs(tonumber(px) - x) < 0.6 and math.abs(tonumber(py) - y) < 0.6 then return end
-            end
-        end
+    -- our own data is built from what's really there: only the shipped data doesn't count here. Known to us
+    -- within a few yards (gathered before): nothing new; a sighting there becomes the exact spot
+    local F = ItineraryDB.gatherFound and ItineraryDB.gatherFound[map]
+    for px, py in ((F and F[name]) or ""):gmatch("([%d%.]+),([%d%.]+)") do
+        if math.abs(tonumber(px) - x) < 0.6 and math.abs(tonumber(py) - y) < 0.6 then return end
     end
     ItineraryDB.gatherFound = ItineraryDB.gatherFound or {}
     local z = ItineraryDB.gatherFound[map] or {}
@@ -353,13 +407,14 @@ do
         done[c.guid] = true
         local x, y = c.sx / c.n, c.sy / c.n
         local D = ns.GATHER_DATA
-        -- known already (shipped, gathered or seen) within ~25 yards: nothing new
+        -- known to our own data already (baked, gathered or seen) within ~25 yards: nothing new
         local function near(str)
             for px, py in (str or ""):gmatch("([%d%.]+),([%d%.]+)") do
                 if math.abs(tonumber(px) - x) < 1 and math.abs(tonumber(py) - y) < 1 then return true end
             end
         end
-        if near(D.zones[c.map] and D.zones[c.map][c.name]) then return end
+        local O = ns.GATHER_OWN and ns.GATHER_OWN.zones and ns.GATHER_OWN.zones[c.map]
+        if near(O and O[c.name]) then return end
         if near(ItineraryDB.gatherFound and ItineraryDB.gatherFound[c.map] and ItineraryDB.gatherFound[c.map][c.name]) then return end
         ItineraryDB.gatherSeen = ItineraryDB.gatherSeen or {}
         local z = ItineraryDB.gatherSeen[c.map] or {}

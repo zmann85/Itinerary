@@ -1436,7 +1436,7 @@ function ns.refresh()
             local t = "|cffff9933Time left " .. ns.timeText(left) .. "|r"
             desc = (desc and desc ~= "") and (t .. "\n" .. desc) or t
         end
-        if label and #list < 3 then list[#list + 1] = { label, desc, go = go, spells = spells } end
+        if label and #list < 3 then list[#list + 1] = { label, desc, go = go, spells = spells, timer = left or nil } end
         end
     end
     local used = 0
@@ -1794,7 +1794,10 @@ function ns.setArrowInstructions(list)
     if not (arrow and arrow.lines) then return end
     local show = ItineraryDB.arrow.instr ~= false and list and #list > 0
     local entries = {}
-    if show then for k, e in ipairs(list) do if k <= 3 and e[1] then entries[#entries + 1] = e[1] end end end
+    if show then for k, e in ipairs(list) do if k <= 3 and e[1] then
+        -- a quest timer on the instruction goes after it here too
+        entries[#entries + 1] = e[1] .. (e.timer and ("  |cffff9933" .. ns.timeText(e.timer) .. "|r") or "")
+    end end end
     local size = ItineraryDB.arrow.instrSize or 12
     local px = size * 2 -- action icons twice the text size
     local below, gapBelow = nil, 0

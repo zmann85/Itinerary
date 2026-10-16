@@ -537,6 +537,21 @@ function ns.pendingSpellCost(all)
     -- a trainer visit recorded under an older rule (every skill counted for a while): look at the spellbook
     -- again until the next visit
     if c.trainedLevel and not c.trainWorthOnly then c.trainedLevel, c.trainOwed, c.trainOwedAll = nil, nil, nil end
+    -- what the class's trainer list (recorded at a visit) holds that your spellbook doesn't have: the same
+    -- source as the READY TO LEARN tooltip, so the instruction and its tooltip always agree
+    local _, class = UnitClass("player")
+    local cs = ItineraryDB.classSpells and ItineraryDB.classSpells[class]
+    if cs and next(cs) and ns.learnableSpells then
+        local cheapest, sum = nil, 0
+        for _, e in ipairs(ns.learnableSpells()) do
+            if e.worth and not e.skip and e.level <= lvl then
+                sum = sum + e.cost
+                if not cheapest or e.cost < cheapest then cheapest = e.cost end
+            end
+        end
+        if all then return cheapest and sum or nil end
+        return cheapest
+    end
     if not c.trainedLevel then
         -- never at the trainer with Itinerary: what's missing from the spellbook, if the class is known
         local known = ns.unknownSpellCost and ns.unknownSpellCost(lvl)

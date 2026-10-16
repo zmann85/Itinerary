@@ -59,6 +59,8 @@
   cause small stutters).
 
 ### Fixed
+- The class trainer instruction no longer shows when its tooltip says there's nothing new: both now go by the
+  trainer's recorded list against your spellbook.
 - Class trainer instructions in every starting area: with Itinerary_Data all class trainers are known (before,
   only trainers you had opened were known, so e.g. the Shadowglen rogue trainer never showed up).
 - The trainer instruction no longer waits for a route trainer stop a few steps ahead when that stop is

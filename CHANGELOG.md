@@ -59,7 +59,7 @@
   the next steps.
 - Profession instructions only show when you can pay for what they're for (secondary professions after
   the money for your next class skills, a new rank when you have its price).
-- Along-the-way objectives: one objective per line, the count in the hint colour.
+- Along-the-way objectives: one objective per line, the count in the hint colour; finished ones stay listed, greyed.
 - Memory use is shown in the settings button's tooltip (Itinerary, all addons, the top 5), measured only
   while you hover it. The footer display and its setting are gone (measuring every few seconds could
   cause small stutters).

@@ -440,21 +440,25 @@ local function alongInfo(st)
     -- side objectives: something to collect or kill while you go, with live counts
     if st.t == "complete" then
         local lines = ns.objectiveLines(st)
-        local open = {}
-        -- one objective per line, its count in the hint colour (the words keep the section's green)
+        local open, shown = 0, {}
+        -- one objective per line, its count in the hint colour (the words keep the section's green); finished
+        -- ones stay listed, greyed, so you see the whole quest
+        local DONE = "|cff8fa898"
         for _, l in ipairs(lines) do
-            if not l[2] then open[#open + 1] = (l[1]:gsub("(%d+%s*/%s*%d+)", ns.hintHex() .. "%1|r", 1)) end
+            if l[2] then shown[#shown + 1] = DONE .. l[1] .. "|r"
+            else open = open + 1; shown[#shown + 1] = (l[1]:gsub("(%d+%s*/%s*%d+)", ns.hintHex() .. "%1|r", 1)) end
         end
         if st.col then
             local count = (C_Item and C_Item.GetItemCount) or GetItemCount
             local nameOf = (C_Item and C_Item.GetItemNameByID) or function(id) return GetItemInfo and (GetItemInfo(id)) end
             for _, c in ipairs(st.col) do
                 local have, n = math.min(count(c[1]) or 0, c[2]), nameOf(c[1])
-                if n and have < c[2] then open[#open + 1] = ns.hintHex() .. have .. "/" .. c[2] .. "|r " .. itemLink(c[1], n) end
+                if n and have < c[2] then open = open + 1; shown[#shown + 1] = ns.hintHex() .. have .. "/" .. c[2] .. "|r " .. itemLink(c[1], n)
+                elseif n then shown[#shown + 1] = DONE .. have .. "/" .. c[2] .. " " .. n .. "|r" end
             end
         end
         local label
-        if #open > 0 then label = table.concat(open, "\n")
+        if open > 0 then label = table.concat(shown, "\n")
         elseif st.obj and #st.obj > 0 then
             local o = {}
             for _, x in ipairs(st.obj) do o[#o + 1] = shortObj(x) end

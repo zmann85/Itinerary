@@ -1338,6 +1338,7 @@ function ns.refresh()
     local recDetour
     for _, d in ipairs(recDetours) do if not d.prof and not d.weapon then recDetour = d end end
     -- gather mode (/iti gather): the farming route takes the place of your step, trainers and all
+    ns.timerTick, ns.timerOnStep = nil, nil
     local gs = ns.gatherStep and ns.gatherStep()
     if gs then detour, recDetours, recDetour = gs, {}, nil end
     ns.detourStep = detour
@@ -1374,7 +1375,13 @@ function ns.refresh()
         panel.progress:SetShown(cp and true or false)
         panel.icon:SetTexture(ICON[s.t])
         panel.title:SetText(title(s))
-        panel.detail:SetText(detail(s))
+        local dt = detail(s)
+        local left = ns.stepTimeLeft(s)
+        if left then
+            ns.timerTick, ns.timerOnStep = true, true
+            dt = "|cffff9933Time left " .. ns.timeText(left) .. "|r" .. ((dt and dt ~= "") and ("\n" .. dt) or "")
+        end
+        panel.detail:SetText(dt)
     end
     if panel.titleHover then
         local spec = s and ns.trainerSpec(s) or nil
@@ -1416,6 +1423,13 @@ function ns.refresh()
         local go = st.trainRec and st.m and st.x and { m = st.m, x = st.x, y = st.y, npc = st.npc } or nil
         local spells = st.trainRec and ns.trainerSpec(st) or nil
         if st.trainRec and st.cls then desc = ns.affordText() end
+        -- (not twice: when your step shows the timer already, the instruction doesn't)
+        local left = not ns.timerOnStep and ns.stepTimeLeft(st)
+        if left then
+            ns.timerTick = true
+            local t = "|cffff9933Time left " .. ns.timeText(left) .. "|r"
+            desc = (desc and desc ~= "") and (t .. "\n" .. desc) or t
+        end
         if label and #list < 3 then list[#list + 1] = { label, desc, go = go, spells = spells } end
         end
     end
@@ -2010,7 +2024,9 @@ function ns.buildUI()
         if not panel:IsShown() then return end
         panel.pace:SetText(paceText())
         -- a hearthstone instruction waiting on its cooldown: redraw for the countdown / when it comes back
-        if ns.hearthCheckAt and GetTime() >= ns.hearthCheckAt then ns.refresh() end
+        if ns.hearthCheckAt and GetTime() >= ns.hearthCheckAt then ns.refresh()
+        -- a quest timer on your step or an instruction: count it down
+        elseif ns.timerTick then ns.refresh() end
     end)
     ns.refresh()
 end

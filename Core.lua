@@ -846,6 +846,44 @@ local function notApplicable(s)
 end
 ns.notApplicable = notApplicable
 
+-- timed quests ("return within 5 minutes"): seconds left on the quest's timer, the one Blizzard's quest
+-- timer frame shows; nil when the quest has none running
+function ns.questTimeLeft(q)
+    if not q then return nil end
+    if GetQuestTimers and GetQuestIndexForTimer and GetQuestLogTitle then
+        local t = { GetQuestTimers() }
+        for k, left in ipairs(t) do
+            local idx = GetQuestIndexForTimer(k)
+            local id = idx and select(8, GetQuestLogTitle(idx))
+            if id == q and left then return left end
+        end
+    end
+    if C_QuestLog and C_QuestLog.GetTimeAllowed and onQuest(q) then
+        local total, elapsed = C_QuestLog.GetTimeAllowed(q)
+        if total and elapsed and total > 0 then return math.max(0, total - elapsed) end
+    end
+    return nil
+end
+-- the timer for a step: its own quests, or (an instruction like "You have 5 minutes to return") the quests of
+-- the step it runs until
+function ns.stepTimeLeft(s)
+    if not s then return nil end
+    local best
+    local function look(st)
+        for _, q in ipairs(st and st.q or {}) do
+            local l = ns.questTimeLeft(q)
+            if l and (not best or l < best) then best = l end
+        end
+    end
+    look(s)
+    if not best and s.till then look(ns.steps()[s.till]) end
+    return best
+end
+function ns.timeText(sec)
+    sec = math.max(0, math.floor(sec))
+    return string.format("%d:%02d", math.floor(sec / 60), sec % 60)
+end
+
 -- Is step i finished? Quest steps read the quest log; the rest are marked by events or by hand.
 function ns.stepDone(i)
     local s = ns.steps()[i]

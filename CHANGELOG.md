@@ -80,6 +80,8 @@
   cause small stutters).
 
 ### Fixed
+- Setting your hearthstone at an innkeeper you also hand a quest in to (Goldshire on the human route) is a step
+  again, and so is the hearth back there later.
 - Camping 101 quests for professions you didn't pick (or know) are left out of the route and not taken; a step
   with two of them only names the one that's yours.
 - The guide's vendor visits ("Vendor trash" at a named vendor, "Sell junk", buying from someone) are done when you

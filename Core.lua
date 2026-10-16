@@ -626,12 +626,46 @@ end
 -- quest after all (or going back to its accept step) brings them back.
 local dropCache = nil
 function ns.dropChanged() dropCache = nil end
+-- WoW Forever's profession quests ("Camping 101: Mining") are for the professions you picked (or know): the
+-- others count as skipped. Which profession a quest is for: from its name in the route.
+local profQ, profQFor = nil, nil
+local function profOfQuest(q)
+    local steps = ns.steps()
+    if profQFor ~= steps then
+        profQ, profQFor = {}, steps
+        local byName = {}
+        for k, p in pairs(ns.PROF or {}) do if p.name then byName[p.name] = k end end
+        for _, st in ipairs(steps) do
+            for n, id in ipairs(st.q or {}) do
+                local nm = st.n and st.n[n]
+                local prof = nm and nm:match("^Camping 101: (.+)$")
+                if prof and byName[prof] then profQ[id] = byName[prof] end
+            end
+        end
+    end
+    return profQ[q]
+end
 local function explicitDrop(q)
     local d = ItineraryCharDB and ItineraryCharDB.droppedQ
-    return d and d[q]
+    if d and d[q] then return true end
+    local k = profOfQuest(q)
+    if k and ns.profIsChosen and ns.profKnown then
+        local c = ItineraryCharDB
+        -- (no professions picked yet: nothing is decided)
+        if c and c.prof and c.prof.list and #c.prof.list > 0 and not ns.profIsChosen(k) and not ns.profKnown(k) then
+            return true
+        end
+    end
+    return false
 end
-local function dropped(q, depth)
+local dropSig
+local dropped
+function ns.questDropped(q) return dropped(q) end
+function dropped(q, depth)
     if not q then return false end
+    -- (another set of professions: the profession quests change)
+    local sig = ns.profChosen and table.concat(ns.profChosen(), ",") or ""
+    if sig ~= dropSig then dropSig, dropCache = sig, nil end
     dropCache = dropCache or {}
     local hit = dropCache[q]
     if hit ~= nil then return hit end

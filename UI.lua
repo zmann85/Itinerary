@@ -317,8 +317,13 @@ ns.questName = questName
 local function title(s)
     if s.detour and s.name then return linkify(s.name) .. (s.npc and (" at " .. s.npc) or "") end
     if s.n then
+        -- (a quest of the step you're leaving out - a profession you didn't pick - isn't named)
         local t = {}
-        for k, n in ipairs(s.n) do t[k] = questName(s.q and s.q[k], n) end
+        for k, n in ipairs(s.n) do
+            local q = s.q and s.q[k]
+            if not (q and ns.questDropped and ns.questDropped(q) and #s.n > 1) then t[#t + 1] = questName(q, n) end
+        end
+        if #t == 0 then for k, n in ipairs(s.n) do t[k] = questName(s.q and s.q[k], n) end end
         return table.concat(t, "\n")
     end
     if s.t == "complete" then

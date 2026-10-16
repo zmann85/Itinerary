@@ -141,7 +141,10 @@ local function wanted(q, title)
     local a = A()
     if not (a and a.quests) or paused() then return false end
     if a.scope == "all" then return true end
-    if campingWanted(title or titleOf(q)) then return true end
+    local t = title or titleOf(q)
+    if campingWanted(t) then return true end
+    -- a profession quest for a profession you didn't pick isn't taken, even where the route has it
+    if t and t:match("^Camping 101: ") and #(ns.profChosen and ns.profChosen() or {}) > 0 then return false end
     return q and inRoute(q)
 end
 ns.autoWanted = wanted

@@ -80,6 +80,8 @@
   cause small stutters).
 
 ### Fixed
+- Camping 101 quests for professions you didn't pick (or know) are left out of the route and not taken; a step
+  with two of them only names the one that's yours.
 - The guide's vendor visits ("Vendor trash" at a named vendor, "Sell junk", buying from someone) are done when you
   open that vendor; before, only the starting-area ones were.
 - The class trainer instruction no longer shows when its tooltip says there's nothing new: both now go by the

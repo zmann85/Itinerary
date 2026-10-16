@@ -1092,10 +1092,14 @@ local function trackingList()
     if not (M and M.GetNumTrackingTypes and M.GetTrackingInfo) then return nil end
     for i = 1, M.GetNumTrackingTypes() do
         local info = M.GetTrackingInfo(i)
-        if type(info) == "table" then out[#out + 1] = { i = i, name = info.name, active = info.active }
+        -- spell: a tracking ability (Find Minerals, Find Treasure, Track Beasts) - only one at a time; the
+        -- others (flight masters, mailboxes, trainers ...) are map filters that stay on alongside
+        if type(info) == "table" then
+            out[#out + 1] = { i = i, name = info.name, active = info.active,
+                              spell = info.type == "spell" or (info.spellID and info.spellID > 0) or false }
         else
-            local name, _, active = M.GetTrackingInfo(i)
-            out[#out + 1] = { i = i, name = name, active = active }
+            local name, _, active, category, _, spellID = M.GetTrackingInfo(i)
+            out[#out + 1] = { i = i, name = name, active = active, spell = category == "spell" or (spellID and spellID > 0) or false }
         end
     end
     return out
@@ -1116,7 +1120,9 @@ function ns.trackState()
         "texture " .. tostring(GetTrackingTexture and GetTrackingTexture()),
         "dead " .. tostring(UnitIsDeadOrGhost and UnitIsDeadOrGhost("player")),
         "mining " .. tostring(ns.profKnown("mining")) }
-    for _, t in ipairs(trackingList() or {}) do parts[#parts + 1] = tostring(t.name) .. (t.active and "*" or "") end
+    for _, t in ipairs(trackingList() or {}) do
+        if t.spell then parts[#parts + 1] = tostring(t.name) .. (t.active and "*" or "") end
+    end
     return table.concat(parts, ", ")
 end
 function ns.applyGatherTracking()
@@ -1159,7 +1165,7 @@ function ns.applyGatherTracking()
     if not idx then trackLog("not in the list: " .. ns.trackState()) return end -- not in the list yet (just learned): the next try gets it
     if not fresh then
         for _, t in ipairs(list) do
-            if t.active and t.name and t.name ~= "" and t.name ~= NONE then trackLog("other tracking on: " .. ns.trackState()) return true end -- something is tracked: yours
+            if t.active and t.spell and t.name and t.name ~= "" and t.name ~= NONE then trackLog("other tracking on: " .. ns.trackState()) return true end -- something is tracked: yours
         end
     end
     if C_Minimap.SetTracking then

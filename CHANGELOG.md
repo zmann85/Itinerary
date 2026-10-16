@@ -40,6 +40,8 @@
 - Gathering tracking switches on right after you learn Mining or Herbalism (it tries again for a few
   seconds until the game lists the new tracking), also over another tracking that was on, once.
 - Gathering tracking comes back after you're resurrected, also when the game still lists it as on.
+- Gathering tracking no longer mistakes the map filters (flight masters, mailboxes, trainers ...) for tracking you
+  switched on yourself: it was never switched on with them active.
 - A turn-in the route only does "if it's done by now" isn't listed as one to go back for when you passed it.
 - Steps for an item you need to have (RestedXP `.itemcount`) only show while you have it (or, for "fewer
   than", while you don't). "Eat the Herb Baked Eggs" instructions get the eggs on an item button and stay

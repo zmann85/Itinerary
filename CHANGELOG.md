@@ -31,7 +31,7 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
-- Over the arrow, trainer instructions are one line, "Skills to learn nearby - click the instruction to go there",
+- Over the arrow, trainer instructions are one line, "Skills to learn nearby - click the instruction panel to go there",
   until you click one (the arrow doesn't lead there before).
 - Two grind steps in a row (one for "if you finished the side quest", one for "if not"): only the one that
   fits shows. Steps the guide meant for a different experience rate are left out.

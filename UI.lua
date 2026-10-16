@@ -1816,7 +1816,7 @@ function ns.setArrowInstructions(list)
         if e.spells and e.go and not on then
             if not trainerLine then
                 trainerLine = true
-                entries[#entries + 1] = "|cffd9b26fSkills to learn nearby|r - click the instruction to go there"
+                entries[#entries + 1] = "|cffd9b26fSkills to learn nearby|r - click the instruction panel to go there"
             end
         else
             -- a quest timer on the instruction goes after it here too

@@ -478,7 +478,10 @@ function ns.skippedBehind()
     end
     for i = 1, math.min(c.step - 1, #steps) do
         local s = steps[i]
-        local passed = s.t == "turnin" and s.q and not c.manual[i]
+        -- (a turn-in "only if it's done by now" that wasn't isn't worth going back for)
+        local ifReady = false
+        for _, cd in ipairs(s.cond or {}) do if cd[1] == "ready" then ifReady = true end end
+        local passed = s.t == "turnin" and s.q and not c.manual[i] and not ifReady
         if (c.manual[i] and QUEST_STEP[s.t]) or passed then
             for k, q in ipairs(s.q) do
                 if passed and not (onQuest(q) and readyToTurnIn(q) and not laterTurnin(i, q)) then

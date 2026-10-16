@@ -24,6 +24,10 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
+- Coldridge Valley crowded start: The Troll Cave, The Stolen Journal and Senir's Observations (and The
+  Adventurer) are back in; A New Threat is picked up after the mail delivery and worked on along the way, and
+  handed in before Senir's Observations only if it's done by then.
+- A turn-in the route only does "if it's done by now" isn't listed as one to go back for when you passed it.
 - Steps for an item you need to have (RestedXP `.itemcount`) only show while you have it (or, for "fewer
   than", while you don't). "Eat the Herb Baked Eggs" instructions get the eggs on an item button and stay
   hidden while their buff is up, until a minute before it runs out (the buff is learned the first time you eat).

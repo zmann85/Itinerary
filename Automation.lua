@@ -507,12 +507,13 @@ local function markValuableReward(tries)
     if not b then return end
     local t = coinMarks[b]
     if not t then
-        -- a gold coin on the corner of the item's icon: tells "sells for the most" apart from the game's own
+        -- a gold coin on the corner of the item's name box: tells "sells for the most" apart from the game's own
         -- highlight on the reward you click
-        local icon = b.Icon or b.icon or _G[(b:GetName() or "") .. "IconTexture"] or b
+        -- (top right of the item's name box)
+        local nameBox = b.NameFrame or _G[(b:GetName() or "") .. "NameFrame"] or b
         local box = CreateFrame("Frame", nil, b)
         box:SetSize(18, 18)
-        box:SetPoint("CENTER", icon, "TOPRIGHT", -2, -2)
+        box:SetPoint("CENTER", nameBox, "TOPRIGHT", -12, -4)
         box:SetFrameLevel((b:GetFrameLevel() or 1) + 5)
         local shadow = box:CreateTexture(nil, "BACKGROUND")
         shadow:SetPoint("CENTER"); shadow:SetSize(20, 20)

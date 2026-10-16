@@ -119,7 +119,7 @@ local OPTIONS = {
       choices = ON_OFF, get = function() return A().gossip end, set = function(v) A().gossip = v end },
     { tab = 2, label = "Pick gear rewards", desc = "When every reward choice is white or green armor: the best armor type you can wear, then the one that sells for most. Weapons you can use, shields, off-hands and blue items stay your choice.",
       choices = ON_OFF, get = function() return A().rewards == true end, set = function(v) A().rewards = v end },
-    { tab = 2, label = "Best-selling reward", desc = "Puts a gold coin on the icon of the quest reward that sells for the most, when you get to choose.",
+    { tab = 2, label = "Best-selling reward", desc = "Puts a gold coin on the quest reward that sells for the most, when you get to choose.",
       choices = SHOW_HIDE, get = function() return A().rewardCoin ~= false end, set = function(v) A().rewardCoin = v end },
     { tab = 2, label = "Sell junk", desc = "Sells your grey items when you open any vendor, so there's money for spells and tools.",
       choices = ON_OFF, get = function() return A().junk ~= false end, set = function(v) A().junk = v end },

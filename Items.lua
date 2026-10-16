@@ -206,7 +206,8 @@ ns.tagSpells = TAG
 local function nearestPlate(names, friendly)
     if not (C_NamePlate and C_NamePlate.GetNamePlates) then return nil end
     local want = {}
-    for _, n in ipairs(names) do want[n] = true end
+    -- (a guide's plural - "Ice Claw Bears" - finds the mob too)
+    for _, n in ipairs(names) do want[n] = true; want[(n:gsub("s$", ""))] = true end
     local best, bestScore
     for _, p in ipairs(C_NamePlate.GetNamePlates() or {}) do
         local u = p.namePlateUnitToken or (p.UnitFrame and p.UnitFrame.unit)

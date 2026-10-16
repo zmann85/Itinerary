@@ -24,6 +24,9 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
+- Steps for an item you need to have (RestedXP `.itemcount`) only show while you have it (or, for "fewer
+  than", while you don't). "Eat the Herb Baked Eggs" instructions get the eggs on an item button and stay
+  hidden while their buff is up, until a minute before it runs out (the buff is learned the first time you eat).
 - "Die and respawn at the spirit healer" instructions and steps are done once you're alive again.
 - An along-the-way quest objective hands over to the route's own step for that quest: from there that
   step shows the counts instead of both.

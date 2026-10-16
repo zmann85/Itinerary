@@ -687,11 +687,113 @@ function ns.weaponsKnown(ids, any)
     return n == #ids
 end
 
+-- Steps for when you have an item ("Eat the Herb Baked Eggs": RestedXP .itemcount), and food buffs: which buff
+-- eating an item gives is learned the first time you eat it (ItineraryDB.itemBuffs[item] = aura spell ID)
+local function itemCount(id)
+    local f = (C_Item and C_Item.GetItemCount) or GetItemCount
+    return f and (f(id) or 0) or 0
+end
+local function eachBuff(fn)
+    for k = 1, 40 do
+        local name, spellId, expires
+        if C_UnitAuras and C_UnitAuras.GetBuffDataByIndex then
+            local a = C_UnitAuras.GetBuffDataByIndex("player", k)
+            if not a then break end
+            name, spellId, expires = a.name, a.spellId, a.expirationTime
+        elseif UnitBuff then
+            local r = { UnitBuff("player", k) }
+            if not r[1] then break end
+            name, spellId, expires = r[1], r[10], r[6]
+        else break end
+        if fn(name, spellId, expires) then return true end
+    end
+    return false
+end
+-- the buff from eating this item is up (and won't run out within a minute), or you're eating it right now
+function ns.itemBuffUp(item)
+    local known = ItineraryDB and ItineraryDB.itemBuffs and ItineraryDB.itemBuffs[item]
+    local eating = GetItemSpell and GetItemSpell(item)
+    local now = GetTime()
+    return eachBuff(function(name, spellId, expires)
+        if known and spellId == known then return not expires or expires == 0 or expires - now > 60 end
+        if eating and name == eating then return true end
+    end)
+end
+do
+    -- learning: you use the item, and a new buff lasting minutes shows up within half a minute
+    local watch
+    local f = CreateFrame("Frame")
+    f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
+    f:RegisterEvent("UNIT_AURA")
+    f:SetScript("OnEvent", function(_, event, unit, _, spellId)
+        if unit ~= "player" or not ItineraryDB then return end
+        if event == "UNIT_SPELLCAST_SUCCEEDED" then
+            -- an item a route step wants you to eat for its buff
+            local steps = ns.steps and ns.steps() or {}
+            for _, s in ipairs(steps) do
+                if s.buffItem and not (ItineraryDB.itemBuffs and ItineraryDB.itemBuffs[s.buffItem]) then
+                    local _, sid = GetItemSpell and GetItemSpell(s.buffItem)
+                    if sid and sid == spellId then
+                        local before = {}
+                        eachBuff(function(_, id) if id then before[id] = true end end)
+                        watch = { item = s.buffItem, before = before, untilT = GetTime() + 40 }
+                        break
+                    end
+                end
+            end
+        elseif watch then
+            if GetTime() > watch.untilT then watch = nil return end
+            local eating = GetItemSpell and GetItemSpell(watch.item)
+            local now = GetTime()
+            eachBuff(function(name, id, expires)
+                if id and not watch.before[id] and name ~= eating and expires and expires - now > 120 then
+                    ItineraryDB.itemBuffs = ItineraryDB.itemBuffs or {}
+                    ItineraryDB.itemBuffs[watch.item] = id
+                    watch = nil
+                    if ns.update then ns.update() end
+                    return true
+                end
+            end)
+        end
+    end)
+end
+-- the panel follows the buff: gone, about to run out (a minute left: eat again) or back up
+do
+    local last = {}
+    C_Timer.NewTicker(5, function()
+        if not (ItineraryCharDB and ns.steps and ns.update) then return end
+        local steps, i = ns.steps(), ItineraryCharDB.step
+        local changed = false
+        for j = math.max(1, i - 40), math.min(#steps, i) do
+            local s = steps[j]
+            if s and s.buffItem and s.along then
+                local up = ns.itemBuffUp(s.buffItem) and true or false
+                if last[s.buffItem] ~= up then last[s.buffItem] = up; changed = true end
+            end
+        end
+        if changed then ns.update() end
+    end)
+end
+-- an item step you can't follow (no eggs) or don't need to (the buff is up)
+-- { item, count } = at least that many; { item, count, "lt" } = fewer than that
+function ns.itemNeedMet(need)
+    local have = itemCount(need[1])
+    if need[3] == "lt" then return have < (need[2] or 1) end
+    return have >= (need[2] or 1)
+end
+function ns.itemStepIdle(s)
+    if s.need and not ns.itemNeedMet(s.need) then return true end
+    if s.buffItem and ns.itemBuffUp(s.buffItem) then return true end
+    return false
+end
+
 local function notApplicable(s)
     -- Settings > Quests > "Auction house": playing without it (self-found), its steps are left out
     if ItineraryDB and ItineraryDB.skipAH and isAH(s) then return true end
     -- ...and the self-found versions of steps (a vendor stop without the auction house hint) only then
     if s.ssf and not (ItineraryDB and ItineraryDB.skipAH) then return true end
+    -- a step for when you have an item ("cook the Small Eggs") without it
+    if s.need and not s.along and not ns.itemNeedMet(s.need) then return true end
     -- a quest step whose quests are all dropped (skipped, or their pre-quest was)
     if s.q and QUEST_STEP[s.t] then
         local all = true
@@ -956,7 +1058,7 @@ function ns.alongActive(i)
     for j = (first or 1), math.min(i, #steps) do
         local s = steps[j]
         if s.along and (not s.till or s.till >= i) and not ns.stepDone(j) and not (j ~= i and takenOver(s, cur))
-           and not (j ~= i and comingUp(s, steps, i)) then
+           and not (j ~= i and comingUp(s, steps, i)) and not ((s.need or s.buffItem) and ns.itemStepIdle(s)) then
             out[#out + 1] = j
         end
     end

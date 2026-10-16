@@ -85,8 +85,9 @@
   cause small stutters).
 
 ### Fixed
-- An along-the-way objective stays listed, with its counts, when the route reaches its turn-in before you've
-  finished it (Wolves Across The Border in Northshire); it hands over only once the quest is done.
+- A quest the guide only finishes along the way (Wolves Across The Border while you clear the kobold camp) gets
+  a step of its own right before its turn-in: when you're not done yet, that's where the route waits (done
+  already: it ticks off at once). About 25-30 such quests per route.
 - Setting your hearthstone at an innkeeper you also hand a quest in to (Goldshire on the human route) is a step
   again, and so is the hearth back there later. The same for a flight path, a flight, a hearth or a junk sale the
   guide does at a quest NPC.

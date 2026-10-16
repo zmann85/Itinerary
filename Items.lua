@@ -219,7 +219,8 @@ local function plates()
 end
 
 -- The closest one worth taking among the names, from the nameplates you can see (nameplates on): alive, not
--- tagged by someone else, not already fighting another player. How close comes in steps (10, 11, 28 yards,
+-- tagged by someone else, not already fighting another player (its name then goes last in the macro). How
+-- close comes in steps (10, 11, 28 yards,
 -- further) - what the game lets an addon know. nil: no nameplate fits (then the names decide).
 local function nearestPlate(names, friendly)
     local want = {}
@@ -268,14 +269,13 @@ end
 
 local function targetMacro(names, friendly, plate)
     local lines = {}
-    if plate then
-        -- the closest fitting one by its nameplate first; the names only when that didn't give a target (the
-        -- game doesn't reliably take a second target change in one press)
-        lines[1] = "/target [@" .. plate .. ",exists,nodead] " .. plate
-        for k = #names, 1, -1 do lines[#lines + 1] = "/targetexact [noexists][dead] " .. names[k] end
-    else
-        for k = #names, 1, -1 do lines[#lines + 1] = "/targetexact " .. names[k] end
+    -- the game won't target a nameplate by its unit in a macro, so the closest fitting mob's NAME goes last
+    -- (the last line that finds something wins); the game then takes the nearest of that name
+    local first = plate and UnitName(plate)
+    for k = #names, 1, -1 do
+        if names[k] ~= first then lines[#lines + 1] = "/targetexact " .. names[k] end
     end
+    if first then lines[#lines + 1] = "/targetexact " .. first end
     local tail = "\n/targetlasttarget [dead]"
     -- a mark on what you found, picked by what was actually targeted: an orange circle on friendly NPCs and
     -- players, a skull on enemies. Only a macro may do this (Lua gets blocked); "!" keeps an existing mark
@@ -284,8 +284,8 @@ local function targetMacro(names, friendly, plate)
     -- on quest mobs (not when it looks for an NPC to talk to): tag it
     if not friendly then tail = tail .. tagLine() end
     local text = table.concat(lines, "\n")
-    -- too long: the lowest-priority names go (with a nameplate pick that line stays first)
-    while #text + #tail > 255 and #lines > 1 do table.remove(lines, plate and 2 or 1); text = table.concat(lines, "\n") end
+    -- too long: the lowest-priority names go
+    while #text + #tail > 255 and #lines > 1 do table.remove(lines, 1); text = table.concat(lines, "\n") end
     return text .. tail
 end
 

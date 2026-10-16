@@ -31,6 +31,9 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
+- A guide's tiers of one item (4 Chunks of Boar Meat for Pie for Billy, then 10 and 50 for Cooking) show one at a
+  time under along the way, and a quest's collect goes away once that quest is handed in.
+- Pie for Billy has a step to get the boar meat before its turn-in (the guide only collected it along the way).
 - The best-selling quest reward gets a gold coin in the corner of its name box instead of a golden frame (the frame was hard to tell
   apart from the game's highlight on the reward you pick).
 - Items a guide collects for another quest (Crag Boar Ribs for Beer Basted Boar Ribs on the Stocking Jetsteam

@@ -1118,7 +1118,21 @@ function ns.alongActive(i)
             out[#out + 1] = j
         end
     end
-    return out
+    -- the guide's tiers of one item ("4 Chunks of Boar Meat", then 10, then 50 for Cooking): only the next one
+    local low = {}
+    for _, j in ipairs(out) do
+        local s = steps[j]
+        if s.t == "do" and s.col and #s.col == 1 then
+            local id, n = s.col[1][1], s.col[1][2]
+            if not low[id] or n < steps[low[id]].col[1][2] then low[id] = j end
+        end
+    end
+    local kept = {}
+    for _, j in ipairs(out) do
+        local s = steps[j]
+        if not (s.t == "do" and s.col and #s.col == 1 and low[s.col[1][1]] ~= j) then kept[#kept + 1] = j end
+    end
+    return kept
 end
 
 -- Where the arrow should lead for step i: first the unfinished "along the way" travel steps (enter the cave,

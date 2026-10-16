@@ -31,6 +31,8 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
+- The "skipped steps" line: right-click it if you're not doing those quests; quests of a chapter you've left
+  drop off it by themselves (unless ready to hand in).
 - Over the arrow, trainer instructions are one line, "Skills to learn nearby - click the instruction panel to go there",
   until you click one (the arrow doesn't lead there before).
 - Two grind steps in a row (one for "if you finished the side quest", one for "if not"): only the one that

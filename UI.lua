@@ -898,10 +898,20 @@ local function buildPanel()
                 "step " .. e.step, 0.85, 0.85, 0.85, 0.5, 0.5, 0.5)
         end
         GameTooltip:AddLine("Click to go back to the first one", 0.5, 0.5, 0.5)
+        GameTooltip:AddLine("Right-click: not doing them (the line goes away)", 0.5, 0.5, 0.5)
+        GameTooltip:AddLine("Quests of a zone you've left drop off by themselves", 0.5, 0.5, 0.5, true)
         GameTooltip:Show()
     end)
     panel.skipped:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    panel.skipped:SetScript("OnClick", function(self)
+    panel.skipped:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+    panel.skipped:SetScript("OnClick", function(self, button)
+        if button == "RightButton" then
+            if ns.ignoreSkipped then ns.ignoreSkipped(self.list) end
+            GameTooltip:Hide()
+            ns.print("skipped quests left out of the list (their steps stay skipped)")
+            if ns.refresh then ns.refresh() end
+            return
+        end
         local e = self.list and self.list[1]
         if e then
             ItineraryCharDB.manual[e.step] = nil

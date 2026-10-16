@@ -148,6 +148,11 @@ later steps and all follow-up quests are left out too, and chat tells you how ma
 anyway (or going back with ‹) brings them back. Abandoning a quest in your quest log drops it the same
 way.
 
+Skipped quests that are still open show as a line at the bottom of the panel (*1 skipped step*): hover for
+the list, click to go back to the first one, **right-click** if you're not doing them (the line goes away,
+the steps stay skipped). Once you've moved on to the next chapter (zone), they drop off by themselves,
+except a quest that's ready to hand in.
+
 **Lost?**
 - `/iti find` goes to the first step you haven't done.
 - `/iti goto <number>` jumps to a step.

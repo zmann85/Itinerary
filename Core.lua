@@ -476,16 +476,24 @@ function ns.skippedBehind()
         end
         return false
     end
+    -- quests you said you're not doing (right-click on the line) stay out; a skipped quest of an earlier chapter
+    -- (zone) too - you've moved on - unless it's ready to hand in
+    local ignored = c.skipIgnored or {}
+    local curCh = ns.chapterOf(c.step)
     for i = 1, math.min(c.step - 1, #steps) do
         local s = steps[i]
+        local oldCh = curCh and (ns.chapterOf(i) or curCh) < curCh
         -- (a turn-in "only if it's done by now" that wasn't isn't worth going back for)
         local ifReady = false
         for _, cd in ipairs(s.cond or {}) do if cd[1] == "ready" then ifReady = true end end
         local passed = s.t == "turnin" and s.q and not c.manual[i] and not ifReady
         if (c.manual[i] and QUEST_STEP[s.t]) or passed then
             for k, q in ipairs(s.q) do
-                if passed and not (onQuest(q) and readyToTurnIn(q) and not laterTurnin(i, q)) then
+                local ready = onQuest(q) and readyToTurnIn(q)
+                if passed and not (ready and not laterTurnin(i, q)) then
                     -- only the ready ones count here
+                elseif ignored[q] or (oldCh and not ready) then
+                    -- not doing it / left behind
                 elseif not seen[q] and not flaggedDone(q) then
                     seen[q] = true
                     out[#out + 1] = { step = i, q = q, name = s.n and s.n[k] or ("Quest " .. q), t = s.t }
@@ -494,6 +502,13 @@ function ns.skippedBehind()
         end
     end
     return out
+end
+
+-- "I'm not doing these": the skipped quests leave the list for good (their steps stay skipped)
+function ns.ignoreSkipped(list)
+    local c = ItineraryCharDB
+    c.skipIgnored = c.skipIgnored or {}
+    for _, e in ipairs(list or {}) do c.skipIgnored[e.q] = true end
 end
 
 -- where you are, for zone checks (names from the client, so they match the client language)

@@ -199,8 +199,6 @@ local function tagLine()
 end
 ns.tagSpells = TAG
 
--- the nameplate units around you: nameplate1..40 straight (the frame list can come back empty with nameplate
--- addons), each with its frame for where it sits on the screen
 -- CheckInteractDistance on an enemy can raise an error in newer clients: then it simply doesn't count
 local function near(u, k)
     if not CheckInteractDistance then return nil end
@@ -209,22 +207,20 @@ local function near(u, k)
     return r and true or false
 end
 
+-- the nameplate units around you: nameplate1..40 straight (never their frames - the game doesn't let addons
+-- measure those)
 local function plates()
     local out = {}
     for k = 1, 40 do
         local u = "nameplate" .. k
-        if UnitExists(u) then
-            local f = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit(u)
-            out[#out + 1] = { u = u, y = f and f.GetBottom and f:GetBottom() or nil }
-        end
+        if UnitExists(u) then out[#out + 1] = { u = u } end
     end
     return out
 end
 
 -- The closest one worth taking among the names, from the nameplates you can see (nameplates on): alive, not
 -- tagged by someone else, not already fighting another player. How close comes in steps (10, 11, 28 yards,
--- further) - what the game lets an addon know - and within a step from where the nameplate sits on the
--- screen. nil: no nameplate fits (then the names decide).
+-- further) - what the game lets an addon know. nil: no nameplate fits (then the names decide).
 local function nearestPlate(names, friendly)
     local want = {}
     -- (a guide's plural - "Ice Claw Bears" - finds the mob too)
@@ -239,10 +235,7 @@ local function nearestPlate(names, friendly)
                 if near(u, 3) then d = 1 elseif near(u, 2) then d = 2 elseif near(u, 4) then d = 3 end
                 -- busy with someone else (in combat, not with you): only when nothing else is there
                 local busy = not friendly and UnitAffectingCombat(u) and not UnitIsUnit(u .. "target", "player")
-                -- within the same distance step: the lower its nameplate sits on the screen, the closer it
-                -- usually is (the camera looks down on the ground ahead of you)
-                local y = p.y or 0
-                local score = (d + (busy and 5 or 0)) * 100000 + y
+                local score = d + (busy and 5 or 0)
                 if not bestScore or score < bestScore then best, bestScore = u, score end
             end
         end
@@ -260,9 +253,9 @@ function ns.targetDebug()
     for _, p in ipairs(list) do
         local u = p.u
         do
-            print(string.format("  %s %s  10yd %s 11yd %s 28yd %s  tapped %s  combat %s  screen y %d", u, UnitName(u) or "?",
+            print(string.format("  %s %s  10yd %s 11yd %s 28yd %s  tapped %s  combat %s", u, UnitName(u) or "?",
                 tostring(near(u, 3)), tostring(near(u, 2)), tostring(near(u, 4)), tostring(UnitIsTapDenied and UnitIsTapDenied(u)),
-                tostring(UnitAffectingCombat(u)), math.floor(p.y or -1)))
+                tostring(UnitAffectingCombat(u))))
         end
     end
     local ok, plate = pcall(nearestPlate, names, friendly)

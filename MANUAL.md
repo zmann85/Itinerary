@@ -232,7 +232,7 @@ to do things by hand that time.
 | Accept and hand in quests (only the route's quests, or all) | on | Quests |
 | Click through quest dialogue | on | Quests |
 | Pick plain armor rewards (white/green armor only) | off | Quests |
-| Gold frame on the best-selling reward | on | Quests |
+| Gold coin on the best-selling reward | on | Quests |
 | Sell grey items at any vendor | on | Quests |
 | Take the route's flight when you talk to the flight master | on | Travel |
 | Set your hearthstone on a "make this inn your home" step | on | Travel |

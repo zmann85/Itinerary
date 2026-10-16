@@ -31,6 +31,8 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
+- The best-selling quest reward gets a gold coin on its icon instead of a golden frame (the frame was hard to tell
+  apart from the game's highlight on the reward you pick).
 - Items a guide collects for another quest (Crag Boar Ribs for Beer Basted Boar Ribs on the Stocking Jetsteam
   step) are an along-the-way entry of their own ("For Beer Basted Boar Ribs") instead of part of that step.
 - Stocking Jetsteam's bears and boars are along the way until its turn-in (through the Grizzled Den).

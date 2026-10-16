@@ -475,7 +475,7 @@ function ns.gearRewardIndex()
 end
 
 local onCompleteRetried = false
--- A golden frame around the reward that sells for the most: the one to take when nothing is an upgrade
+-- A gold coin on the reward that sells for the most: the one to take when nothing is an upgrade
 local coinMarks = {}
 local function rewardButton(i)
     if QuestInfo_GetRewardButton and QuestInfoFrame and QuestInfoFrame.rewardsFrame then
@@ -507,21 +507,19 @@ local function markValuableReward(tries)
     if not b then return end
     local t = coinMarks[b]
     if not t then
-        -- a thin golden frame around the reward (Itinerary's own look)
+        -- a gold coin on the corner of the item's icon: tells "sells for the most" apart from the game's own
+        -- highlight on the reward you click
+        local icon = b.Icon or b.icon or _G[(b:GetName() or "") .. "IconTexture"] or b
         local box = CreateFrame("Frame", nil, b)
-        box:SetPoint("TOPLEFT", b, "TOPLEFT", -2, 2)
-        box:SetPoint("BOTTOMRIGHT", b, "BOTTOMRIGHT", 2, -2)
+        box:SetSize(18, 18)
+        box:SetPoint("CENTER", icon, "TOPLEFT", 2, -2)
         box:SetFrameLevel((b:GetFrameLevel() or 1) + 5)
-        local function edge(p1, p2, w, h)
-            local e = box:CreateTexture(nil, "OVERLAY")
-            e:SetColorTexture(1, 0.78, 0.25, 0.95)
-            e:SetPoint(p1); e:SetPoint(p2)
-            if w then e:SetWidth(w) else e:SetHeight(h) end
-        end
-        edge("TOPLEFT", "TOPRIGHT", nil, 2); edge("BOTTOMLEFT", "BOTTOMRIGHT", nil, 2)
-        edge("TOPLEFT", "BOTTOMLEFT", 2, nil); edge("TOPRIGHT", "BOTTOMRIGHT", 2, nil)
-        local glow = box:CreateTexture(nil, "BACKGROUND")
-        glow:SetAllPoints(); glow:SetColorTexture(1, 0.78, 0.25, 0.12)
+        local shadow = box:CreateTexture(nil, "BACKGROUND")
+        shadow:SetPoint("CENTER"); shadow:SetSize(20, 20)
+        shadow:SetTexture("Interface\\Common\\Indicator-Gray"); shadow:SetVertexColor(0, 0, 0, 0.8)
+        local coin = box:CreateTexture(nil, "OVERLAY")
+        coin:SetAllPoints()
+        coin:SetTexture("Interface\\MoneyFrame\\UI-GoldIcon")
         coinMarks[b] = box
         t = box
     end

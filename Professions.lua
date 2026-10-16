@@ -1123,7 +1123,17 @@ function ns.applyGatherTracking()
     for _, t in ipairs(list) do
         if t.name == want then
             idx = t.i
-            if t.active then c.trackFor = want; return true end
+            if t.active then
+                -- after dying the list can still say it's on while the tracking itself is gone (no tracking icon):
+                -- switch it off and on again, once per resurrection
+                local tex = GetTrackingTexture and GetTrackingTexture()
+                local stale = ns.trackAfterDeath and (GetTrackingTexture == nil or tex == nil)
+                if not stale then c.trackFor = want; ns.trackAfterDeath = nil; return true end
+                ns.trackAfterDeath = nil
+                pcall(C_Minimap.SetTracking, idx, false)
+                C_Timer.After(0.3, function() pcall(C_Minimap.SetTracking, idx, true) end)
+                return nil -- the next try checks it
+            end
         end
     end
     if not idx then return end -- not in the list yet (just learned): the next try gets it
@@ -1136,8 +1146,9 @@ function ns.applyGatherTracking()
         local ok = pcall(C_Minimap.SetTracking, idx, true)
         if ok then
             c.trackFor = want
+            ns.trackAfterDeath = nil
             if fresh then ns.print("gathering tracking: " .. want .. " on") end
-            return true
+            return nil -- the next try checks that it took (it can fail right after a resurrection)
         elseif not trackSaid then trackSaid = true; ns.print("gathering tracking: the game didn't let Itinerary switch it on - click " .. want .. " in your spellbook") end
     end
 end
@@ -1145,18 +1156,22 @@ end
 do
     local tf = CreateFrame("Frame")
     for _, e in ipairs({ "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "PLAYER_UNGHOST", "PLAYER_ALIVE", "SKILL_LINES_CHANGED",
-                         "LEARNED_SPELL_IN_TAB", "LEARNED_SPELL_IN_SKILL_LINE", "SPELLS_CHANGED", "CHAT_MSG_SKILL" }) do
+                         "LEARNED_SPELL_IN_TAB", "LEARNED_SPELL_IN_SKILL_LINE", "SPELLS_CHANGED", "CHAT_MSG_SKILL",
+                         "PLAYER_DEAD" }) do
         pcall(tf.RegisterEvent, tf, e)
     end
     local pending
     tf:SetScript("OnEvent", function(_, event)
         if not (ItineraryDB and ItineraryCharDB) then return end
         if event == "PLAYER_LOGIN" then ns.applyNodeIcons() end
+        if event == "PLAYER_DEAD" then ns.trackAfterDeath = true return end
+        -- back alive: a chain still waiting from when you released (as a ghost) mustn't swallow this one
+        if event == "PLAYER_UNGHOST" or event == "PLAYER_ALIVE" then pending = false end
         -- a moment later, once the game has its tracking state (and never in a loop with its own update);
         -- a spell just learned can take a few seconds to show up in the tracking list, so try a few times
         if pending then return end
         pending = true
-        local tries = { 1, 3, 8 }
+        local tries = { 1, 3, 6, 10, 16 }
         local function try(n)
             C_Timer.After(tries[n] - (tries[n - 1] or 0), function()
                 local ok, done = true, nil

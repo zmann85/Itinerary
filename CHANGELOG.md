@@ -54,7 +54,8 @@
 - The same along-the-way entry from two guide steps shows once.
 - Target button: with enemy nameplates on, a step's mob kinds are tried closest first (alive, not tagged by
   someone else, not fighting another player) instead of in the guide's order. `/iti target` shows what it sees.
-- Buying class skills: before level 10 only the worthwhile skills are bought.
+- Buying class skills: only the worthwhile skills (new setting Settings > Trainer > Only worthwhile skills, on); with
+  it off, the others too from level 10.
 - Timed quests (Durnan's Scalding Mornbrew and the like): the time left from the game's quest timer shows on
   the instruction that runs until its turn-in (or on your step when there is none), counting down.
 - Coldridge Valley crowded start: The Troll Cave, The Stolen Journal and Senir's Observations (and The

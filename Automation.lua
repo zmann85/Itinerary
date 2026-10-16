@@ -1042,8 +1042,9 @@ local function trainerBuy()
             worthWaiting = true
         end
     end
-    -- before level 10 only the worthwhile skills are bought: the rest waits (money for professions, gear, bags)
-    local early = (UnitLevel("player") or 1) < 10
+    -- only the worthwhile skills (Settings > Trainer, on by default); with that off, still only them before
+    -- level 10: the rest waits (money for professions, gear, bags)
+    local early = a.buyWorthOnly ~= false or (UnitLevel("player") or 1) < 10
     for _, o in ipairs(order) do
         local i = o[1]
         local name, category, rank = serviceInfo(i)

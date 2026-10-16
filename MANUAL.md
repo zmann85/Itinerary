@@ -160,7 +160,7 @@ way.
 **Class trainer.** When new skills worth buying are waiting and you can pay for them, an instruction
 appears as soon as a trainer of your class is **within 400 yards**: *Train new skills at …*. Hover it
 for **READY TO LEARN**, which lists each skill with its icon and price, and how much money you have.
-Worthwhile skills are green, and they're bought first; before level 10 only those are bought. You choose which skills count as worthwhile (and
+Worthwhile skills are green, and only those are bought (Settings > Trainer > *Only worthwhile skills*; with it off, the rest too from level 10). You choose which skills count as worthwhile (and
 which are never bought) in Settings > Trainer.
 
 **Money kept back**: from level 6 on, buying keeps a small reserve for your next skills. It starts at
@@ -240,6 +240,7 @@ to do things by hand that time.
 | Set your hearthstone on a "make this inn your home" step | on | Travel |
 | Resurrect at the spirit healer (death skips) | on | Travel |
 | Buy class skills at your trainer | off | Trainer |
+| ...only the worthwhile ones | on | Trainer |
 | Open the training window at a trainer you came to train at (Shift: dialogue) | on | Trainer |
 | Buy weapon skills at a weapon master | off | Trainer |
 | Learn your professions at their trainer | on | Professions |

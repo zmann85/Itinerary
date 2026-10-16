@@ -201,7 +201,8 @@ ns.tagSpells = TAG
 
 -- The closest one worth taking among the names, from the nameplates you can see (nameplates on): alive, not
 -- tagged by someone else, not already fighting another player. How close comes in steps (10, 11, 28 yards,
--- further) - what the game lets an addon know. nil: no nameplate fits (then the names decide).
+-- further) - what the game lets an addon know - and within a step from where the nameplate sits on the
+-- screen. nil: no nameplate fits (then the names decide).
 local function nearestPlate(names, friendly)
     if not (C_NamePlate and C_NamePlate.GetNamePlates) then return nil end
     local want = {}
@@ -220,12 +221,32 @@ local function nearestPlate(names, friendly)
                 end
                 -- busy with someone else (in combat, not with you): only when nothing else is there
                 local busy = not friendly and UnitAffectingCombat(u) and not UnitIsUnit(u .. "target", "player")
-                local score = d * 10 + (busy and 50 or 0)
+                -- within the same distance step: the lower its nameplate sits on the screen, the closer it
+                -- usually is (the camera looks down on the ground ahead of you)
+                local y = (p.GetBottom and p:GetBottom()) or 0
+                local score = (d + (busy and 5 or 0)) * 100000 + y
                 if not bestScore or score < bestScore then best, bestScore = u, score end
             end
         end
     end
     return best
+end
+
+-- /iti target: what the target button looks for and what it sees
+function ns.targetDebug()
+    local names, friendly = targetNames()
+    ns.print("target button names: " .. table.concat(names, ", ") .. (friendly and " (NPCs)" or ""))
+    for _, p in ipairs(C_NamePlate and C_NamePlate.GetNamePlates and C_NamePlate.GetNamePlates() or {}) do
+        local u = p.namePlateUnitToken or (p.UnitFrame and p.UnitFrame.unit)
+        if u and UnitExists(u) then
+            print(string.format("  %s %s  10yd %s 11yd %s 28yd %s  tapped %s  combat %s  screen y %d", u, UnitName(u) or "?",
+                tostring(CheckInteractDistance and CheckInteractDistance(u, 3)), tostring(CheckInteractDistance and CheckInteractDistance(u, 2)),
+                tostring(CheckInteractDistance and CheckInteractDistance(u, 4)), tostring(UnitIsTapDenied and UnitIsTapDenied(u)),
+                tostring(UnitAffectingCombat(u)), math.floor((p.GetBottom and p:GetBottom()) or 0)))
+        end
+    end
+    local ok, plate = pcall(nearestPlate, names, friendly)
+    ns.print("pick: " .. tostring(ok and plate or plate))
 end
 
 local function targetMacro(names, friendly, plate)

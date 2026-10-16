@@ -1,0 +1,23 @@
+Itinerary
+Copyright (c) 2026 Ghaan. All rights reserved.
+
+You may download Itinerary, install it in World of Warcraft, use it, and read its code.
+
+Without written permission from the author you may not:
+- upload, publish or otherwise distribute Itinerary or a modified version of it;
+- copy, adapt or reuse its code, textures or other content in another addon, library or project.
+
+Everything not explicitly allowed here is reserved by the author.
+
+Third-party parts keep their own licenses:
+- The libraries in the libs folder belong to their authors and are under their own licenses
+  (see the libraries' folders and project pages).
+- sounds/Bell.ogg, Blip.ogg, Drop.ogg and Meow.ogg are by their credited authors under
+  Creative Commons Attribution 3.0 - see sounds/CREDITS.txt.
+
+Routes are not part of Itinerary. A route pack you install separately comes with its own license.
+The Itinerary_Data add-on (trainer, vendor and gathering positions) is separate from Itinerary and comes
+with its own license (GNU GPL v3).
+
+World of Warcraft is a trademark of Blizzard Entertainment, Inc. Itinerary is not affiliated with
+or endorsed by Blizzard Entertainment.

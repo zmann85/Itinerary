@@ -1,0 +1,7 @@
+<Bindings>
+    <Binding name="CLICK ItineraryTarget:LeftButton" header="ITINERARY" category="BINDING_HEADER_ITINERARY"/>
+    <Binding name="CLICK ItineraryItem1:LeftButton" category="BINDING_HEADER_ITINERARY"/>
+    <Binding name="CLICK ItineraryItem2:LeftButton" category="BINDING_HEADER_ITINERARY"/>
+    <Binding name="CLICK ItineraryItem3:LeftButton" category="BINDING_HEADER_ITINERARY"/>
+    <Binding name="CLICK ItineraryItem4:LeftButton" category="BINDING_HEADER_ITINERARY"/>
+</Bindings>

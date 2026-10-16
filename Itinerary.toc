@@ -1,0 +1,28 @@
+## Interface: 16001
+## Title: Itinerary
+## Notes: Step-by-step leveling route with a waypoint arrow and your pace against a reference run.
+## Author: Ghaan
+## Version: 1.2.0
+## IconTexture: Interface\AddOns\Itinerary\icon
+## SavedVariables: ItineraryDB
+## SavedVariablesPerCharacter: ItineraryCharDB
+
+libs\LibStub\LibStub.lua
+libs\LibDeflate\LibDeflate.lua
+libs\LibSerialize\LibSerialize.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+libs\LibDBIcon-1.0\LibDBIcon-1.0.lua
+libs\HereBeDragons\HereBeDragons-2.0.lua
+libs\HereBeDragons\HereBeDragons-Pins-2.0.lua
+Core.lua
+UI.lua
+Items.lua
+Pins.lua
+ClassData.lua
+Automation.lua
+Professions.lua
+Gather.lua
+Settings.lua
+Editor.lua
+Share.lua

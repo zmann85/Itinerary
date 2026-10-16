@@ -1,0 +1,65 @@
+# Changelog
+
+## Unreleased
+
+### New
+- **Own icon**: a brass compass in the AddOns list and on the minimap button.
+- **Trainer tooltips everywhere**: every trainer instruction has a READY TO LEARN tooltip on hover (class
+  trainers, weapon masters and profession trainers), also when a trainer visit is your current step
+  (hover its title).
+- **Profession trainers** are recorded when you open them: the profession, its ranks and recipes with
+  skill, level and price. The tooltip lists only what that trainer teaches, minus what you already
+  know (cooks don't all teach the same recipes).
+- **Editor: Ends at step** for along-the-way steps: the step where it stops showing. It follows the step
+  when you add, hide or move steps.
+- **Level jumps in route packs**: a route can skip a section above a level; it's decided once when you
+  get there.
+
+- **Gather mode** (`/iti gather`, experimental): a farming route. The arrow leads from one spot where a herb
+  or ore vein of your skill can spawn to the next; the zone's spots show on the minimap and world map; nodes
+  you find that aren't known yet are remembered.
+- **Itinerary_Data** add-on (GPL v3, separate): where every class trainer, profession trainer, weapon master
+  and tool vendor stands, and the herb and ore spawn spots for gather mode. Itinerary works without it.
+- **Gathering tracking** (Settings > Professions): Find Herbs / Find Minerals is switched on when no minimap
+  tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
+
+### Changed
+- "Die and respawn at the spirit healer" instructions and steps are done once you're alive again.
+- An along-the-way quest objective hands over to the route's own step for that quest: from there that
+  step shows the counts instead of both.
+- A "turn in / accept it if you pass by" instruction isn't listed when the route does the same as one of
+  the next steps.
+- Profession instructions only show when you can pay for what they're for (secondary professions after
+  the money for your next class skills, a new rank when you have its price).
+- Along-the-way objectives: one objective per line, the count in the hint colour.
+- Memory use is shown in the settings button's tooltip (Itinerary, all addons, the top 5), measured only
+  while you hover it. The footer display and its setting are gone (measuring every few seconds could
+  cause small stutters).
+
+### Fixed
+- Class trainer instructions in every starting area: with Itinerary_Data all class trainers are known (before,
+  only trainers you had opened were known, so e.g. the Shadowglen rogue trainer never showed up).
+- The trainer instruction no longer waits for a route trainer stop a few steps ahead when that stop is
+  itself shown as an instruction.
+- Profession trainers that WoW Forever added (like the junior trainers in the starting areas) are
+  picked up as soon as you target, hover or open them.
+
+## 1.2.0 (2026-10-15)
+First version in this repository.
+- Route panel with hints, INSTRUCTIONS and ALONG THE WAY cards, upcoming steps and your pace against a
+  reference run; waypoint arrow in several styles; colour schemes (Itinerary, Amethyst, Frost, Ember,
+  Slate).
+- Quest, item and target buttons with key bindings.
+- Automation: accept and turn in route quests, quest dialogue, junk selling, hearthstone, flights, class
+  skills (worthwhile ones first, with a reserve), weapon skills (off by default), professions and their
+  tools.
+- Class trainers and weapon masters close by as instructions, with what they have for you.
+- Professions: up to two main professions plus secondary ones, money planned for learning them and
+  their tools, the starting-zone book reward used for a gathering profession.
+- Abandon steps for quests a route drops.
+- Route editor (hints, items, items to collect, XP targets, along the way, auction house / self-found
+  steps, save with a quick reload) and recorder (hints, instructions until a quest is turned in,
+  along-the-way objectives; Shift + right-click on the route button, REC light in the footer).
+- Routes are shared as import strings or come from route packs (separate add-ons); Itinerary itself
+  ships without routes.
+- User manual (MANUAL.md).

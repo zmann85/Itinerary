@@ -94,6 +94,8 @@ points at the area where the mobs are.
 
 - Above the arrow you see the current **instructions** in short form (you can turn this off, and set
   the font size).
+  Trainer visits show there as one line, *Skills to learn nearby*: the arrow only leads to a trainer once
+  you click its instruction.
 - Hover the arrow for the step's details.
 - **Alt + right-click** the arrow to unlock it, drag it, then Alt + right-click again to lock it.
 - Arrow styles (Settings > Arrow):

@@ -1807,9 +1807,21 @@ function ns.setArrowInstructions(list)
     if not (arrow and arrow.lines) then return end
     local show = ItineraryDB.arrow.instr ~= false and list and #list > 0
     local entries = {}
+    -- trainer visits (class, weapon, profession) aren't where the arrow leads unless you clicked one: over the
+    -- arrow they're one general line instead ("Skills to learn nearby"), the instruction itself has the details
+    local mt = ns.manualTarget
+    local trainerLine = false
     if show then for k, e in ipairs(list) do if k <= 3 and e[1] then
-        -- a quest timer on the instruction goes after it here too
-        entries[#entries + 1] = e[1] .. (e.timer and ("  |cffff9933" .. ns.timeText(e.timer) .. "|r") or "")
+        local on = mt and e.go and mt.npc == e.go.npc and mt.x == e.go.x and mt.y == e.go.y
+        if e.spells and e.go and not on then
+            if not trainerLine then
+                trainerLine = true
+                entries[#entries + 1] = "|cffd9b26fSkills to learn nearby|r - click the instruction to go there"
+            end
+        else
+            -- a quest timer on the instruction goes after it here too
+            entries[#entries + 1] = e[1] .. (e.timer and ("  |cffff9933" .. ns.timeText(e.timer) .. "|r") or "")
+        end
     end end end
     local size = ItineraryDB.arrow.instrSize or 12
     local px = size * 2 -- action icons twice the text size

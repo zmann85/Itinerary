@@ -1040,11 +1040,13 @@ local function trainerBuy()
             worthWaiting = true
         end
     end
+    -- before level 10 only the worthwhile skills are bought: the rest waits (money for professions, gear, bags)
+    local early = (UnitLevel("player") or 1) < 10
     for _, o in ipairs(order) do
         local i = o[1]
         local name, category, rank = serviceInfo(i)
         if name and category == "available" and not skip[name] and not boughtNow[name .. (rank or "")]
-            and not (worthWaiting and o[2] == 1) then
+            and not (worthWaiting and o[2] == 1) and not (early and o[2] == 1) then
             local cost = GetTrainerServiceCost(i) or 0
             -- below level 4 the professions come first (tools, learning the second one); spells that aren't
             -- worth a trip always wait for them
@@ -1067,7 +1069,8 @@ local function trainerBuy()
         for _, o in ipairs(order) do
             local name, category, rank = serviceInfo(o[1])
             local cost = GetTrainerServiceCost(o[1]) or 0
-            if name and category == "available" and not skip[name] and cost <= money and cost > spendable then
+            if name and category == "available" and not skip[name] and cost <= money and cost > spendable
+               and not (early and o[2] == 1) then
                 reserveSaid = true
                 ns.print("left " .. name .. " (" .. coins(cost) .. ") at the trainer: buying class skills keeps " .. coins(reserve)
                     .. " (Settings > Trainer)")

@@ -137,7 +137,7 @@ local OPTIONS = {
       choices = SHOW_HIDE, get = function() return ItineraryDB.pins ~= false end,
       set = function(v) ItineraryDB.pins = v; if ns.refreshPins then ns.refreshPins() end end },
     -- Trainer
-    { tab = 4, label = "Buy class skills", desc = "Buys the skills you can afford when you open your class trainer: the worthwhile ones first, the rest after your gathering tools are paid for. From level 6 on it keeps some money: 40c at 6, doubling every other level, at most 5g (from level 28).",
+    { tab = 4, label = "Buy class skills", desc = "Buys the skills you can afford when you open your class trainer: the worthwhile ones first, the rest after your gathering tools are paid for (before level 10 only the worthwhile ones). From level 6 on it keeps some money: 40c at 6, doubling every other level, at most 5g (from level 28).",
       choices = ON_OFF, get = function() return A().train end, set = function(v) A().train = v end },
     { tab = 4, label = "Open the training window", desc = "At a trainer you came to train at (the route's trainer stop or a trainer instruction), the training window opens when you talk to them: one click. Hold Shift to see the dialogue.",
       choices = ON_OFF, get = function() return A().trainGossip ~= false end, set = function(v) A().trainGossip = v end },

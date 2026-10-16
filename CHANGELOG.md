@@ -31,6 +31,11 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
+- More of the guide's conditions are kept: steps for a profession skill range (Cooking below 50 - only if you picked
+  it), for when you're short of money, for when your weapon is weaker than a reward, "not finished yet" and "not in
+  your log".
+- Along the way: the same objectives from two guide steps show once, and tiers of the same items (cloth for 60,
+  then 240) one at a time.
 - Steps the guide marks for a profession you know (Rough Stones to blacksmith into sharpening stones) only show
   when you know it.
 - The same objectives twice along the way (with and without a side quest like Lost Book): only the fuller one.

@@ -794,6 +794,15 @@ do
 end
 -- an item step you can't follow (no eggs) or don't need to (the buff is up)
 -- { item, count } = at least that many; { item, count, "lt" } = fewer than that
+-- damage per second of the weapon in an equipment slot (16 main hand, 17 off hand, 18 ranged); nil: empty
+-- or unknown
+function ns.slotDps(slot)
+    local link = GetInventoryItemLink and GetInventoryItemLink("player", slot)
+    if not link then return 0 end
+    local stats = (C_Item and C_Item.GetItemStats and C_Item.GetItemStats(link)) or (GetItemStats and GetItemStats(link))
+    if not stats then return nil end
+    return stats.ITEM_MOD_DAMAGE_PER_SECOND_SHORT or 0
+end
 function ns.itemNeedMet(need)
     local have = itemCount(need[1])
     if need[3] == "lt" then return have < (need[2] or 1) end
@@ -827,6 +836,26 @@ local function notApplicable(s)
     if ns.profStepIrrelevant and ns.profStepIrrelevant(s) then return true end
     -- a step only for those who know a profession (the guide's ".train 2018,3": Blacksmith your Rough Stones)
     if s.needProf and ns.profKnown and not ns.profKnown(s.needProf) then return true end
+    -- ".skill cooking,50,1": only while you're below 50 in a profession you picked (or not learned yet);
+    -- without "lt": only from that skill on
+    if s.skill and ns.profKnown then
+        local known, rank = ns.profKnown(s.skill[1])
+        if s.skill[3] == "lt" then
+            if ns.profIsChosen and not ns.profIsChosen(s.skill[1]) and not known then return true end
+            if known and (rank or 0) >= s.skill[2] then return true end
+        elseif not known or (rank or 0) < s.skill[2] then return true end
+    end
+    -- ".money <0.02": only while you have less (or more) than that
+    if s.money then
+        local m = GetMoney and GetMoney() or 0
+        if s.money[1] == "<" and m >= s.money[2] then return true end
+        if s.money[1] == ">" and m <= s.money[2] then return true end
+    end
+    -- ".itemStat 16,...DPS,<4.2": only while the weapon in that slot is weaker (a better one dropped: skip)
+    if s.dps and ns.slotDps then
+        local d = ns.slotDps(s.dps[1])
+        if d and d >= s.dps[2] then return true end
+    end
     if s.cond then
         -- getting back (hearth, "Return to ...") is still needed when the quest it waits for was skipped
         local travel = s.t == "hearth" or (s.t == "go" and s.name and s.name:find("^Return to"))
@@ -840,6 +869,9 @@ local function notApplicable(s)
             if kind == "done" and not flaggedDone(q) then return true end
             if kind == "ready" and not (onQuest(q) and readyToTurnIn(q)) and not (travel and dropped(q)) then return true end
             if kind == "open" and flaggedDone(q) then return true end
+            -- notready: on it and not finished yet; nothas: not in your log
+            if kind == "notready" and not (onQuest(q) and not readyToTurnIn(q)) then return true end
+            if kind == "nothas" and onQuest(q) then return true end
         end
     end
     -- a level jump in the guide ("above 19 here: skip to Level20Check"), decided when you got there
@@ -1127,7 +1159,7 @@ function ns.alongActive(i)
     for j = (first or 1), math.min(i, #steps) do
         local s = steps[j]
         -- (an item collect taken over by the current step still counts as its tier below)
-        local tier = s.t == "do" and s.col and #s.col == 1
+        local tier = s.t == "do" and s.col
         if s.along and (not s.till or s.till >= i) and not ns.stepDone(j) and (tier or not (j ~= i and takenOver(s, cur)))
            and not (j ~= i and comingUp(s, steps, i)) and not ((s.need or s.buffItem) and ns.itemStepIdle(s)) then
             out[#out + 1] = j
@@ -1135,12 +1167,19 @@ function ns.alongActive(i)
     end
     -- the guide's tiers of one item ("4 Chunks of Boar Meat", then 10, then 50 for Cooking): only the next one,
     -- and none while that one is your current step's own objective
+    -- (the same set of items in tiers counts too: cloth for 60, then for 240)
+    local function tierKey(s)
+        local ids = {}
+        for _, c in ipairs(s.col) do ids[#ids + 1] = c[1] end
+        table.sort(ids)
+        return table.concat(ids, ",")
+    end
     local low = {}
     for _, j in ipairs(out) do
         local s = steps[j]
-        if s.t == "do" and s.col and #s.col == 1 then
-            local id, n = s.col[1][1], s.col[1][2]
-            if not low[id] or n < steps[low[id]].col[1][2] then low[id] = j end
+        if s.t == "do" and s.col then
+            local key, n = tierKey(s), s.col[1][2]
+            if not low[key] or n < steps[low[key]].col[1][2] then low[key] = j end
         end
     end
     -- the same objectives twice (the guide's version without a side quest and the one with it, "if you have
@@ -1154,21 +1193,38 @@ function ns.alongActive(i)
         end
         return true
     end
+    -- (the very same objectives in two guide steps - the zone's step repeated, or one "if you're on the
+    -- cooking quest" with a longer note: the conditional one, else the later one)
+    local function same(a, b)
+        if #a.q ~= #b.q then return false end
+        local key = function(x)
+            local t = {}
+            for n, q in ipairs(x.q) do t[#t + 1] = q .. ":" .. tostring(x.qo and x.qo[n] or 0) end
+            table.sort(t)
+            return table.concat(t, ",")
+        end
+        return key(a) == key(b)
+    end
     local sub = {}
     for _, j in ipairs(out) do
         local a = steps[j]
         if a.t == "complete" and a.q then
             for _, k in ipairs(out) do
                 local b = steps[k]
-                if k ~= j and b.t == "complete" and b.q and within(a, b) then sub[j] = true break end
+                if k ~= j and b.t == "complete" and b.q and not sub[k] then
+                    if within(a, b) then sub[j] = true break end
+                    if same(a, b) and ((b.cond and not a.cond) or (not a.cond == not b.cond and k > j)) then
+                        sub[j] = true break
+                    end
+                end
             end
         end
     end
     local kept = {}
     for _, j in ipairs(out) do
         local s = steps[j]
-        local tier = s.t == "do" and s.col and #s.col == 1
-        local drop = sub[j] or (tier and (low[s.col[1][1]] ~= j or (j ~= i and takenOver(s, cur))))
+        local tier = s.t == "do" and s.col
+        local drop = sub[j] or (tier and (low[tierKey(s)] ~= j or (j ~= i and takenOver(s, cur))))
         if not drop then kept[#kept + 1] = j end
     end
     return kept

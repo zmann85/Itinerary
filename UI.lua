@@ -1410,6 +1410,7 @@ function ns.refresh()
     end
     for _, e in ipairs((not gs) and ns.campingSide and ns.campingSide() or {}) do if #side < 2 then side[#side + 1] = e end end
     ns.hearthCheckAt = nil
+    local seenLabel = {}
     for _, j in ipairs(al) do
         local st0 = steps[j]
         -- a trainer visit of the route shown as an instruction: only within 400 yards (it is the next
@@ -1436,6 +1437,9 @@ function ns.refresh()
             local t = "|cffff9933Time left " .. ns.timeText(left) .. "|r"
             desc = (desc and desc ~= "") and (t .. "\n" .. desc) or t
         end
+        -- the same thing twice (two guide steps collecting the same items): once
+        if label and seenLabel[label] then label = nil end
+        if label then seenLabel[label] = true end
         if label and #list < 3 then list[#list + 1] = { label, desc, go = go, spells = spells, timer = left or nil } end
         end
     end

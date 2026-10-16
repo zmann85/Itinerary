@@ -31,6 +31,10 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
+- Items a guide collects for another quest (Crag Boar Ribs for Beer Basted Boar Ribs on the Stocking Jetsteam
+  step) are an along-the-way entry of their own ("For Beer Basted Boar Ribs") instead of part of that step.
+- Stocking Jetsteam's bears and boars are along the way until its turn-in (through the Grizzled Den).
+- The same along-the-way entry from two guide steps shows once.
 - Target button: with enemy nameplates on, a step's mob kinds are tried closest first (alive, not tagged by
   someone else, not fighting another player) instead of in the guide's order. `/iti target` shows what it sees.
 - Buying class skills: before level 10 only the worthwhile skills are bought.

@@ -199,19 +199,32 @@ local function tagLine()
 end
 ns.tagSpells = TAG
 
+-- the nameplate units around you: nameplate1..40 straight (the frame list can come back empty with nameplate
+-- addons), each with its frame for where it sits on the screen
+local function plates()
+    local out = {}
+    for k = 1, 40 do
+        local u = "nameplate" .. k
+        if UnitExists(u) then
+            local f = C_NamePlate and C_NamePlate.GetNamePlateForUnit and C_NamePlate.GetNamePlateForUnit(u)
+            out[#out + 1] = { u = u, y = f and f.GetBottom and f:GetBottom() or nil }
+        end
+    end
+    return out
+end
+
 -- The closest one worth taking among the names, from the nameplates you can see (nameplates on): alive, not
 -- tagged by someone else, not already fighting another player. How close comes in steps (10, 11, 28 yards,
 -- further) - what the game lets an addon know - and within a step from where the nameplate sits on the
 -- screen. nil: no nameplate fits (then the names decide).
 local function nearestPlate(names, friendly)
-    if not (C_NamePlate and C_NamePlate.GetNamePlates) then return nil end
     local want = {}
     -- (a guide's plural - "Ice Claw Bears" - finds the mob too)
     for _, n in ipairs(names) do want[n] = true; want[(n:gsub("s$", ""))] = true end
     local best, bestScore
-    for _, p in ipairs(C_NamePlate.GetNamePlates() or {}) do
-        local u = p.namePlateUnitToken or (p.UnitFrame and p.UnitFrame.unit)
-        if u and UnitExists(u) and want[UnitName(u) or ""] and not UnitIsDead(u) and not UnitIsPlayer(u) then
+    for _, p in ipairs(plates()) do
+        local u = p.u
+        if want[UnitName(u) or ""] and not UnitIsDead(u) and not UnitIsPlayer(u) then
             local ok = friendly or (UnitCanAttack("player", u) and not (UnitIsTapDenied and UnitIsTapDenied(u)))
             if ok then
                 local d = 4
@@ -224,7 +237,7 @@ local function nearestPlate(names, friendly)
                 local busy = not friendly and UnitAffectingCombat(u) and not UnitIsUnit(u .. "target", "player")
                 -- within the same distance step: the lower its nameplate sits on the screen, the closer it
                 -- usually is (the camera looks down on the ground ahead of you)
-                local y = (p.GetBottom and p:GetBottom()) or 0
+                local y = p.y or 0
                 local score = (d + (busy and 5 or 0)) * 100000 + y
                 if not bestScore or score < bestScore then best, bestScore = u, score end
             end
@@ -237,13 +250,15 @@ end
 function ns.targetDebug()
     local names, friendly = targetNames()
     ns.print("target button names: " .. table.concat(names, ", ") .. (friendly and " (NPCs)" or ""))
-    for _, p in ipairs(C_NamePlate and C_NamePlate.GetNamePlates and C_NamePlate.GetNamePlates() or {}) do
-        local u = p.namePlateUnitToken or (p.UnitFrame and p.UnitFrame.unit)
-        if u and UnitExists(u) then
+    local list = plates()
+    if #list == 0 then ns.print("no nameplates around (enemy nameplates off? V shows them)") end
+    for _, p in ipairs(list) do
+        local u = p.u
+        do
             print(string.format("  %s %s  10yd %s 11yd %s 28yd %s  tapped %s  combat %s  screen y %d", u, UnitName(u) or "?",
                 tostring(CheckInteractDistance and CheckInteractDistance(u, 3)), tostring(CheckInteractDistance and CheckInteractDistance(u, 2)),
                 tostring(CheckInteractDistance and CheckInteractDistance(u, 4)), tostring(UnitIsTapDenied and UnitIsTapDenied(u)),
-                tostring(UnitAffectingCombat(u)), math.floor((p.GetBottom and p:GetBottom()) or 0)))
+                tostring(UnitAffectingCombat(u)), math.floor(p.y or -1)))
         end
     end
     local ok, plate = pcall(nearestPlate, names, friendly)

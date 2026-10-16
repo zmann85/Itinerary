@@ -230,6 +230,7 @@ to do things by hand that time.
 | Set your hearthstone on a "make this inn your home" step | on | Travel |
 | Resurrect at the spirit healer (death skips) | on | Travel |
 | Buy class skills at your trainer | off | Trainer |
+| Open the training window at a trainer you came to train at (Shift: dialogue) | on | Trainer |
 | Buy weapon skills at a weapon master | off | Trainer |
 | Learn your professions at their trainer | on | Professions |
 | Buy gathering tools | on | Professions |
@@ -340,7 +341,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | General | Panel and minimap button on/off, the game's quest tracker, quest sparkles, step sound, forget this character |
 | Quests | Accept/hand in, which quests, dialogue, reward picking, sell junk, auction house steps |
 | Travel | Flights, hearthstone, spirit healer, map pins |
-| Trainer | Buy class skills, trainer visits (instruction/step), weapon skills, buy weapon skills, the worthwhile/skip list per class |
+| Trainer | Buy class skills, open the training window, trainer visits (instruction/step), weapon skills, buy weapon skills, the worthwhile/skip list per class |
 | Professions | Learn at the trainer, main and secondary professions, first profession, gather mode, gathering tracking, node icons, gathering tools |
 | Panel | Color scheme (Itinerary, Amethyst, Frost, Ember, Slate), instructions card, item links, style, opacity, size, text shadow, grow direction, button corner, lock |
 | Arrow | Arrow on/off, style, instructions above it and their size, tooltip, lock |

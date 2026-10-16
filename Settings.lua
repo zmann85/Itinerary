@@ -139,6 +139,8 @@ local OPTIONS = {
     -- Trainer
     { tab = 4, label = "Buy class skills", desc = "Buys the skills you can afford when you open your class trainer: the worthwhile ones first, the rest after your gathering tools are paid for. From level 6 on it keeps some money: 40c at 6, doubling every other level, at most 5g (from level 28).",
       choices = ON_OFF, get = function() return A().train end, set = function(v) A().train = v end },
+    { tab = 4, label = "Open the training window", desc = "At a trainer you came to train at (the route's trainer stop or a trainer instruction), the training window opens when you talk to them: one click. Hold Shift to see the dialogue.",
+      choices = ON_OFF, get = function() return A().trainGossip ~= false end, set = function(v) A().trainGossip = v end },
     { tab = 4, label = "Trainer visits", desc = "Instruction: a trainer visit (with new skills you can afford) shows in the instructions next to your step, and the arrow stays on the route. Step: it becomes the step you're on and the arrow leads there.",
       choices = { { "Instruction", "rec" }, { "Step", "step" } }, get = function() return A().trainerSteps or "rec" end,
       set = function(v) A().trainerSteps = v; if ns.rebuildRoute then ns.rebuildRoute() end; if ns.refresh then ns.refresh() end end },

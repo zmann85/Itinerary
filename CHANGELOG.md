@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### New
+- **Open the training window** (Settings > Trainer, on): talking to a trainer you came to train at (the
+  route's trainer stop or a trainer instruction) skips the dialogue and opens the training window, so with Buy
+  class skills on it's one click. Hold Shift to see the dialogue.
 - **Own icon**: a brass compass in the AddOns list and on the minimap button.
 - **Trainer tooltips everywhere**: every trainer instruction has a READY TO LEARN tooltip on hover (class
   trainers, weapon masters and profession trainers), also when a trainer visit is your current step

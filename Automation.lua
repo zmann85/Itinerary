@@ -249,6 +249,25 @@ local function acceptRez()
     ns.print("resurrected at the spirit healer (Settings > Quests: Spirit healer)")
 end
 
+-- you're at this trainer to train: the step you're on, an along-the-way trainer stop, or a trainer
+-- instruction (class skills, weapon skills, a profession) names them
+local function trainWanted(npc)
+    if not npc or (IsShiftKeyDown and IsShiftKeyDown()) or not (ns.steps and ItineraryCharDB) then return false end
+    local i = ItineraryCharDB.step
+    local steps = ns.steps()
+    local s = steps[i]
+    if s and s.t == "train" and s.npc == npc then return true end
+    for _, j in ipairs(ns.alongActive and ns.alongActive(i) or {}) do
+        local st = steps[j]
+        if st.t == "train" and st.npc == npc then return true end
+    end
+    local ok, list = pcall(function() return ns.findDetours and ns.findDetours() or {} end)
+    for _, d in ipairs(ok and list or {}) do if d.npc == npc then return true end end
+    ok, list = pcall(function() return ns.profRecommend and ns.profRecommend() or {} end)
+    for _, r in ipairs(ok and list or {}) do if r.go and r.go.npc == npc then return true end end
+    return false
+end
+
 local function onGossip()
     local a = A()
     if not a or paused() or not C_GossipInfo then return end
@@ -297,6 +316,18 @@ local function onGossip()
         for _, o in ipairs(options) do
             local t = optionText(o)
             if o.icon == 132057 or t:find("fly") or t:find("flight") then
+                C_GossipInfo.SelectOption(o.gossipOptionID or o.optionID)
+                return
+            end
+        end
+    end
+    -- a trainer you came to train at (the route's trainer stop, or a trainer instruction for this NPC):
+    -- open the training window, buying runs from there (hold Shift to talk instead)
+    if a.trainGossip ~= false and trainWanted(UnitName("npc")) then
+        for _, o in ipairs(options) do
+            local t = optionText(o)
+            if (o.icon == 132058 or t:find("train") or t:find("teach") or t:find("skills"))
+               and not t:find("unlearn") and not t:find("talent") then
                 C_GossipInfo.SelectOption(o.gossipOptionID or o.optionID)
                 return
             end

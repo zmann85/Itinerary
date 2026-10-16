@@ -201,6 +201,14 @@ ns.tagSpells = TAG
 
 -- the nameplate units around you: nameplate1..40 straight (the frame list can come back empty with nameplate
 -- addons), each with its frame for where it sits on the screen
+-- CheckInteractDistance on an enemy can raise an error in newer clients: then it simply doesn't count
+local function near(u, k)
+    if not CheckInteractDistance then return nil end
+    local ok, r = pcall(CheckInteractDistance, u, k)
+    if not ok then return nil end
+    return r and true or false
+end
+
 local function plates()
     local out = {}
     for k = 1, 40 do
@@ -228,11 +236,7 @@ local function nearestPlate(names, friendly)
             local ok = friendly or (UnitCanAttack("player", u) and not (UnitIsTapDenied and UnitIsTapDenied(u)))
             if ok then
                 local d = 4
-                if CheckInteractDistance then
-                    if CheckInteractDistance(u, 3) then d = 1
-                    elseif CheckInteractDistance(u, 2) then d = 2
-                    elseif CheckInteractDistance(u, 4) then d = 3 end
-                end
+                if near(u, 3) then d = 1 elseif near(u, 2) then d = 2 elseif near(u, 4) then d = 3 end
                 -- busy with someone else (in combat, not with you): only when nothing else is there
                 local busy = not friendly and UnitAffectingCombat(u) and not UnitIsUnit(u .. "target", "player")
                 -- within the same distance step: the lower its nameplate sits on the screen, the closer it
@@ -248,6 +252,7 @@ end
 
 -- /iti target: what the target button looks for and what it sees
 function ns.targetDebug()
+    local ok, err = pcall(function()
     local names, friendly = targetNames()
     ns.print("target button names: " .. table.concat(names, ", ") .. (friendly and " (NPCs)" or ""))
     local list = plates()
@@ -256,13 +261,14 @@ function ns.targetDebug()
         local u = p.u
         do
             print(string.format("  %s %s  10yd %s 11yd %s 28yd %s  tapped %s  combat %s  screen y %d", u, UnitName(u) or "?",
-                tostring(CheckInteractDistance and CheckInteractDistance(u, 3)), tostring(CheckInteractDistance and CheckInteractDistance(u, 2)),
-                tostring(CheckInteractDistance and CheckInteractDistance(u, 4)), tostring(UnitIsTapDenied and UnitIsTapDenied(u)),
+                tostring(near(u, 3)), tostring(near(u, 2)), tostring(near(u, 4)), tostring(UnitIsTapDenied and UnitIsTapDenied(u)),
                 tostring(UnitAffectingCombat(u)), math.floor(p.y or -1)))
         end
     end
     local ok, plate = pcall(nearestPlate, names, friendly)
-    ns.print("pick: " .. tostring(ok and plate or plate))
+    ns.print("pick: " .. tostring(ok and plate or ("error: " .. tostring(plate))))
+    end)
+    if not ok then ns.print("target debug error: " .. tostring(err)) end
 end
 
 local function targetMacro(names, friendly, plate)

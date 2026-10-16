@@ -869,8 +869,9 @@ local function notApplicable(s)
             if kind == "done" and not flaggedDone(q) then return true end
             if kind == "ready" and not (onQuest(q) and readyToTurnIn(q)) and not (travel and dropped(q)) then return true end
             if kind == "open" and flaggedDone(q) then return true end
-            -- notready: on it and not finished yet; nothas: not in your log
-            if kind == "notready" and not (onQuest(q) and not readyToTurnIn(q)) then return true end
+            -- notready: not finished in your log (not taken, still on it, or handed in already - the
+            -- counterpart of "ready"); nothas: not in your log
+            if kind == "notready" and onQuest(q) and readyToTurnIn(q) then return true end
             if kind == "nothas" and onQuest(q) then return true end
         end
     end

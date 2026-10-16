@@ -31,6 +31,8 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
+- Two grind steps in a row (one for "if you finished the side quest", one for "if not"): only the one that
+  fits shows. Steps the guide meant for a different experience rate are left out.
 - More of the guide's conditions are kept: steps for a profession skill range (Cooking below 50 - only if you picked
   it), for when you're short of money, for when your weapon is weaker than a reward, "not finished yet" and "not in
   your log".

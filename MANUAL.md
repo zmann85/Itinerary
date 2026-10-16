@@ -131,6 +131,12 @@ You rarely have to touch anything:
 - **Trainer steps** tick off when you've trained. **Grind steps** tick off at the XP they ask for.
 - Steps that don't apply to you are skipped. This covers another class's quests, quests you already
   did, a quest that isn't offered to you, and a quest you dropped.
+- **Death skips** ("Die and respawn at the spirit healer") are done once you're alive again.
+- **Steps for an item** only show while you have it, e.g. "Cook the Small Eggs" only with Small Eggs in
+  your bags.
+- **Food buffs**: "Eat the Herb Baked Eggs" puts the eggs on an item button and stays hidden while their
+  buff is up, until a minute before it runs out. Itinerary learns which buff an item gives the first time
+  you eat it.
 
 **Skipping a quest**: if you skip a step where you would *accept* a quest (›), that quest is dropped. Its
 later steps and all follow-up quests are left out too, and chat tells you how many. Taking the quest
@@ -191,15 +197,16 @@ and prices.
   so every trainer you open is remembered with its own list, for all your characters. A trainer you
   haven't opened yet shows the profession and its ranks only.
 
-**Gather mode.** A farming route instead of the leveling route, e.g. at max level: `/iti gather` (or
-Settings > Professions > *Gather mode*) switches it on and off.
+**Gather mode (experimental).** A farming route instead of the leveling route, e.g. at max level:
+`/iti gather` (or Settings > Professions > *Gather mode*) switches it on and off.
 - The arrow leads to the nearest spot where a herb or ore vein **your skill can gather** can spawn. Once
   you've been there, it moves on to the next one; › skips a spot. Spots you've visited count again after
   10 minutes (nodes respawn).
 - The zone's spots show on the minimap (green: herbs, orange: ore; faded: visited) and on the world map.
 - The panel shows how many spots are left in the zone, how many nodes you gathered and your rate per hour.
 - Every node you gather that isn't known yet is remembered, for all your characters, and used from then on.
-- Your leveling route waits where you left it.
+- Your leveling route waits where you left it. While gather mode is on, the panel shows only gathering:
+  no route instructions, along-the-way objectives, quest items or route pins.
 - Needs the `Itinerary_Data` folder next to Itinerary.
 
 **Every trainer instruction has this tooltip**: class trainers, weapon masters and profession trainers,

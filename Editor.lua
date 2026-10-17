@@ -7,7 +7,8 @@ local ADDON, ns = ...
 
 ---------------------------------------------------------------- the edit layer
 -- every step type the route runs on, in two rows of the editor
-local TYPES = { "accept", "complete", "turnin", "go", "do", "train", "xp", "fly", "fp", "hearth", "sethearth", "dungeon" }
+local TYPES = { "accept", "complete", "turnin", "go", "do", "train", "xp",
+                "fly", "fp", "hearth", "sethearth", "dungeon", "abandon", "junk" }
 local TYPE_TIP = {
     accept = "Accept: pick up the quests in Quest IDs from the NPC.",
     complete = "Quest: the quests' objectives (kill, loot, use an item). Mobs go on the target button.",
@@ -21,7 +22,15 @@ local TYPE_TIP = {
     hearth = "Hearth: use your hearthstone (it gets an item button). Text = where it takes you, your home inn (\"Stormwind City\"). Done when you cast it or are there.",
     sethearth = "Home: make an inn your home at the NPC (the innkeeper; the question is answered for you, Settings > Travel). Text = the place as the game names your home (\"Goldshire\"). Done when it's your home.",
     dungeon = "Dungeon: enter a dungeon (Text = its name; the step's point = the entrance). Done when you're inside.",
+    abandon = "Abandon: drop the quests in Quest IDs from your log (one the route won't finish). Done once none of them is in your log - also when you never took it, or when it's finished and the route hands it in later.",
+    junk = "Sell junk: sell your grey items at any vendor (they're sold when you open one). An instruction next to the next few steps, done when you open a vendor.",
 }
+-- the editor's kind of a step: its type, or one of the special to-do steps
+local function kindOf(s)
+    if s.t == "do" and s.abandon then return "abandon" end
+    if s.t == "do" and s.vendor then return "junk" end
+    return s.t
+end
 
 local function anchorKey(s)
     local what = s.q and table.concat(s.q, ",") or (s.name or s.lvl or "")
@@ -441,12 +450,14 @@ local ROWS, ROW_H = 16, 20
 local LIST_W = 360
 local win, rows, sel, offset, refresh = nil, {}, nil, 0, nil
 local chap = nil -- the chapter the list shows (0 = all steps)
+local page = 1   -- the page of the step details: 1 the step, 2 conditions, 3 more
 local view = {}  -- the steps of that chapter
 local fields = {}
 
 local function U() return ns.ui end
 local VERB = { accept = "ACCEPT", complete = "QUEST", turnin = "TURN IN", go = "GO", ["do"] = "DO", train = "TRAIN", xp = "XP",
-               fly = "FLY", hearth = "HEARTH", sethearth = "HOME", fp = "FP", dungeon = "DUNGEON" }
+               fly = "FLY", hearth = "HEARTH", sethearth = "HOME", fp = "FP", dungeon = "DUNGEON", abandon = "ABANDON",
+               junk = "SELL JUNK" }
 -- quest names the route knows (from its accept / turn in steps), for steps that only have the quest's ID
 local qnames, qnamesFor = {}, nil
 local function routeQuestName(q)
@@ -501,16 +512,20 @@ local function editbox(parent, w, onCommit)
     return e
 end
 
--- Shift-click an item (bags, chat link, loot) while the Items field is active: its ID goes in
+-- Shift-click an item (bags, chat link, loot) while an item field is active: its ID goes in (Items, Collect, and
+-- on Conditions the Item and Until buff fields; one item only in those two)
 local itemBox, colBox
+local ITEM_BOXES = {} -- box -> { count = " x1" after the item, one = only one item }
 if hooksecurefunc and HandleModifiedItemClick then hooksecurefunc("HandleModifiedItemClick", function(link)
-    local box = (itemBox and itemBox:HasFocus() and itemBox) or (colBox and colBox:HasFocus() and colBox)
+    local box
+    for b in pairs(ITEM_BOXES) do if b:HasFocus() then box = b end end
     if not (box and link and IsModifiedClick and IsModifiedClick("CHATLINK")) then return end
     local id = tonumber(tostring(link):match("item:(%d+)"))
     if not id then return end
-    local cur = box:GetText() or ""
+    local how = ITEM_BOXES[box]
+    local cur = how.one and "" or (box:GetText() or "")
     local n = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)) or (GetItemInfo and GetItemInfo(id))
-    box:SetText(cur .. (cur:match("%S") and ", " or "") .. id .. (n and (" " .. n) or "") .. (box == colBox and " x1" or ""))
+    box:SetText(cur .. (cur:match("%S") and ", " or "") .. id .. (n and (" " .. n) or "") .. (how.count or ""))
     box.dirty = true
 end) end
 
@@ -794,28 +809,68 @@ local function build()
     d:SetPoint("TOPLEFT", list, "TOPRIGHT", 16, 0)
     d:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -PAD, 40)
     win.d = d
-    d.head = ui.text(d, 12, 1, 1, 1, 0.55); d.head:SetPoint("TOPLEFT", 0, 0); d.head:SetPoint("RIGHT", 0, 0)
+    -- three pages: the step itself, when it's for you (conditions), and the rest
+    d.pages, d.tabs = {}, {}
+    local PAGES = { "Step", "Conditions", "More" }
+    for k, name in ipairs(PAGES) do
+        local pg = CreateFrame("Frame", nil, d)
+        pg:SetAllPoints(d)
+        d.pages[k] = pg
+        local b = ui.segment(d, name)
+        b.text:SetFont(ui.fontPath(), 11, "")
+        b:SetSize(96, 20)
+        b:SetPoint("TOPRIGHT", d, "TOPRIGHT", -(#PAGES - k) * 98, 4)
+        b:SetScript("OnClick", function() page = k; refresh() end)
+        d.tabs[k] = b
+    end
+    d.tabs[2].tip = "When the step is for you: quests in your log, your level, where you are, items, professions, money, your weapon, level jumps. Empty: always."
+    d.tabs[3].tip = "The trainer kind, when a travel step counts as done, dialogue, a macro button, and waypoints / kill-area spots."
+    d.head = ui.text(d, 12, 1, 1, 1, 0.55); d.head:SetPoint("TOPLEFT", 0, 0); d.head:SetPoint("RIGHT", d.tabs[1], "LEFT", -8, 0)
+    d.head:SetWordWrap(false)
+    local P1, P2, P3 = d.pages[1], d.pages[2], d.pages[3]
     d.types = {}
-    local PER_ROW = 6
+    local PER_ROW = 7
     local tw = math.floor((W - LIST_W - PAD * 2 - 16) / PER_ROW)
     for k, t in ipairs(TYPES) do
-        local b = ui.segment(d, VERB[t])
+        local b = ui.segment(P1, VERB[t])
         b.text:SetFont(ui.fontPath(), 11, "")
         b:SetSize(tw + 1, 22)
         b:SetPoint("TOPLEFT", d.head, "BOTTOMLEFT", ((k - 1) % PER_ROW) * tw, -8 - math.floor((k - 1) / PER_ROW) * 23)
         b.tip = TYPE_TIP[t]
         b:SetScript("OnClick", function()
             local s = selected()
-            if not (s and s.t ~= t) then return end
-            local set = { t = t }
+            if not (s and kindOf(s) ~= t) then return end
+            local was = kindOf(s)
+            -- abandon and sell junk are to-do steps with a mark; the others drop those marks
+            local set = { t = (t == "abandon" or t == "junk") and "do" or t, abandon = false, vendor = false }
+            -- the quests go along between quest steps and abandon steps
+            local QK = { accept = true, complete = true, turnin = true }
+            if t == "abandon" then
+                set.abandon = (s.q and #s.q > 0 and s.q) or s.abandon or {}
+                set.q, set.n, set.qo, set.obj = false, false, false, false
+            elseif QK[t] and was == "abandon" and s.abandon and #s.abandon > 0 then
+                set.q = s.abandon
+                local n = {}
+                for k, q in ipairs(s.abandon) do n[k] = routeQuestName(q) or questName(q) end
+                set.n = n
+            end
+            if t == "junk" then set.vendor = true end
             -- a new step's placeholder text becomes what the type needs: your home for a hearth, the place
-            -- you stand for a flight path or a new home
-            local blank = not s.name or s.name == "" or s.name == "New step"
-            if blank and t == "hearth" then set.name = (GetBindLocation and GetBindLocation()) or false
-            elseif blank and (t == "fp" or t == "sethearth") then
-                local sub = GetSubZoneText and GetSubZoneText() or ""
-                set.name = sub ~= "" and sub or ((GetZoneText and GetZoneText()) or false)
-            elseif blank and (t == "fly" or t == "dungeon") then set.name = false end
+            -- you stand for a flight path or a new home, "Abandon <quest>", "Sell junk"
+            local blank = not s.name or s.name == "" or s.name == "New step" or s.name == "Sell junk"
+                or (was == "abandon" and s.name:find("^Abandon "))
+            if blank then
+                if t == "hearth" then set.name = (GetBindLocation and GetBindLocation()) or false
+                elseif t == "fp" or t == "sethearth" then
+                    local sub = GetSubZoneText and GetSubZoneText() or ""
+                    set.name = sub ~= "" and sub or ((GetZoneText and GetZoneText()) or false)
+                elseif t == "junk" then set.name = "Sell junk"
+                elseif t == "abandon" then
+                    local nm = {}
+                    for _, q in ipairs(set.abandon) do nm[#nm + 1] = routeQuestName(q) or questName(q) end
+                    set.name = #nm > 0 and ("Abandon " .. table.concat(nm, ", ")) or "Abandon the quest"
+                else set.name = false end
+            end
             ns.editSet(sid(s), set)
             refresh()
         end)
@@ -823,15 +878,18 @@ local function build()
     end
     local FW = W - LIST_W - PAD * 2 - 16
     local y = -87
+    local fparent = P1 -- the page the next field goes on
     local function field(key, lbl, tip, get, set)
-        local l = ui.text(d, 11, 1, 1, 1, 0.45); l:SetPoint("TOPLEFT", 0, y); l:SetText(lbl)
-        local e = editbox(d, FW - 90, function(text) local s = selected(); if s then set(s, text); refresh() end end)
+        local l = ui.text(fparent, 11, 1, 1, 1, 0.45); l:SetPoint("TOPLEFT", 0, y); l:SetText(lbl)
+        local e = editbox(fparent, FW - 90, function(text) local s = selected(); if s then set(s, text); refresh() end end)
         e:SetPoint("TOPLEFT", 90, y + 5)
         e:SetScript("OnEnter", function() GameTooltip:SetOwner(e, "ANCHOR_RIGHT"); GameTooltip:AddLine(tip, 1, 1, 1, true); GameTooltip:Show() end)
         e:SetScript("OnLeave", function() GameTooltip:Hide() end)
         fields[key] = { box = e, get = get, label = l }
-        if key == "item" then itemBox = e end
-        if key == "col" then colBox = e end
+        if key == "item" then itemBox = e; ITEM_BOXES[e] = {} end
+        if key == "col" then colBox = e; ITEM_BOXES[e] = { count = " x1" } end
+        if key == "need" then ITEM_BOXES[e] = { count = " x1", one = true } end
+        if key == "buffItem" then ITEM_BOXES[e] = { one = true } end
         y = y - 30
     end
     field("name", "Text", "What the step says (travel and to-do steps). Quest steps show the quest's name. Fly: where to. Flight path: the town. Hearth: your home inn. Home: the inn's place. Dungeon: its name.",
@@ -840,17 +898,46 @@ local function build()
     field("note", "Hint", "A hint: a line under the step (\"Unequip your shirt so you can sell it\").",
         function(s) return s.note or "" end,
         function(s, t) ns.editSet(sid(s), { note = t ~= "" and t or false }) end)
-    field("q", "Quest IDs", "The quests of an accept / do / turn in step, comma separated (the ID is in the quest's Wowhead link).",
-        function(s) return s.q and table.concat(s.q, ", ") or "" end,
+    field("q", "Quest IDs", "The quests of an accept / quest / turn in / abandon step, comma separated (the ID is in the quest's Wowhead link). For a Quest step, 12:2 means only objective 2 of quest 12 (12:1, 12:2 for both).",
+        function(s)
+            if kindOf(s) == "abandon" then return table.concat(s.abandon or {}, ", ") end
+            local out = {}
+            for k, q in ipairs(s.q or {}) do
+                local o = s.t == "complete" and s.qo and s.qo[k] or 0
+                out[#out + 1] = o > 0 and (q .. ":" .. o) or tostring(q)
+            end
+            return table.concat(out, ", ")
+        end,
         function(s, t)
-            local q = numbers(t)
+            local q, qo, anyObj = {}, {}, false
+            for part in (t or ""):gmatch("[^,]+") do
+                local id, o = part:match("^%s*(%d+)%s*:%s*(%d+)")
+                id = tonumber(id or part:match("(%d+)"))
+                if id then q[#q + 1] = id; qo[#q] = tonumber(o) or 0; if tonumber(o) then anyObj = true end end
+            end
             local n = {}
-            for k, id in ipairs(q) do n[k] = questName(id) end
-            if #q > 0 then ns.editSet(sid(s), { q = q, n = n, qo = false, obj = false }) else ns.editSet(sid(s), { q = false, n = false }) end
+            for k, id in ipairs(q) do n[k] = routeQuestName(id) or questName(id) end
+            if kindOf(s) == "abandon" then
+                local set = { abandon = q }
+                if not s.name or s.name == "" or s.name:find("^Abandon ") then
+                    set.name = #n > 0 and ("Abandon " .. table.concat(n, ", ")) or "Abandon the quest"
+                end
+                ns.editSet(sid(s), set)
+            elseif #q > 0 then
+                ns.editSet(sid(s), { q = q, n = s.t ~= "complete" and n or false, qo = (s.t == "complete" and anyObj) and qo or false, obj = false })
+            else
+                ns.editSet(sid(s), { q = false, n = false, qo = false, obj = false })
+            end
         end)
-    field("npc", "NPC", "Who to talk to (the target button targets them). \"Use target\" fills it in.",
-        function(s) return s.npc or "" end,
-        function(s, t) ns.editSet(sid(s), { npc = t ~= "" and t or false, targets = t ~= "" and { t } or false }) end)
+    field("npc", "NPC", "Who to talk to (the target button targets them). \"Use target\" fills it in. Several, comma separated: the first is the one to talk to, the target button looks for all of them.",
+        function(s)
+            if s.targets and #s.targets > 1 then return table.concat(s.targets, ", ") end
+            return s.npc or ""
+        end,
+        function(s, t)
+            local list = names(t)
+            ns.editSet(sid(s), { npc = list[1] or false, targets = #list > 0 and list or false })
+        end)
     field("mobs", "Mobs", "Mobs for the target button, comma separated. \"Use target\" adds yours.",
         function(s) return s.mobs and table.concat(s.mobs, ", ") or "" end,
         function(s, t) local m = names(t); ns.editSet(sid(s), { mobs = #m > 0 and m or false }) end)
@@ -892,8 +979,9 @@ local function build()
             end
             ns.editSet(sid(s), { col = #col > 0 and col or false })
         end)
-    field("lvl", "Level", "For an XP step: 5 = reach level 5. 3 1200xp = 1200 XP into level 3. 3 50% = halfway through level 3. 4 -300xp = 300 XP or less before level 4.",
+    field("lvl", "Level", "For an XP step: 5 = reach level 5. 3 1200xp = 1200 XP into level 3. 3 50% = halfway through level 3. 4 -300xp = 300 XP or less before level 4. For an Accept step: the level the quest needs (shown as NEEDS LEVEL until then).",
         function(s)
+            if s.t == "accept" then return s.minlv and tostring(s.minlv) or "" end
             if not s.lvl then return "" end
             local level, xpIn, xpPct, xpLeft = ns.xpTarget(s)
             if xpIn then return string.format("%d %dxp", level, xpIn) end
@@ -902,6 +990,11 @@ local function build()
             return tostring(level)
         end,
         function(s, t)
+            if s.t == "accept" then
+                local n = tonumber((t or ""):match("%d+"))
+                ns.editSet(sid(s), { minlv = n or false })
+                return
+            end
             -- the level, then (optional) an amount: "1200xp" (or a bare number) into the level, "50%" of it,
             -- "-300xp" before reaching it
             t = (t or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
@@ -937,11 +1030,11 @@ local function build()
         function(s) return s.chapter or "" end,
         function(s, t) ns.editSet(sid(s), { chapter = t ~= "" and t or false }) end)
 
-    d.posText = ui.text(d, 11, 1, 1, 1, 0.55); d.posText:SetPoint("TOPLEFT", 0, y); d.posText:SetPoint("RIGHT", 0, 0)
+    d.posText = ui.text(P1, 11, 1, 1, 1, 0.55); d.posText:SetPoint("TOPLEFT", 0, y); d.posText:SetPoint("RIGHT", 0, 0)
     y = y - 22
     local bw = math.floor((FW - 12) / 3)
     local function act(txt, col, row, fn, tip)
-        local b = button(d, txt, bw, fn, tip)
+        local b = button(P1, txt, bw, fn, tip)
         b:SetPoint("TOPLEFT", (col - 1) * (bw + 6), y - (row - 1) * 28)
         return b
     end
@@ -1020,6 +1113,281 @@ local function build()
         refresh()
     end, "Die and respawn at the spirit healer: an instruction next to the steps after it (always over the arrow), done once you're alive again. With a point, the arrow leads there first (the place to die).")
 
+    ---------------------------------------------------------------- page 2: when the step is for you
+    local intro2 = ui.text(P2, 11, 1, 1, 1, 0.45)
+    intro2:SetPoint("TOPLEFT", 0, -30); intro2:SetPoint("RIGHT", 0, 0); intro2:SetWordWrap(true)
+    intro2:SetText("The step is only for you while all of these hold (empty: always). It's left out otherwise. Hover a field for how to write it.")
+    fparent, y = P2, -66
+    local COND_WORD = { has = "on", nothas = "not on", ready = "ready", notready = "not ready", done = "done", open = "not done" }
+    local function trim(x) return (tostring(x or ""):gsub("^%s+", ""):gsub("%s+$", "")) end
+    local function itemName(id)
+        return (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)) or (GetItemInfo and GetItemInfo(id)) or nil
+    end
+    local function coinText(c)
+        local g, sv, cp = math.floor(c / 10000), math.floor(c / 100) % 100, c % 100
+        local out = {}
+        if g > 0 then out[#out + 1] = g .. "g" end
+        if sv > 0 then out[#out + 1] = sv .. "s" end
+        if cp > 0 or #out == 0 then out[#out + 1] = cp .. "c" end
+        return table.concat(out, " ")
+    end
+    local function coinValue(t)
+        t = t:lower()
+        local g, sv, cp = tonumber(t:match("(%d+)%s*g")), tonumber(t:match("(%d+)%s*s")), tonumber(t:match("(%d+)%s*c"))
+        if not (g or sv or cp) then return tonumber(t:match("(%d+)")) end
+        return (g or 0) * 10000 + (sv or 0) * 100 + (cp or 0)
+    end
+    local function profKey(name)
+        name = trim(name):lower()
+        if name == "" then return nil end
+        for k, p in pairs(ns.PROF or {}) do
+            if k == name or (p.name and p.name:lower() == name) then return k end
+        end
+        return (name:gsub("%s+", ""))
+    end
+    local function profLabel(k) return (ns.PROF and ns.PROF[k] and ns.PROF[k].name) or k end
+    field("cond", "Quests", "Quests in your log, comma separated: on 123 (in your log), not on 123, ready 123 (finished, not handed in), not ready 123, done 123 (handed in), not done 123. The ID is in the quest's Wowhead link.",
+        function(s)
+            local out = {}
+            for _, c in ipairs(s.cond or {}) do if COND_WORD[c[1]] then out[#out + 1] = COND_WORD[c[1]] .. " " .. tostring(c[2]) end end
+            return table.concat(out, ", ")
+        end,
+        function(s, t)
+            local list = {}
+            for part in (t or ""):lower():gmatch("[^,]+") do
+                local x = trim(part)
+                local neg = x:find("^not%s+") ~= nil
+                x = x:gsub("^not%s+", "")
+                local w, id = x:match("^(%a+)%s*(%d+)$")
+                id = tonumber(id)
+                local kind = id and ((w == "on" and (neg and "nothas" or "has")) or (w == "ready" and (neg and "notready" or "ready"))
+                    or (w == "done" and (neg and "open" or "done")))
+                if kind then list[#list + 1] = { kind, id } end
+            end
+            ns.editSet(sid(s), { cond = #list > 0 and list or false })
+        end)
+    field("lvskip", "Level", "Your level: 20+ (from 20 on), <20 (below 20), 10-19 (from 10 to 19).",
+        function(s)
+            local l = s.lvskip
+            if not l then return "" end
+            if l.below and l.atleast then return l.below .. "-" .. (l.atleast - 1) end
+            if l.below then return l.below .. "+" end
+            if l.atleast then return "<" .. l.atleast end
+            return ""
+        end,
+        function(s, t)
+            t = (t or ""):gsub("%s", "")
+            local a, b = t:match("^(%d+)%-(%d+)$")
+            local v
+            if a then v = { below = tonumber(a), atleast = tonumber(b) + 1 }
+            elseif t:match("^%d+%+$") then v = { below = tonumber(t:match("^(%d+)")) }
+            elseif t:match("^<%d+$") then v = { atleast = tonumber(t:match("^<(%d+)$")) } end
+            ns.editSet(sid(s), { lvskip = v or false })
+        end)
+    field("zskip", "Zone", "Where you are, comma separated: in Darkshore (only there), not in Stormwind City (not there). A subzone by its area ID: in area 150.",
+        function(s)
+            local out = {}
+            for _, z in ipairs(s.zskip or {}) do
+                out[#out + 1] = (z.inv and "in " or "not in ") .. (z.sub and ("area " .. z.sub) or tostring(z.zone))
+            end
+            return table.concat(out, ", ")
+        end,
+        function(s, t)
+            local list = {}
+            for part in (t or ""):gmatch("[^,]+") do
+                local x = trim(part)
+                local low = x:lower()
+                local neg = low:find("^not%s+in%s+") ~= nil
+                local rest = neg and x:gsub("^%a+%s+%a+%s+", "") or (low:find("^in%s+") and x:gsub("^%a+%s+", "")) or nil
+                if rest then
+                    rest = trim(rest)
+                    local area = tonumber(rest:lower():match("^area%s+(%d+)$"))
+                    if area then list[#list + 1] = { sub = area, inv = not neg }
+                    elseif rest ~= "" then list[#list + 1] = { zone = rest, inv = not neg } end
+                end
+            end
+            ns.editSet(sid(s), { zskip = #list > 0 and list or false })
+        end)
+    field("need", "Item", "Only while you have an item: 5000 x3 (at least 3 of it), or <5000 x3 (fewer than 3). Shift-click an item while this field is active.",
+        function(s)
+            local n = s.need
+            if not n then return "" end
+            local nm = itemName(n[1])
+            return (n[3] == "lt" and "<" or "") .. n[1] .. (nm and (" " .. nm) or "") .. " x" .. (n[2] or 1)
+        end,
+        function(s, t)
+            t = t or ""
+            local lt = t:find("^%s*<") ~= nil
+            local id = tonumber(t:match("item:(%d+)") or t:match("(%d+)"))
+            local c = tonumber(t:match("[xX]%s*(%d+)%s*$")) or 1
+            ns.editSet(sid(s), { need = id and (lt and { id, c, "lt" } or { id, c }) or false })
+        end)
+    field("buffItem", "Until buff", "Something you eat or use for its buff (Herb Baked Egg): the step shows while the buff is missing. The item's ID, or Shift-click it.",
+        function(s)
+            if not s.buffItem then return "" end
+            local nm = itemName(s.buffItem)
+            return s.buffItem .. (nm and (" " .. nm) or "")
+        end,
+        function(s, t)
+            local id = tonumber((t or ""):match("item:(%d+)") or (t or ""):match("(%d+)"))
+            ns.editSet(sid(s), { buffItem = id or false })
+        end)
+    field("prof", "Profession", "A profession: mining (you know it), cooking 50+ (skill 50 or more), cooking <50 (below 50, or not learned), cooking 10-49.",
+        function(s)
+            local sk, sk2 = s.skill, s.skill2
+            if sk and sk2 and sk[1] == sk2[1] and sk[3] ~= "lt" and sk2[3] == "lt" then
+                return profLabel(sk[1]):lower() .. " " .. sk[2] .. "-" .. (sk2[2] - 1)
+            end
+            local out = {}
+            if s.needProf then out[#out + 1] = profLabel(s.needProf):lower() end
+            for _, x in ipairs({ sk, sk2 }) do
+                if x then out[#out + 1] = profLabel(x[1]):lower() .. " " .. (x[3] == "lt" and ("<" .. x[2]) or (x[2] .. "+")) end
+            end
+            return table.concat(out, ", ")
+        end,
+        function(s, t)
+            t = trim(t)
+            local name = t:gsub("[%d%+%-<]", ""):gsub("%s+$", "")
+            local k = profKey(name)
+            local set = { needProf = false, skill = false, skill2 = false }
+            if k then
+                local a, b = t:match("(%d+)%s*%-%s*(%d+)")
+                if a then set.skill, set.skill2 = { k, tonumber(a) }, { k, tonumber(b) + 1, "lt" }
+                elseif t:match("<%s*%d+") then set.skill = { k, tonumber(t:match("<%s*(%d+)")), "lt" }
+                elseif t:match("%d+") then set.skill = { k, tonumber(t:match("(%d+)")) }
+                else set.needProf = k end
+            end
+            ns.editSet(sid(s), set)
+        end)
+    field("money", "Money", "Your money: 1g 50s+ (at least that much), <50s (less than that).",
+        function(s)
+            local m = s.money
+            if not m then return "" end
+            if m[1] == "<" then return coinText(m[2]) .. "+" end
+            return "<" .. coinText(m[2])
+        end,
+        function(s, t)
+            t = trim(t)
+            local c = t ~= "" and coinValue(t) or nil
+            -- (as the guides have it: "<" = skipped while you have less, ">" = skipped once you have that much)
+            ns.editSet(sid(s), { money = c and (t:find("^<") and { ">", c } or { "<", c }) or false })
+        end)
+    field("dps", "Weapon", "Only while your weapon is weaker: <10.5 (main hand DPS below 10.5); ranged <8, off hand <6 for the other slots.",
+        function(s)
+            local d0 = s.dps
+            if not d0 then return "" end
+            return (d0[1] == 18 and "ranged " or d0[1] == 17 and "off hand " or "") .. "<" .. d0[2]
+        end,
+        function(s, t)
+            local low = (t or ""):lower()
+            local v = tonumber(low:match("(%d+%.?%d*)"))
+            local slot = low:find("ranged") and 18 or low:find("off") and 17 or 16
+            ns.editSet(sid(s), { dps = v and { slot, v } or false })
+        end)
+    field("gate", "Level jump", "A section to leave out above a level: 14 Westfall end. The steps with the same name form the section; get to its first step above level 14 and the whole section is skipped (decided once).",
+        function(s) return s.gateL and ((s.gateMax or "?") .. " " .. s.gateL) or "" end,
+        function(s, t)
+            local n, label = (t or ""):match("^%s*(%d+)%s+(.-)%s*$")
+            if n and label ~= "" then ns.editSet(sid(s), { gateMax = tonumber(n), gateL = label })
+            else ns.editSet(sid(s), { gateMax = false, gateL = false }) end
+        end)
+
+    ---------------------------------------------------------------- page 3: the rest
+    fparent, y = P3, -40
+    field("trainer", "Trainer", "For a Train step: class (your class trainer; done when nothing new is waiting), weapons 202, 196 (a weapon master; done when you know them - the skills' spell IDs), any of 202, 196 (one of them is enough). Empty: another trainer (a profession, riding).",
+        function(s)
+            if s.cls then return "class" end
+            if s.wpn then return (s.wany and "any of " or "weapons ") .. table.concat(s.wpn, ", ") end
+            return ""
+        end,
+        function(s, t)
+            local low = (t or ""):lower()
+            local ids = numbers(low)
+            if low:find("class") then ns.editSet(sid(s), { cls = true, wpn = false, wany = false })
+            elseif #ids > 0 then ns.editSet(sid(s), { cls = false, wpn = ids, wany = low:find("any") and true or false })
+            else ns.editSet(sid(s), { cls = false, wpn = false, wany = false }) end
+        end)
+    field("arrive", "Done in", "When a Go or Do step counts as done: a zone (Redridge Mountains - once you're in it), a subzone by its area ID (area 150), or how close to its point counts as there (20 yd; 15 when not set). Comma separated for more than one.",
+        function(s)
+            local out = {}
+            if s.zone then out[#out + 1] = s.zone end
+            if s.sub then out[#out + 1] = "area " .. s.sub end
+            if s.r then out[#out + 1] = s.r .. " yd" end
+            return table.concat(out, ", ")
+        end,
+        function(s, t)
+            local set = { zone = false, sub = false, r = false }
+            for part in (t or ""):gmatch("[^,]+") do
+                local x = trim(part)
+                local low = x:lower()
+                if low:match("^%d+%s*y") or low:match("^%d+$") then set.r = tonumber(low:match("(%d+)"))
+                elseif low:match("^area%s+%d+$") then set.sub = tonumber(low:match("(%d+)"))
+                elseif x ~= "" then set.zone = x end
+            end
+            ns.editSet(sid(s), set)
+        end)
+    field("gossip", "Dialogue", "What to say to the step's NPC (Settings > Quests > Quest dialogue): talk (when there's just the one option), or the options' IDs, comma separated.",
+        function(s)
+            if s.gossip == true then return "talk" end
+            if type(s.gossip) == "table" then return table.concat(s.gossip, ", ") end
+            return ""
+        end,
+        function(s, t)
+            local low = (t or ""):lower()
+            local ids = numbers(low)
+            ns.editSet(sid(s), { gossip = (low:find("talk") and true) or (#ids > 0 and ids) or false })
+        end)
+    field("macro", "Macro", "A button next to the panel that runs a macro while this step is up: /sit, /emote salutes the flag. Several lines separated by ;",
+        function(s) return s.macro and tostring(s.macro[3] or ""):gsub("\n", "; ") or "" end,
+        function(s, t)
+            local text = trim((t or ""):gsub("%s*;%s*", "\n"))
+            if text == "" then ns.editSet(sid(s), { macro = false }) return end
+            local first = text:match("^[^\n]+")
+            ns.editSet(sid(s), { macro = { first, (s.macro and s.macro[2]) or 134400, text } })
+        end)
+    d.wayText = ui.text(P3, 11, 1, 1, 1, 0.55); d.wayText:SetPoint("TOPLEFT", 0, y); d.wayText:SetPoint("RIGHT", 0, 0)
+    d.wayText:SetWordWrap(true)
+    y = y - 34
+    local function act3(txt, col, row, fn, tip)
+        local b = button(P3, txt, bw, fn, tip)
+        b:SetPoint("TOPLEFT", (col - 1) * (bw + 6), y - (row - 1) * 28)
+        return b
+    end
+    -- the way to the step's point: the guide's path (zone or world points), or just the point
+    local function wayOf(s)
+        local w = {}
+        if s.path then for _, pt in ipairs(s.path) do w[#w + 1] = copy(pt) end
+        elseif s.x then w[1] = { s.m, s.x, s.y, 0, s.r or 0 } end
+        return w
+    end
+    d.addWay = act3("Add waypoint here", 1, 1, function()
+        local s, p = selected(), here()
+        if not (s and p) then return end
+        local w = wayOf(s)
+        local pt = { p.m, p.x, p.y, 0, 15 }
+        -- (before the step's own point, which stays the end of the way)
+        if #w > 0 and s.x then table.insert(w, #w, pt) else w[#w + 1] = pt end
+        ns.editSet(sid(s), { path = w, way = false })
+        refresh()
+    end, "Adds where you stand as a point on the way to the step: the arrow leads through the waypoints in the order you add them, then to the step's point (into a cave, around a mountain).")
+    d.clearWay = act3("Clear waypoints", 2, 1, function()
+        local s = selected()
+        if s then ns.editSet(sid(s), { path = false, way = false }); refresh() end
+    end, "The arrow goes straight to the step's point again.")
+    d.addArea = act3("Add area spot here", 1, 2, function()
+        local s, p = selected(), here()
+        if not (s and p) then return end
+        local wp = {}
+        for _, pt in ipairs(s.wp or {}) do wp[#wp + 1] = copy(pt) end
+        wp[#wp + 1] = { p.m, p.x, p.y, 0 }
+        ns.editSet(sid(s), { wp = wp, area = false })
+        refresh()
+    end, "For a kill or loot step: adds where you stand as a spot of the area where the mobs are. With two or more spots the arrow leads from one to the next, and they show on the map.")
+    d.clearArea = act3("Clear area", 2, 2, function()
+        local s = selected()
+        if s then ns.editSet(sid(s), { wp = false, area = false }); refresh() end
+    end, "No kill area: the arrow leads to the step's point.")
+
     win.hint = ui.text(win, 11, 1, 1, 1, 0.3)
     win.hint:SetPoint("BOTTOMLEFT", PAD, 14); win.hint:SetWidth(W - PAD * 2); win.hint:SetWordWrap(true)
     win.hint:SetText("Green = added by you, yellow = changed, dim = hidden, bar = your step. Edits are saved per route for all your characters and stay when the routes are updated.")
@@ -1058,7 +1426,7 @@ local function build()
             if s then
                 row.id = sid(s)
                 row.num:SetText(num[s] and tostring(num[s]) or "-")
-                row.verb:SetText(VERB[s.t] or s.t)
+                row.verb:SetText(VERB[kindOf(s)] or s.t)
                 row.cur:SetShown(s == cur)
                 row.txt:SetText(label(s))
                 local a = s.edHidden and 0.3 or 0.85
@@ -1082,14 +1450,35 @@ local function build()
         win.d.head:SetText((n and ("Step " .. n) or "Hidden step") .. "  ·  " ..
             (s.edAdd and "added by you" or s.edHidden and "hidden" or s.edChanged and "changed by you" or "from the route") ..
             (s.edOrphan and "  ·  its place in the route is gone, so it's at the end" or ""))
-        for t, b in pairs(win.d.types) do b:SetActive(s.t == t) end
+        local kind = kindOf(s)
+        for t, b in pairs(win.d.types) do b:SetActive(kind == t) end
         for _, f in pairs(fields) do
             if not f.box:HasFocus() then f.box:SetText(f.get(s)) end
         end
         local qstep = s.t == "accept" or s.t == "turnin" or s.t == "complete"
-        fields.q.box:SetAlpha(qstep and 1 or 0.4)
-        fields.lvl.box:SetAlpha(s.t == "xp" and 1 or 0.4)
+        fields.q.box:SetAlpha((qstep or kind == "abandon") and 1 or 0.4)
+        fields.lvl.box:SetAlpha((s.t == "xp" or s.t == "accept") and 1 or 0.4)
         fields.till.box:SetAlpha(s.along and 1 or 0.4)
+        fields.trainer.box:SetAlpha(s.t == "train" and 1 or 0.4)
+        fields.arrive.box:SetAlpha((s.t == "go" or s.t == "do") and 1 or 0.4)
+        -- the pages, and how much is set on the other two
+        local nc = #(s.cond or {}) + #(s.zskip or {})
+        for _, f in ipairs({ "lvskip", "need", "buffItem", "money", "dps", "gateL" }) do if s[f] then nc = nc + 1 end end
+        if s.needProf or s.skill then nc = nc + 1 end
+        local nm = 0
+        for _, f in ipairs({ "zone", "sub", "r", "gossip", "macro", "path", "wp" }) do if s[f] then nm = nm + 1 end end
+        if s.cls or s.wpn then nm = nm + 1 end
+        local counts = { nil, nc, nm }
+        for k, pg in ipairs(win.d.pages) do
+            pg:SetShown(k == page)
+            local tab = win.d.tabs[k]
+            tab:SetActive(k == page)
+            local base = k == 1 and "Step" or k == 2 and "Conditions" or "More"
+            tab.text:SetText(counts[k] and counts[k] > 0 and (base .. " (" .. counts[k] .. ")") or base)
+        end
+        local nw, na = s.path and #s.path or 0, s.wp and #s.wp or 0
+        win.d.wayText:SetText((nw > 0 and ("Way: " .. nw .. " points, the last one is where the step ends.") or "Way: straight to the step's point.")
+            .. "  " .. (na > 0 and ("Kill area: " .. na .. " spots" .. (na < 2 and " (the arrow uses it from two on)." or ".")) or "No kill area."))
         local z = s.z or ""
         win.d.posText:SetText(s.x and string.format("Point: %s %.1f, %.1f", z, s.x, s.y) or (s.wx and ("Point: " .. z .. " (from the route)") or "No point (the arrow has nowhere to go)"))
         win.d.hide.text:SetText(s.edAdd and "Delete" or (s.edHidden and "Show" or "Hide"))
@@ -1105,6 +1494,7 @@ local function build()
         win.d.along.text:SetText(s.along and "Along: on" or "Along the way")
     end
     ns.refreshEditor = refresh
+    ns.editorFields = fields -- (for /iti and tests: the detail fields by key)
     -- another route in the editor (picked here or in the panel): start at your step there
     ns.editorRouteChanged = function()
         if not win:IsShown() then return end

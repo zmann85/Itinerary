@@ -341,7 +341,11 @@ The **Quest** button picks a quest from your log (click: next, Shift-click: back
 
 <p align="center"><img src="manual/route-editor.png" alt="The route editor" width="760"></p>
 Open the **route editor**: right-click the route button, or `/iti edit`. On the left is the step list
-(with chapters). On the right are the selected step's details.
+(with chapters). On the right are the selected step's details, on three pages: **Step**, **Conditions** and
+**More** (the tabs show how many things are set on the other two). Everything a route step can do can be set
+here, also on the steps that come with a route.
+
+**Step** page:
 
 - **Type** (hover a type for what it does):
   - **Quests**: accept, quest (the objectives), turn in.
@@ -352,14 +356,17 @@ Open the **route editor**: right-click the route button, or `/iti edit`. On the 
   - **Home** (make an inn your home): Text = the place as the game names your home; the innkeeper's question
     is answered for you.
   - **Dungeon**: Text = its name, the step's point = the entrance; done when you're inside.
+  - **Abandon**: drops the quests in *Quest IDs* from your log. Done once none of them is in your log (also
+    when you never took it, or when it's finished and the route hands it in later).
+  - **Sell junk**: sell your grey items at any vendor: an instruction next to the next few steps.
 
   A new step's placeholder text becomes what the type needs (your home for a hearth, where you stand for a
   flight path or a new home).
 - **Fields**:
   - **Text**
   - **Hint**
-  - **Quest IDs**
-  - **NPC**
+  - **Quest IDs**: for a quest step, `12:2` means only objective 2 of quest 12.
+  - **NPC**: several, comma separated: the first is the one to talk to, the target button looks for all.
   - **Mobs**
   - **Items**: Shift-click items from your bags to put them on the item buttons.
   - **Collect**: Shift-click an item, then set the count, e.g. `2886 Crag Boar Rib x6`.
@@ -371,6 +378,8 @@ Open the **route editor**: right-click the route button, or `/iti edit`. On the 
     | `3 1200xp` | you're 1200 XP into level 3 |
     | `3 50%` | you're halfway through level 3 |
     | `4 -300xp` | you're within 300 XP of level 4 |
+
+    For an accept step, **Level** is the level the quest needs (NEEDS LEVEL until then).
 
   - **Ends at step**: for an *Along the way* step, the step number where it stops showing. Left empty, it
     shows until it's done, the chapter ends, or a later step completes or turns in its quest.
@@ -392,8 +401,33 @@ Open the **route editor**: right-click the route button, or `/iti edit`. On the 
   - **Optional**: shown as OPTIONAL, and passed by itself once you're done with a later quest step.
   - **Death skip**: makes the step "Die and respawn at the spirit healer": an instruction next to the steps
     after it, done once you're alive again. With a point, the arrow leads there first (the place to die).
-- **Save**: your changes work in the route immediately. *Save* writes them to disk now (a quick reload).
-  Otherwise that happens when you log out.
+
+**Conditions** page: the step is only for you while all of these hold (empty: always).
+
+| Field | You type |
+|---|---|
+| Quests | `on 123` (in your log), `ready 123` (finished), `done 123` (handed in), each also with `not` |
+| Level | `20+`, `<20`, `10-19` |
+| Zone | `in Darkshore`, `not in Stormwind City`, a subzone by its area ID: `in area 150` |
+| Item | `5000 x3` (at least 3), `<5000 x3` (fewer than 3); Shift-click an item |
+| Until buff | an item you eat or use: the step shows while its buff is missing |
+| Profession | `mining` (you know it), `cooking 50+`, `cooking <50`, `cooking 10-49` |
+| Money | `1g 50s+`, `<50s` |
+| Weapon | `<10.5` (main hand DPS), `ranged <8`, `off hand <6` |
+| Level jump | `14 Westfall end`: the steps with this name are left out when you get to the first of them above level 14 |
+
+**More** page:
+- **Trainer** (train steps): `class` (your class trainer), `weapons 202, 196` (a weapon master, skill spell IDs),
+  `any of 202, 196`; empty: another trainer.
+- **Done in** (go and do steps): a zone (`Redridge Mountains`), a subzone (`area 150`), or how close counts as
+  there (`20 yd`).
+- **Dialogue**: `talk` (when there's just one option) or the dialogue options' IDs.
+- **Macro**: a button that runs it while the step is up (`/sit`); lines separated by `;`.
+- **Add waypoint here / Clear waypoints**: points the arrow leads through on the way to the step.
+- **Add area spot here / Clear area**: the spots of a kill area (the arrow goes from one to the next).
+
+**Save**: your changes work in the route immediately. *Save* writes them to disk now (a quick reload).
+Otherwise that happens when you log out.
 
 A route that came with a route pack is never changed. Your first edit makes **your own copy**, and you go
 on with the copy. *Make a copy*, *New route* and *Undo all edits* are in the toolbar.

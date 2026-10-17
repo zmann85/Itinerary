@@ -1135,7 +1135,9 @@ local function vendorStepDone()
         -- (a "Vendor trash" step with no NPC: any vendor). Steps that buy something finish on their items instead.
         if s and s.t == "do" and not s.col and not s.need then
             local junk = s.name and (s.name:find("^Vendor trash") or s.name:find("^Sell ") or s.name:find("[Vv]endor"))
-            if (s.npc and npc and s.npc == npc) or (junk and not s.npc) then c.manual[j] = true end
+            -- (selling junk as an instruction next to your step: any vendor you open does it)
+            local sell = s.errand and s.name and (s.name:find("^Vendor trash") or s.name:find("^Sell "))
+            if (s.npc and npc and s.npc == npc) or (junk and not s.npc) or sell then c.manual[j] = true end
         end
     end
     if ns.update then ns.update() end

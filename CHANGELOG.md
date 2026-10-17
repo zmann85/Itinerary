@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### New
+- **In dungeons** (Settings > General, Show by default): Hide puts the route panel, the arrow and the item
+  buttons away inside a dungeon or raid; they're back when you leave. The minimap button (or `/iti`) shows
+  them there for that visit.
 - **Your next stops on the maps**: numbered pins in route order on the world map (also the continent map)
   and now on the minimap too, with a dotted line between them on the world map. Steps at the same place
   share one pin ("2-3"). Settings > Travel: how many on each map (Off, Current, Next 3, Next 5; default
@@ -46,6 +49,14 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
+- **Errands at a vendor are instructions**, not stops of their own: "Vendor trash" at a named vendor, "Buy
+  Ice Cold Milk", food and water, bags, repairs. Click one to point the arrow at that vendor; it's done when
+  you open them (selling junk: any vendor). The arrow no longer leads there by itself. Buying what the route
+  needs (a quest item, a weapon, arrows, grimoires) stays a step. In every route version.
+- Target button: a step after one particular mob (Anaya Dawnrunner for For Love Eternal: one kind of mob,
+  one of it needed) puts it first, ahead of anything closer, until you have what you need from it.
+- Next steps: steps that are done already are left out ("Abandon Red Leather Bandanas" after you handed it
+  in, "Abandon Patrolling Westfall" when you never took it).
 - **Weapon skills** (Settings > Trainer) is **Route** by default: only the weapon skills the route trains get a
   training hint, not every weapon your class can learn. A choice you made yourself stays.
 - The "skipped steps" line: right-click it if you're not doing those quests; quests of a chapter you've left
@@ -102,6 +113,15 @@
   cause small stutters).
 
 ### Fixed
+- The hearth to Stormwind after the Darkshore turn-ins (route version 5, dungeon routes) never showed: the
+  guide skips it "while in Darkshore", where you are at that point. A hearth no longer skips itself in the
+  zone you're in when the route goes on somewhere else.
+- "Abandon X" for a quest that's finished and handed in later on the route (Patrolling Westfall) is done
+  without abandoning it.
+- Profession instructions only send you to a trainer who teaches what you need: Kitta Firewind at the Tower
+  of Azora (Expert Enchanting only) no longer for learning Enchanting, a village trainer not for Journeyman.
+  Itinerary_Data 1.2 knows the ranks from the trainers' titles; a trainer you opened counts by what they
+  showed you.
 - Money conditions from the guides were the wrong way round: a step for when you can afford something ("Buy
   a [Merciless Axe]", "Train Arcane Shot and Hunter's Mark") showed only while you couldn't, and "grind / sell
   until you have 10 copper" only once you had it. Now as the guides mean them (all route versions).

@@ -521,10 +521,30 @@ function ns.prepareRoute(r)
     -- trainer visits (Settings > Trainer): a recommendation next to the next steps, done when you've trained,
     -- instead of a stop the arrow walks you to
     local trainRec = ns.trainerAsRec()
+    -- errands at a vendor ("Vendor trash" at Rallic Finn, "Buy Ice Cold Milk" at the Thelsamar inn, food, water,
+    -- bags, repairs): an instruction next to the next few steps that you can click to point the arrow at that
+    -- vendor, done when you open them - not a stop of their own. Buying what the route needs (a quest item, a
+    -- weapon, arrows, grimoires) stays a step.
+    local function errand(s)
+        if s.t ~= "do" or not s.npc or s.col or s.need or s.ah or s.item or s.death or s.untilQ or s.abandon or s.vendor then return false end
+        local n = s.name or ""
+        if n:find("^Vendor") or n:find("^Sell ") or n:find("^Repair ") then return true end
+        if n:find("^Buy ") or n:find("^Stock up") then
+            local l = n:lower()
+            if l:find("arrow") or l:find("shot") or l:find("ammo") or l:find("quiver") then return false end -- (a hunter's ammo stays a stop)
+            for _, w in ipairs({ "food", "water", "milk", "bread", "dalaran sharp", "mushroom", "pouch", "satchel" }) do
+                if l:find(w, 1, true) then return true end
+            end
+        end
+        return false
+    end
     for j, s in ipairs(r.steps) do
         if s.vendor then
             s.along, s.till, s.rec = true, j + 6, true
             s.note = "At any vendor you pass - the grey items are sold when you open one"
+        elseif errand(s) then
+            s.errand = true
+            if not s.along then s.along, s.till, s.rec = true, j + 6, true end
         elseif trainRec and s.t == "train" and not s.along then
             s.along, s.till, s.rec, s.trainRec = true, j + 8, true, true
         elseif not trainRec and s.trainRec then
@@ -558,6 +578,42 @@ function ns.prepareRoute(r)
             end
             s.along, s.deathRec, s.till = true, true, math.min(k, #steps)
         end
+    end
+    -- a hearth the guide skips in the very zone you're in when you get to it, while the route goes on somewhere
+    -- else ("Hearth to Stormwind" after the last Darkshore turn-ins, skipped "in Darkshore"): a slip in the
+    -- guide that would leave you without the way there. That zone no longer skips it (already being where the
+    -- hearth takes you still does).
+    local function zoneFrom(k, dir)
+        while steps[k] do
+            local x = steps[k]
+            if not x.along and x.z and x.z ~= "" then return x.z end
+            k = k + dir
+        end
+    end
+    for j, s in ipairs(steps) do
+        if s.t == "hearth" and s.zskip then
+            local before, after = zoneFrom(j - 1, -1), zoneFrom(j + 1, 1)
+            if before and before ~= after then
+                local keep = {}
+                for _, z in ipairs(s.zskip) do
+                    if not (z.zone == before and not z.inv) then keep[#keep + 1] = z end
+                end
+                if #keep < #s.zskip then s.zskip = #keep > 0 and keep or nil end
+            end
+        end
+    end
+    -- "Abandon X" for a quest the route still hands in later ("if it's done by then"): with X ready to hand in,
+    -- there's nothing to abandon (the quests handed in after each abandon step)
+    local turnedLater = {}
+    for j = #steps, 1, -1 do
+        local s = steps[j]
+        if s.abandon then
+            s.keepIfReady = nil
+            for _, q in ipairs(s.abandon) do
+                if turnedLater[q] then s.keepIfReady = s.keepIfReady or {}; s.keepIfReady[q] = true end
+            end
+        end
+        if s.t == "turnin" and s.q then for _, q in ipairs(s.q) do turnedLater[q] = true end end
     end
 
     local HBD = LibStub and LibStub("HereBeDragons-2.0", true)
@@ -1223,8 +1279,11 @@ function ns.stepDone(i)
         -- an instruction that lasts until a quest is turned in
         return flaggedDone(s.untilQ) and true or false
     elseif s.t == "do" and s.abandon then
-        -- "Abandon X": done once none of them is in your log (also when you never had it)
-        for _, q in ipairs(s.abandon) do if onQuest(q) then return false end end
+        -- "Abandon X": done once none of them is in your log (also when you never had it), and when X is ready
+        -- to hand in and the route hands it in later
+        for _, q in ipairs(s.abandon) do
+            if onQuest(q) and not (s.keepIfReady and s.keepIfReady[q] and readyToTurnIn(q)) then return false end
+        end
         return true
     elseif s.t == "do" and s.r and not s.col then
         return ItineraryCharDB.arrived[i] and true or false
@@ -1233,6 +1292,20 @@ function ns.stepDone(i)
         for _, c in ipairs(s.col) do if (count(c[1]) or 0) < c[2] then return false end end
         return true
     end
+    return false
+end
+
+-- A step further ahead that is done for good already: a quest taken or handed in, its objectives done, a quest
+-- to abandon you don't have (never took it, or handed it in), a level you have, a hearth set there, or left out
+-- for you. The list of next steps leaves it out - the route passes it when it gets there. (Not the ones that
+-- depend on where you are now or on your spells: a hearth, a trainer visit.)
+local LASTING = { accept = true, complete = true, turnin = true, xp = true, sethearth = true }
+function ns.doneAhead(j)
+    local s = ns.steps()[j]
+    if not s then return true end
+    local c = ItineraryCharDB
+    if c.manual[j] or c.unavail[j] or notApplicable(s) then return true end
+    if LASTING[s.t] or (s.t == "do" and s.abandon) then return ns.stepDone(j) end
     return false
 end
 
@@ -1360,7 +1433,7 @@ local function comingUp(s, steps, i)
     local seen = 0
     for k = i, #steps do
         local x = steps[k]
-        if not x.along and not ns.notApplicable(x) then
+        if not x.along and not (k == i and ns.notApplicable(x) or k ~= i and ns.doneAhead(k)) then
             if x.t == s.t and x.q then
                 for _, a in ipairs(s.q) do
                     for _, b in ipairs(x.q) do if a == b then return true end end
@@ -1478,7 +1551,8 @@ function ns.arrowRoute(i)
         -- while you pass ("loot boars for meat") have a farming path of their own that isn't your way
         local side = s.col or s.mobs or s.t == "accept" or s.t == "turnin"
         local there = s.death and ItineraryCharDB.arrived[j] == "at" -- (at the place to die: on to the step)
-        if s.t ~= "complete" and s.m and not side and not s.vendor and not s.rec and not there and not ns.stepDone(j) then add(j, s, false) end
+        -- (a vendor errand only when you click it: then it's the arrow's manual target)
+        if s.t ~= "complete" and s.m and not side and not s.vendor and not s.rec and not s.errand and not there and not ns.stepDone(j) then add(j, s, false) end
     end
     local s = steps[i]
     if s and s.m and s.m > 0 and not s.area then add(i, s, true) end

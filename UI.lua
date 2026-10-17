@@ -523,6 +523,18 @@ local function alongInfo(st)
     if st.trainRec then
         return (st.cls and "Train new skills" or (st.name or "Visit the trainer")) .. (st.npc and (" at " .. st.npc) or ""), clean(st.note), "rec"
     end
+    -- an errand at a vendor ("Vendor trash at Rallic Finn", "Buy Ice Cold Milk"): who it's at
+    if st.errand then
+        local label, desc = clean(st.name) or "Visit the vendor", clean(st.note)
+        if st.npc and not label:find(st.npc, 1, true) then
+            if label:find("^Vendor") or label:find("^Sell") or label:find("^Repair") then
+                label = label .. " at " .. st.npc
+            else
+                desc = "At " .. st.npc .. (desc and desc ~= "" and ("\n" .. desc) or "")
+            end
+        end
+        return label, desc, "rec"
+    end
     local desc = st.name and clean(st.note) or nil
     if st.untilQ then
         local till = "Until you turn in " .. questName(st.untilQ, st.untilN or ("quest " .. st.untilQ))
@@ -1370,11 +1382,30 @@ function ns.showRecCard(list)
     card:Show()
 end
 
+-- Settings > General > In dungeons: Hide puts the panel, the arrow and the item buttons away while you're inside
+-- a dungeon or raid (the route keeps going); they're back when you leave
+local function inDungeon()
+    local inside, kind = false, nil
+    if IsInInstance then inside, kind = IsInInstance() end
+    return inside and (kind == "party" or kind == "raid") or false
+end
+function ns.dungeonHidden()
+    if not (ItineraryDB and ItineraryDB.panel and ItineraryDB.panel.hideInDungeon) then return false end
+    -- (shown anyway with the minimap button or /iti: for this visit)
+    if not inDungeon() then ns.dungeonPeek = nil return false end
+    return not ns.dungeonPeek
+end
+ns.inDungeon = inDungeon
+-- the panel is up: shown, and not put away in a dungeon
+function ns.panelUp()
+    return ItineraryDB.panel.shown and not ns.dungeonHidden()
+end
+
 function ns.refresh()
     ns.arrowDirty = true
     if not panel then return end
     local g = ItineraryDB
-    if not g.panel.shown then panel:Hide(); if arrow then arrow:Hide() end return end
+    if not ns.panelUp() then panel:Hide(); if arrow then arrow:Hide() end return end
     panel:Show()
     local steps, i = ns.steps(), ItineraryCharDB.step
     -- a class trainer close by with new spells waiting comes first, as a normal step
@@ -1482,7 +1513,8 @@ function ns.refresh()
         local label, desc, kind = alongInfo(steps[j])
         local list = kind == "rec" and rec or side
         local st = steps[j]
-        local go = st.trainRec and st.m and st.x and { m = st.m, x = st.x, y = st.y, npc = st.npc } or nil
+        -- (a trainer or a vendor errand: click it and the arrow leads there)
+        local go = (st.trainRec or st.errand) and st.m and st.x and { m = st.m, x = st.x, y = st.y, npc = st.npc } or nil
         local spells = st.trainRec and ns.trainerSpec(st) or nil
         if st.trainRec and st.cls then desc = ns.affordText() end
         -- (not twice: when your step shows the timer, because no instruction has it, nothing else does)
@@ -1531,7 +1563,8 @@ function ns.refresh()
     -- next few steps
     local upcoming, j = {}, detour and i or i + 1
     while #upcoming < 5 and steps[j] do
-        if not steps[j].along and not ns.notApplicable(steps[j]) then upcoming[#upcoming + 1] = steps[j] end
+        -- (not the ones done already: "Abandon Red Leather Bandanas" after you handed it in)
+        if not steps[j].along and not ns.doneAhead(j) then upcoming[#upcoming + 1] = steps[j] end
         j = j + 1
     end
     local shownN = gs and 0 or math.min(g.nextCount or 3, #upcoming, 5)
@@ -1946,7 +1979,7 @@ end)
 function ns.refreshArrow()
     if not arrow then return end
     local s = ns.current()
-    if ItineraryDB.arrow.shown and ItineraryDB.panel.shown and ns.arrowWanted(s) then arrow:Show() else arrow:Hide() end
+    if ItineraryDB.arrow.shown and ns.panelUp() and ns.arrowWanted(s) then arrow:Show() else arrow:Hide() end
 end
 
 ---------------------------------------------------------------- toggles + minimap button
@@ -1974,9 +2007,22 @@ function ns.setArrowLocked(on)
     if ns.refreshSettings then ns.refreshSettings() end
 end
 
-function ns.togglePanel()
-    ItineraryDB.panel.shown = not ItineraryDB.panel.shown
+function ns.setPanelShown(v)
+    ItineraryDB.panel.shown = v and true or false
     ns.refresh()
+    if ns.refreshArrow then ns.refreshArrow() end
+    if ns.updateItems then ns.updateItems() end
+end
+function ns.togglePanel()
+    -- in a dungeon with "In dungeons: Hide": shows the panel for this visit (or puts it away again)
+    if ItineraryDB.panel.shown and ItineraryDB.panel.hideInDungeon and inDungeon() then
+        ns.dungeonPeek = not ns.dungeonPeek
+    else
+        ItineraryDB.panel.shown = not ItineraryDB.panel.shown
+    end
+    ns.refresh()
+    if ns.refreshArrow then ns.refreshArrow() end
+    if ns.updateItems then ns.updateItems() end
 end
 function ns.toggleArrow()
     ItineraryDB.arrow.shown = not ItineraryDB.arrow.shown

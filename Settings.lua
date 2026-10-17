@@ -96,7 +96,16 @@ local OPTIONS = {
     -- General
     { tab = 1, label = "Route panel", desc = "Also: click the minimap button, or type /iti.",
       choices = SHOW_HIDE, get = function() return ItineraryDB.panel.shown and true or false end,
-      set = function(v) if (ItineraryDB.panel.shown and true or false) ~= v then ns.togglePanel() end end },
+      set = function(v) if (ItineraryDB.panel.shown and true or false) ~= v then ns.setPanelShown(v) end end },
+    { tab = 1, label = "In dungeons", desc = "Hide: the route panel, the arrow and the item buttons step aside while you're inside a dungeon or raid, and come back when you leave. The route goes on in the background. The minimap button (or /iti) still shows them there.",
+      choices = SHOW_HIDE, get = function() return not ItineraryDB.panel.hideInDungeon end,
+      set = function(v)
+          ItineraryDB.panel.hideInDungeon = (not v) or nil
+          ns.dungeonPeek = nil
+          if ns.refresh then ns.refresh() end
+          if ns.refreshArrow then ns.refreshArrow() end
+          if ns.updateItems then ns.updateItems() end
+      end },
     { tab = 1, label = "Minimap button", desc = "Hidden: open this window with /iti settings.",
       choices = SHOW_HIDE, get = function() return not (ItineraryDB.minimap and ItineraryDB.minimap.hide) end,
       set = function(v) if (not ItineraryDB.minimap.hide) ~= v and ns.toggleMinimap then ns.toggleMinimap() end end },

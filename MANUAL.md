@@ -60,13 +60,17 @@ From top to bottom:
   spells in the text show their icon. Hover them for the tooltip; Shift-click links them in chat.
 - **INSTRUCTIONS**: things to keep doing next to your step. Examples: sell junk, use your hearthstone,
   learn new skills at a trainer close by, a weapon master, a profession trainer, "don't sell the meat".
+  The guide's errands at a vendor are instructions too, not stops of their own: *Vendor trash at Rallic
+  Finn*, *Buy Ice Cold Milk*, food and water, bags, repairs. They're done when you open that vendor (selling
+  junk: any vendor). Buying something the route needs (a quest item, a weapon, arrows) stays a step.
   Click an instruction that has a place, and the arrow points there. Click it again to go back to the
   route.
 - **ALONG THE WAY** (green): side objectives you work on while you go, with live counts. These are quest
   objectives or items to collect (*Crag Boar Rib 2/6*). Once the route reaches its own step for that
   quest, that step shows the counts instead. A "turn in / accept it if you pass by" that the route does
   as one of the next steps anyway isn't listed as an instruction too.
-- **Next steps**: a preview of what comes after.
+- **Next steps**: a preview of what comes after. Steps that are done already are left out (a quest you
+  have, an *Abandon* step for a quest you never took or handed in already).
 - **Footer**:
   - **Level timer**: time on this level and your pace against the route's reference run. Hover it for
     every level's time; scroll on it for more.
@@ -81,6 +85,11 @@ From top to bottom:
 
 **Moving the panel**: Alt + right-click the panel to unlock it, drag it, then Alt + right-click again to
 lock it.
+
+**In dungeons**: Settings > General > *In dungeons* set to **Hide** puts the panel, the arrow and the item
+buttons away while you're inside a dungeon or raid (off by default). The route goes on in the background,
+and they're back when you leave. To see them inside anyway, click the minimap button (or `/iti`): that
+shows them for this visit.
 
 ---
 
@@ -128,6 +137,8 @@ Settings > Keys, or in the game's key bindings under *Itinerary*.
     With enemy nameplates on and a step with several kinds of mobs, it goes for the kind that's closest
     and worth it: alive, not tagged by someone else, not fighting another player (out of combat; in
     combat the last pick stays). Among mobs of the same name the game picks.
+    A step after one particular mob (Anaya Dawnrunner for her pendant: one kind of mob, one of it needed)
+    comes first, ahead of anything closer, until you have what you need from it.
   - **NPCs**: it targets the NPC you need to talk to and marks them with an orange circle. Press the key
     again to talk to them. That's handy for taking a contested escort quest first.
 
@@ -203,6 +214,10 @@ and prices.
   *and* learning your first profession.
 - **Next rank**: when Journeyman, Expert or Artisan is ready, a trainer is close by and you can pay for
   it, you get an instruction to go learn it.
+- **Which trainer**: not every trainer teaches every rank. Kitta Firewind at the Tower of Azora only
+  teaches Expert Enchanting, a village trainer only Apprentice. The instructions only send you to a
+  trainer who teaches what you need: Itinerary_Data knows this from the trainers' titles, and a trainer
+  you've opened yourself counts by what they showed you.
 - No profession instruction shows while you can't afford what it's for.
 - **New trainers**: WoW Forever adds profession trainers Classic doesn't have (like the junior trainers
   in the starting areas). Itinerary learns one as soon as you target it, hover it or open it, and from
@@ -379,7 +394,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 
 | Tab | What's there |
 |---|---|
-| General | Panel and minimap button on/off, the game's quest tracker, quest sparkles, step sound, route pack order, forget this character |
+| General | Panel and minimap button on/off, hide them in dungeons, the game's quest tracker, quest sparkles, step sound, route pack order, forget this character |
 | Quests | Accept/hand in, which quests, dialogue, reward picking, sell junk, auction house steps |
 | Travel | Flights, hearthstone, spirit healer, map pins (world map, minimap, line between them) |
 | Trainer | Buy class skills, open the training window, trainer visits (instruction/step), weapon skills, buy weapon skills, the worthwhile/skip list per class |

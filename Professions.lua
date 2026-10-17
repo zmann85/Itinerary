@@ -38,6 +38,10 @@ end
 -- profession trainers known before you meet them: prof, npc, map, x, y, side. They come with the separate
 -- Itinerary_Data add-on; without it, trainers you target or open are recorded (ItineraryDB.profTrainers).
 local TRAINERS = {} -- filled by Itinerary_Data (ns.addProfTrainers) when it is installed
+-- the ranks a trainer teaches, when Itinerary_Data knows (npc -> { [75] = true, ... }; 75 Apprentice, 150
+-- Journeyman, 225 Expert, 300 Artisan): a trainer out in the world like Kitta Firewind at the Tower of Azora
+-- only teaches Expert, a "Journeyman" trainer in a village only Apprentice
+local TRAINER_TIERS = {}
 ns.PROF = PROF
 
 ---------------------------------------------------------------- state
@@ -197,17 +201,43 @@ local function closeEnough(m, d, near)
     return d <= near -- (a strict distance, also in cities)
 end
 
--- nearest trainer for a profession: recorded visits first, then the table
-local function nearestTrainer(key, near)
+-- does this trainer teach that rank of the profession (tier 75 = the profession itself)? What you saw when you
+-- opened them decides; else what Itinerary_Data knows; else yes
+local function teachesTier(npc, key, tier)
+    if not tier then return true end
+    local teach = ItineraryDB.profTeach and ItineraryDB.profTeach[npc]
+    local list = ItineraryDB.profSpells and ItineraryDB.profSpells[key]
+    if teach and list then
+        local any = false
+        for k in pairs(teach) do
+            local e = list[k]
+            if e and e[7] then
+                any = true
+                if e[7] == tier then return true end
+            end
+        end
+        if any then return false end
+    end
+    local t = TRAINER_TIERS[npc]
+    if t then return t[tier] == true end
+    return true
+end
+ns.profTeachesTier = teachesTier
+
+-- nearest trainer for a profession (that teaches the rank you need, when given): recorded visits first, then
+-- the table
+local function nearestTrainer(key, near, tier)
     local best, bd
     local my = side()
     local rec = ItineraryDB.profTrainers and ItineraryDB.profTrainers[key] or {}
     for npc, p in pairs(rec) do
         local d = distTo(p[1], p[2], p[3])
-        if closeEnough(p[1], d, near) and (not bd or d < bd) then best, bd = { npc = npc, m = p[1], x = p[2], y = p[3] }, d end
+        if closeEnough(p[1], d, near) and (not bd or d < bd) and teachesTier(npc, key, tier) then
+            best, bd = { npc = npc, m = p[1], x = p[2], y = p[3] }, d
+        end
     end
     for _, t in ipairs(TRAINERS) do
-        if t[1] == key and t[6] == my and not rec[t[2]] then
+        if t[1] == key and t[6] == my and not rec[t[2]] and teachesTier(t[2], key, tier) then
             local d = distTo(t[3], t[4], t[5])
             if closeEnough(t[3], d, near) and (not bd or d < bd) then best, bd = { npc = t[2], m = t[3], x = t[4], y = t[5] }, d end
         end
@@ -374,7 +404,7 @@ function ns.profRecommend()
         if p.secondary and not ns.profKnown(k) then
             local cost = ItineraryDB.profLearnCost and ItineraryDB.profLearnCost[k] or 100
             local spare = (GetMoney and GetMoney() or 0) - (ns.pendingSpellCost and ns.pendingSpellCost() or 0)
-            local t, d = nearestTrainer(k, NEAR)
+            local t, d = nearestTrainer(k, NEAR, 75)
             -- only once it's paid for (what comes first keeps its money); no money, no instruction
             if t and (ns.canAfford("learn", k) or cost <= spare) then
                 out[#out + 1] = { label = "Learn " .. p.name .. " at " .. t.npc, prof = k,
@@ -387,7 +417,7 @@ function ns.profRecommend()
         local RANK = { [75] = "Journeyman", [150] = "Expert", [225] = "Artisan" }
         -- (secondary professions get Expert from a book, not a trainer)
         if known and RANK[max] and not (p.secondary and max == 150) and ns.profRankReady(rank, max) then
-            local t = nearestTrainer(k, NEAR)
+            local t = nearestTrainer(k, NEAR, max + 75)
             -- and you can pay for it (its price from that trainer, or any trainer of the profession)
             local price
             if t then
@@ -420,7 +450,7 @@ function ns.profDetour()
         local p = PROF[k]
         local waitForBook = p.gather and k == bookProf() and bookQuestAhead()
         if not waitForBook and not ns.profKnown(k) and not p.secondary and ns.canAfford("learn", k) then
-            local t, d = nearestTrainer(k, NEAR)
+            local t, d = nearestTrainer(k, NEAR, 75)
             if t then
                 return { t = "train", detour = true, prof = k, npc = t.npc, m = t.m, x = t.x, y = t.y, dist = d,
                          name = "Learn " .. p.name, note = p.name .. " trainer" }
@@ -466,6 +496,12 @@ function ns.addProfTrainers(list)
     for _, t in ipairs(list or {}) do
         TRAINERS[#TRAINERS + 1] = t
         if not TRAINER_PROF[t[2]] then TRAINER_PROF[t[2]] = t[1] end
+        -- (Itinerary_Data 1.2: the ranks the trainer teaches, { 75 } or { 225 }; none = all of them)
+        if type(t[7]) == "table" then
+            local set = {}
+            for _, tier in ipairs(t[7]) do set[tier] = true end
+            TRAINER_TIERS[t[2]] = set
+        end
     end
 end
 -- the profession a trainer teaches (known trainers, or ones you've found yourself)
@@ -603,7 +639,8 @@ function ns.profLearnable(k, npc)
     local teach = npc and ItineraryDB.profTeach and ItineraryDB.profTeach[npc]
     local out, hasApprentice = {}, false
     for key, e in pairs(list) do
-        if not npc or (teach and teach[key]) or (not teach and e[7]) then -- that trainer's own list (unknown: its ranks)
+        -- that trainer's own list (unknown: the ranks it teaches)
+        if not npc or (teach and teach[key]) or (not teach and e[7] and teachesTier(npc, k, e[7])) then
             local name, level, cost, rk, skill, icon, tier = e[1], e[2] or 1, e[3] or 0, e[4], e[5] or 0, e[6], e[7]
             local ok
             if tier then
@@ -619,7 +656,7 @@ function ns.profLearnable(k, npc)
         end
     end
     -- nothing recorded yet: the profession itself, with the price we know (or none)
-    if not known and not hasApprentice then
+    if not known and not hasApprentice and (not npc or teachesTier(npc, k, 75)) then
         local cost = ItineraryDB.profLearnCost and ItineraryDB.profLearnCost[k]
         out[#out + 1] = { name = p.name, rank = "Apprentice", cost = cost, level = 1, skill = 0, tier = 75,
                           icon = (C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(p.spell))
@@ -673,7 +710,7 @@ function ns.profHint()
     for _, k in ipairs(c.prof.list) do
         local known, rank, max = ns.profKnown(k)
         if known and (c.prof.seen[k] or 0) < bucket and ns.profRankReady(rank, max, lvl) then
-            local t, d = nearestTrainer(k, HINT_NEAR)
+            local t, d = nearestTrainer(k, HINT_NEAR, max + 75)
             if t then
                 local skill = rank and max and max > 0 and string.format(" (%d/%d)", rank, max) or ""
                 return string.format("%s%s · %s %d yd — new ranks and recipes", PROF[k].name, skill, t.npc, math.floor(d)), k

@@ -140,9 +140,23 @@ stillNeeded = function(st)
     end
 end
 
+-- a step after one particular mob: one kind of mob, and each open objective needs just one (Anaya Dawnrunner
+-- for her pendant, Jai'vhanel's feather). That mob goes first, ahead of whatever else is closer.
+local function singleTarget(st, m)
+    if not (m and #m == 1 and st.t == "complete" and ns.objectiveLines) then return false end
+    local open = 0
+    for _, l in ipairs(ns.objectiveLines(st)) do
+        if not l[2] then
+            if tonumber(l[1]:match("%d+%s*/%s*(%d+)")) ~= 1 then return false end
+            open = open + 1
+        end
+    end
+    return open > 0
+end
+
 local function targetNames()
-    local mobs, friends, seen = {}, {}, {}
-    if not (ns.steps and ItineraryCharDB) then return mobs, false end
+    local mobs, friends, seen, prio = {}, {}, {}, {}
+    if not (ns.steps and ItineraryCharDB) then return mobs, false, prio end
     local steps, i = ns.steps(), ItineraryCharDB.step
     local cur = ns.current and ns.current() or steps[i]
     local list = { cur }
@@ -160,14 +174,15 @@ local function targetNames()
         for _, n in ipairs(m or {}) do if not need or need(n) then add(mobs, n); kept = kept + 1 end end
         -- nothing matched an open objective by name (an item called unlike its mob): keep them all
         if need and kept == 0 then for _, n in ipairs(m or {}) do add(mobs, n) end end
+        if st and singleTarget(st, m) then prio[m[1]] = true end
     end
-    if #mobs > 0 then return mobs, false end
+    if #mobs > 0 then return mobs, false, prio end
     if cur then
         -- (generated routes leave out "targets" when it's just the step's NPC)
         for _, n in ipairs(cur.targets or (cur.npc and { cur.npc }) or {}) do add(friends, n) end
         if cur.npc and (cur.t == "accept" or cur.t == "turnin" or cur.t == "train" or cur.detour) then add(friends, cur.npc) end
     end
-    return friends, true
+    return friends, true, {}
 end
 ns.targetNames = targetNames
 
@@ -224,21 +239,27 @@ end
 -- tagged by someone else, not already fighting another player (its name then goes last in the macro). How
 -- close comes in steps (10, 11, 28 yards,
 -- further) - what the game lets an addon know. nil: no nameplate fits (then the names decide).
-local function nearestPlate(names, friendly)
-    local want = {}
+local function nearestPlate(names, friendly, prio)
+    local want, first = {}, {}
     -- (a guide's plural - "Ice Claw Bears" - finds the mob too)
-    for _, n in ipairs(names) do want[n] = true; want[(n:gsub("s$", ""))] = true end
+    for _, n in ipairs(names) do
+        local one = n:gsub("s$", "")
+        want[n] = true; want[one] = true
+        if prio and prio[n] then first[n] = true; first[one] = true end
+    end
     local best, bestScore
     for _, p in ipairs(plates()) do
         local u = p.u
-        if want[UnitName(u) or ""] and not UnitIsDead(u) and not UnitIsPlayer(u) then
+        local name = UnitName(u) or ""
+        if want[name] and not UnitIsDead(u) and not UnitIsPlayer(u) then
             local ok = friendly or (UnitCanAttack("player", u) and not (UnitIsTapDenied and UnitIsTapDenied(u)))
             if ok then
                 local d = 4
                 if near(u, 3) then d = 1 elseif near(u, 2) then d = 2 elseif near(u, 4) then d = 3 end
                 -- busy with someone else (in combat, not with you): only when nothing else is there
                 local busy = not friendly and UnitAffectingCombat(u) and not UnitIsUnit(u .. "target", "player")
-                local score = d + (busy and 5 or 0)
+                -- the one particular mob a step is after (Anaya Dawnrunner) before anything closer
+                local score = d + (busy and 5 or 0) - (first[name] and 20 or 0)
                 if not bestScore or score < bestScore then best, bestScore = u, score end
             end
         end
@@ -249,8 +270,11 @@ end
 -- /iti target: what the target button looks for and what it sees
 function ns.targetDebug()
     local ok, err = pcall(function()
-    local names, friendly = targetNames()
-    ns.print("target button names: " .. table.concat(names, ", ") .. (friendly and " (NPCs)" or ""))
+    local names, friendly, prio = targetNames()
+    local firstN = {}
+    for n in pairs(prio or {}) do firstN[#firstN + 1] = n end
+    ns.print("target button names: " .. table.concat(names, ", ") .. (friendly and " (NPCs)" or "")
+        .. (#firstN > 0 and ("  - first: " .. table.concat(firstN, ", ")) or ""))
     local list = plates()
     if #list == 0 then ns.print("no nameplates around (enemy nameplates off? V shows them)") end
     for _, p in ipairs(list) do
@@ -261,7 +285,7 @@ function ns.targetDebug()
                 tostring(UnitAffectingCombat(u))))
         end
     end
-    local ok, plate = pcall(nearestPlate, names, friendly)
+    local ok, plate = pcall(nearestPlate, names, friendly, prio)
     ns.print("pick: " .. tostring(ok and plate or ("error: " .. tostring(plate))))
     ns.print("button: " .. tostring(target and target:IsShown()) .. ", combat " .. tostring(InCombatLockdown()) .. ", macro:")
     print((target and target:GetAttribute("macrotext") or "none"):gsub("\n", " | "))
@@ -269,15 +293,21 @@ function ns.targetDebug()
     if not ok then ns.print("target debug error: " .. tostring(err)) end
 end
 
-local function targetMacro(names, friendly, plate)
+local function targetMacro(names, friendly, plate, prio)
     local lines = {}
     -- the game won't target a nameplate by its unit in a macro, so the closest fitting mob's NAME goes last
-    -- (the last line that finds something wins); the game then takes the nearest of that name
+    -- (the last line that finds something wins); the game then takes the nearest of that name. The one mob a
+    -- step is after (prio: Anaya Dawnrunner) comes after that, so it wins whenever it's around.
     local first = plate and UnitName(plate)
+    local function isPrio(n) return prio and prio[n] end
     for k = #names, 1, -1 do
-        if names[k] ~= first then lines[#lines + 1] = "/targetexact " .. names[k] end
+        if names[k] ~= first and not isPrio(names[k]) then lines[#lines + 1] = "/targetexact " .. names[k] end
     end
-    if first then lines[#lines + 1] = "/targetexact " .. first end
+    if first and not isPrio(first) then lines[#lines + 1] = "/targetexact " .. first end
+    for k = #names, 1, -1 do
+        if names[k] ~= first and isPrio(names[k]) then lines[#lines + 1] = "/targetexact " .. names[k] end
+    end
+    if first and isPrio(first) then lines[#lines + 1] = "/targetexact " .. first end
     local tail = "\n/targetlasttarget [dead]"
     -- a mark on what you found, picked by what was actually targeted: an orange circle on friendly NPCs and
     -- players, a skull on enemies. Only a macro may do this (Lua gets blocked); "!" keeps an existing mark
@@ -301,8 +331,8 @@ do
         if acc < 0.3 then return end
         acc = 0
         if not (target and target.names and target:IsShown()) or InCombatLockdown() then return end
-        local ok, plate = pcall(nearestPlate, target.names, target.friendly)
-        local text = targetMacro(target.names, target.friendly, ok and plate or nil)
+        local ok, plate = pcall(nearestPlate, target.names, target.friendly, target.prio)
+        local text = targetMacro(target.names, target.friendly, ok and plate or nil, target.prio)
         if text ~= target.lastMacro then
             target.lastMacro = text
             target:SetAttribute("macrotext", text)
@@ -362,12 +392,12 @@ local function update()
     if InCombatLockdown() then pending = true; return end -- secure buttons only change outside combat
     pending = false
     ns.placeItems()
-    local names, friendly = targetNames()
+    local names, friendly, prio = targetNames()
     local y = 0
     if #names > 0 then
-        target.names, target.friendly = names, friendly
+        target.names, target.friendly, target.prio = names, friendly, prio
         target:SetAttribute("type", "macro")
-        target.lastMacro = targetMacro(names, friendly)
+        target.lastMacro = targetMacro(names, friendly, nil, prio)
         target:SetAttribute("macrotext", target.lastMacro)
         target.icon:SetTexture(friendly and "Interface\\Icons\\Ability_EyeOfTheOwl" or "Interface\\Icons\\Ability_Hunter_SniperShot")
         target.hotkey:SetText(hotkey(target))
@@ -414,7 +444,9 @@ local function update()
             b:Hide()
         end
     end
-    row:SetShown((#items > 0 or #names > 0) and ItineraryDB.panel.shown)
+    local up = ItineraryDB.panel.shown
+    if ns.panelUp then up = ns.panelUp() end
+    row:SetShown((#items > 0 or #names > 0) and up and true or false)
     updateCooldowns()
 end
 ns.updateItems = update

@@ -93,7 +93,8 @@ The arrow points at your step's target and shows the distance in yards. It follo
 points at the area where the mobs are.
 
 - Above the arrow you see the current **instructions** in short form (you can turn this off, and set
-  the font size).
+  the font size). A **death skip** always shows there, also with the instructions turned off
+  (Settings > Arrow > *Death skips at the arrow*, on).
   Trainer visits show there as one line, *Skills to learn nearby*: the arrow only leads to a trainer once you
   click its instruction in the panel.
 - Hover the arrow for the step's details.
@@ -136,7 +137,10 @@ You rarely have to touch anything:
 - **Trainer steps** tick off when you've trained. **Grind steps** tick off at the XP they ask for.
 - Steps that don't apply to you are skipped. This covers another class's quests, quests you already
   did, a quest that isn't offered to you, and a quest you dropped.
-- **Death skips** ("Die and respawn at the spirit healer") are done once you're alive again.
+- **Death skips** ("Die and respawn at the spirit healer") are always an instruction next to your step,
+  never a step of their own: after the respawn the arrow leads on to your step anyway. When the guide
+  names a place to die at, the arrow takes you there first. A death skip is done once you're alive again;
+  two in a row show one after the other.
 - **Steps for an item** only show while you have it, e.g. "Cook the Small Eggs" only with Small Eggs in
   your bags.
 - **Food buffs**: "Eat the Herb Baked Eggs" puts the eggs on an item button and stays hidden while their
@@ -373,7 +377,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | Trainer | Buy class skills, open the training window, trainer visits (instruction/step), weapon skills, buy weapon skills, the worthwhile/skip list per class |
 | Professions | Learn at the trainer, main and secondary professions, first profession, gather mode, gathering tracking, node icons, gathering tools |
 | Panel | Color scheme (Itinerary, Amethyst, Frost, Ember, Slate), instructions card, item links, style, opacity, size, text shadow, grow direction, button corner, lock |
-| Arrow | Arrow on/off, style, instructions above it and their size, tooltip, lock |
+| Arrow | Arrow on/off, style, instructions above it, death skips above it, their size, tooltip, lock |
 | Keys | Key bindings for the target and item buttons, and how the target button behaves |
 
 <details>

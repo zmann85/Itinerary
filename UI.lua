@@ -1495,7 +1495,11 @@ function ns.refresh()
         -- the same thing twice (two guide steps collecting the same items): once
         if label and seenLabel[label] then label = nil end
         if label then seenLabel[label] = true end
-        if label and #list < 3 then list[#list + 1] = { label, desc, go = go, spells = spells, timer = left or nil } end
+        -- (a death skip always gets in, in place of the last other instruction when there are three)
+        if label and #list >= 3 and st.death then
+            for x = #list, 1, -1 do if not list[x].death then table.remove(list, x) break end end
+        end
+        if label and #list < 3 then list[#list + 1] = { label, desc, go = go, spells = spells, timer = left or nil, death = st.death or nil } end
         end
     end
     local used = 0
@@ -1847,17 +1851,20 @@ function ns.setArrowInstrSize(v)
         if ns.applyPanelStyle then ns.applyPanelStyle() end
     end
 end
--- Settings > Display > "Instructions at the arrow" (on by default)
+-- Settings > Arrow > "Instructions at the arrow" (on by default); "Death skips at the arrow" (on by default):
+-- a death skip shows there also when the other instructions don't
 local ICON_ESC = "|T([^:|]+):0:0:0:1:64:64:5:59:5:59|t%s*"
 function ns.setArrowInstructions(list)
     if not (arrow and arrow.lines) then return end
-    local show = ItineraryDB.arrow.instr ~= false and list and #list > 0
+    local all = ItineraryDB.arrow.instr ~= false
+    local deaths = ItineraryDB.arrow.deathInstr ~= false
+    local show = (all or deaths) and list and #list > 0
     local entries = {}
     -- trainer visits (class, weapon, profession) aren't where the arrow leads unless you clicked one: over the
     -- arrow they're one general line instead ("Skills to learn nearby"), the instruction itself has the details
     local mt = ns.manualTarget
     local trainerLine = false
-    if show then for k, e in ipairs(list) do if k <= 3 and e[1] then
+    if show then for k, e in ipairs(list) do if k <= 3 and e[1] and (all or (deaths and e.death)) then
         local on = mt and e.go and mt.npc == e.go.npc and mt.x == e.go.x and mt.y == e.go.y
         if e.spells and e.go and not on then
             if not trainerLine then

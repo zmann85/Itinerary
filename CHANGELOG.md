@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### New
+- **Death skips at the arrow** (Settings > Arrow, on): "Die and respawn at the spirit healer" always shows
+  above the waypoint arrow, also when *Instructions at the arrow* is off.
+- **Death skips are always an instruction**: the ones a guide wrote as a step of their own (Frostmane Hold,
+  the jump to Baradin Bay, Everlook...) now show next to the steps after them like all the others, in every
+  route version. With a place to die at, the arrow leads there first; reaching it no longer ticks the death
+  skip off (only being alive again does), and two in a row show one after the other.
 - **Which route a new character gets** is decided in three levels: your **default** for a race and class
   ("make default" in the route list; also for imported and your own routes), then the **route packs in
   your order** (Settings > General > Route packs; a new pack goes to the bottom), then the **pack's own

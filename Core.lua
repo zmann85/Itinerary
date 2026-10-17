@@ -76,6 +76,7 @@ local function defaults()
     def(g.panel, "grow", "down")
     def(g.panel, "recCard", true)
     def(g.arrow, "instr", true)
+    def(g.arrow, "deathInstr", true) -- death skips above the arrow even with the other instructions hidden
     def(g.arrow, "instrSize", 14)
 
     ItineraryCharDB = ItineraryCharDB or {}
@@ -83,7 +84,7 @@ local function defaults()
     c.step = c.step or 1
     c.manual = c.manual or {}   -- [stepIndex] = true: done by hand (skip) or by an event (flew, hearthed...)
     c.unavail = c.unavail or {} -- [stepIndex] = true: the quest giver doesn't offer these quests to you
-    c.arrived = c.arrived or {} -- [stepIndex] = true: you reached the spot a travel step leads to
+    c.arrived = c.arrived or {} -- [stepIndex] = true: you reached the spot a travel step leads to ("at" for a death skip's place)
     c.unavailQ = c.unavailQ or {} -- [questID] = true: ...and the later steps for those quests don't apply
     c.levelAt = c.levelAt or {} -- [level] = /played seconds when this character reached it
     -- the old built-in Ghaan run now lives in your own routes: a character that followed it keeps following it
@@ -525,6 +526,34 @@ function ns.prepareRoute(r)
             s.along, s.till, s.rec, s.trainRec = true, j + 8, true, true
         elseif not trainRec and s.trainRec then
             s.along, s.till, s.rec, s.trainRec = nil, s.till0, nil, nil -- back to a step of its own
+        end
+    end
+    -- death skips ("die and respawn at the spirit healer") are always an instruction next to the steps after
+    -- them, never a stop of their own: after the respawn the arrow leads on to the next step anyway. RestedXP
+    -- writes most of them that way ("complete with next"), some as a step of their own (Frostmane Hold, the
+    -- Baradin Bay jump, Everlook...). It lasts until the next step that is always there - a conditional one
+    -- may not be (the walking alternative "Fight your way out of Thunder Ridge" is only below level 10) -
+    -- at most 8 steps past the next stop. With a place to die at, it still leads the arrow there first.
+    local steps = r.steps
+    -- (what can leave a step out for you; "skip while in Ironforge" and optional steps still show)
+    local COND = { "cond", "lvskip", "gateL", "need", "needProf", "skill", "skill2", "money", "dps", "ah", "ssf", "buffItem" }
+    local function conditional(x)
+        for _, f in ipairs(COND) do if x[f] ~= nil then return true end end
+        return false
+    end
+    local function ownStep(x) return x.death and (x.deathRec or not x.along) end
+    for j, s in ipairs(steps) do
+        if ownStep(s) then
+            local k, first = j + 1, nil
+            while steps[k] do
+                local x = steps[k]
+                if not x.along and not ownStep(x) then
+                    first = first or k
+                    if not conditional(x) or k >= first + 8 then break end
+                end
+                k = k + 1
+            end
+            s.along, s.deathRec, s.till = true, true, math.min(k, #steps)
         end
     end
 
@@ -1181,8 +1210,9 @@ function ns.stepDone(i)
     elseif s.t == "xp" then
         return ns.xpReached(s)
     elseif s.t == "go" then
-        -- "die and respawn at the spirit healer": done once you're alive again after it was up (or at its spot)
-        if s.death and ItineraryCharDB.arrived[i] then return true end
+        -- "die and respawn at the spirit healer": done once you're alive again after it was up. Reaching the
+        -- place to die at ("at", ns.arrived) only moves the arrow on - the instruction stays until the respawn
+        if s.death then return ItineraryCharDB.arrived[i] == true end
         if s.sub then return inArea(s.sub) end
         if s.zone then return inZone(s.zone) end
         if s.r and ItineraryCharDB.arrived[i] then return true end
@@ -1408,11 +1438,17 @@ function ns.alongActive(i)
             end
         end
     end
-    local kept = {}
+    local kept, death = {}, false
     for _, j in ipairs(out) do
         local s = steps[j]
         local tier = s.t == "do" and s.col
         local drop = sub[j] or (tier and (low[tierKey(s)] ~= j or (j ~= i and takenOver(s, cur))))
+        -- one death skip at a time: the next one shows once you're alive again (Felwood: die in the furbolg
+        -- cave, then once more at the slime pond)
+        if s.death and not drop then
+            if death then drop = true end
+            death = true
+        end
         if not drop then kept[#kept + 1] = j end
     end
     return kept
@@ -1438,7 +1474,8 @@ function ns.arrowRoute(i)
         -- only real travel steers the arrow (enter the cave, the path inside); things to kill or collect
         -- while you pass ("loot boars for meat") have a farming path of their own that isn't your way
         local side = s.col or s.mobs or s.t == "accept" or s.t == "turnin"
-        if s.t ~= "complete" and s.m and not side and not s.vendor and not s.rec and not ns.stepDone(j) then add(j, s, false) end
+        local there = s.death and ItineraryCharDB.arrived[j] == "at" -- (at the place to die: on to the step)
+        if s.t ~= "complete" and s.m and not side and not s.vendor and not s.rec and not there and not ns.stepDone(j) then add(j, s, false) end
     end
     local s = steps[i]
     if s and s.m and s.m > 0 and not s.area then add(i, s, true) end
@@ -1744,7 +1781,9 @@ end
 function ns.arrived(j)
     local c = ItineraryCharDB
     if c.arrived[j] then return end
-    c.arrived[j] = true
+    -- (a death skip's place: "at" - the arrow moves on, the step is done when you're alive again)
+    local s = ns.steps()[j]
+    c.arrived[j] = (s and s.death) and "at" or true
     ns.update()
 end
 

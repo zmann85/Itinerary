@@ -418,7 +418,7 @@ to go).
 
 | Button | Does |
 |---|---|
-| **My position** | Puts the step's point where you stand (its waypoints and kill area go) |
+| **My position** | Puts the step's point where you stand; its waypoints and kill area go (*More*: **Here** on the **P** line keeps them) |
 | **Use target** | Your target becomes the NPC, or is added to the mobs if it's an enemy |
 | **Insert after** | A new step after the selected one, at your position |
 | **Hide / Show / Delete** | Hides a step of the route (shown dimmed, *Show* brings it back), or deletes a step you added |
@@ -455,10 +455,26 @@ the route's own steps have show here too, so you can see why a step is left out.
 | **Dialogue** | What to say to the NPC: `talk` (when there's just the one option), or the dialogue options' IDs |
 | **Macro** | A button next to the panel that runs it while the step is up (`/sit`); lines separated by `;` |
 
-- **Add waypoint here** / **Clear waypoints**: points the arrow leads through, in the order you add them, before
-  the step's point (into a cave, around a mountain).
-- **Add area spot here** / **Clear area**: the spots of a kill area. From two spots on, the arrow goes from one to
-  the next and they show on the map.
+
+**Waypoints and kill area** (under the fields): two lists, switched with **Waypoints** and **Kill area** (with how
+many each has).
+- **Waypoints**: the points the arrow leads through, in this order, before the step's point (into a cave, around
+  a mountain). The last line, **P**, is the step's point itself.
+- **Kill area**: the spots of the area where the step's mobs are. From two spots on, the arrow goes from one to the
+  next.
+- Each line: its coordinates on the zone map (type new ones: `42.1, 65.3`), the zone, for a waypoint how close
+  counts as reached (yards; 15 when empty), **Here** (moves it to where you stand), **Up** / **Down** (the order)
+  and **×** (removes it). Scroll with the mouse wheel when there are more.
+- **Add here**: where you stand, at the end of the list (a step without a point gets its point first).
+- **Add on map**: opens the world map; every click on it adds one there. Right-click on the map (or the button
+  again) stops.
+- **Clear all**: removes all waypoints, or all spots (two clicks).
+- **Show on map**: opens the world map at the step.
+
+**On the world map** while the editor is open, the selected step is drawn instead of your next stops: its point
+(**P**), its waypoints (numbered, with a dotted line through them to the point) and its kill-area spots.
+**Drag a pin** to move it, **right-click** a waypoint or spot to remove it. Close the editor and the map shows your
+next stops again.
 
 ### How do I …
 - **Add a quest the route doesn't have**: switch on **Record** and take it; it's added at your position with
@@ -470,8 +486,8 @@ the route's own steps have show here too, so you can see why a step is left out.
 - **Have something shown while you do the next steps**: a Do step with the text, **Along the way**, and
   **Ends at step**.
 - **Add a death skip**: stand where to die, **Insert after**, **Death skip**.
-- **Guide the arrow through a cave**: select the step, walk the way and press **Add waypoint here** at each
-  turn (*More*).
+- **Guide the arrow through a cave**: select the step, walk the way and press **Add here** at each turn
+  (*More*, Waypoints). Or click them in with **Add on map**, and drag them into place.
 - **Share it**: **Export** (your own copy), see [Sharing a route](#sharing-a-route).
 
 ### Recording a route

@@ -346,7 +346,10 @@ function ns.newCustomRoute(name, copyOf)
     local cur = copyOf and sid(ns.steps()[c.step])
     local manual = copyOf and {}
     if manual then for i, v in pairs(c.manual or {}) do local k = sid(ns.steps()[i]); if k then manual[k] = v end end end
+    -- (a copy has the same steps with the same ids: the editor keeps the step you're looking at)
+    ns.editorKeepSelection = copyOf and true or nil
     ns.switchRoute(id, true)
+    ns.editorKeepSelection = nil
     -- a copy keeps you where you were (same steps, same ids)
     if cur then
         for j, x in ipairs(ns.steps()) do
@@ -1345,48 +1348,256 @@ local function build()
             local first = text:match("^[^\n]+")
             ns.editSet(sid(s), { macro = { first, (s.macro and s.macro[2]) or 134400, text } })
         end)
-    d.wayText = ui.text(P3, 11, 1, 1, 1, 0.55); d.wayText:SetPoint("TOPLEFT", 0, y); d.wayText:SetPoint("RIGHT", 0, 0)
-    d.wayText:SetWordWrap(true)
-    y = y - 34
-    local function act3(txt, col, row, fn, tip)
+    ---------------------------------------------------------------- waypoints and kill-area spots
+    -- The step's point, the waypoints on the way to it and its kill-area spots, as an editable list here and as
+    -- pins on the world map (Pins.lua: drag to move, right-click to remove, "Add on map" to click new ones in).
+    local HBDl = LibStub and LibStub("HereBeDragons-2.0", true)
+    local function mapName(m)
+        local info = m and C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(m)
+        return info and info.name or nil
+    end
+    -- a route point { map, x, y, world?, radius } in zone coordinates (the guides keep some as world positions)
+    local function toZone(p)
+        if p[4] == 1 then
+            local x, yy = nil, nil
+            if HBDl then x, yy = HBDl:GetZoneCoordinatesFromWorld(p[2], p[3], p[1], true) end
+            if not (x and yy) then return nil end
+            return { m = p[1], x = math.floor(x * 10000 + 0.5) / 100, y = math.floor(yy * 10000 + 0.5) / 100, r = p[5] }
+        end
+        return { m = p[1], x = p[2], y = p[3], r = p[5] }
+    end
+    -- { point, way = the waypoints before the point, area = the kill-area spots }
+    local function geometry(s)
+        local g = { way = {}, area = {} }
+        if s.m and s.x then g.point = { m = s.m, x = s.x, y = s.y }
+        elseif s.m and s.wx then g.point = toZone({ s.m, s.wx, s.wy, 1 }) end
+        for _, p in ipairs(s.path or {}) do local z = toZone(p); if z then g.way[#g.way + 1] = z end end
+        -- (a way ends at the step's point)
+        if #g.way > 0 then local last = table.remove(g.way); if not g.point then g.point = last end end
+        for _, p in ipairs(s.wp or {}) do local z = toZone(p); if z then g.area[#g.area + 1] = z end end
+        return g
+    end
+    ns.editorGeometry = geometry
+    local function writeGeometry(s, g)
+        local set = { way = false, area = false }
+        local p = g.point
+        if p then set.m, set.x, set.y, set.z, set.wx, set.wy = p.m, p.x, p.y, mapName(p.m) or false, false, false end
+        if #g.way > 0 then
+            local path = {}
+            for _, w in ipairs(g.way) do path[#path + 1] = { w.m, w.x, w.y, 0, w.r or 15 } end
+            if p then path[#path + 1] = { p.m, p.x, p.y, 0, s.r or 0 } end
+            set.path = path
+        else
+            set.path = false
+        end
+        if #g.area > 0 then
+            local wp = {}
+            for _, a in ipairs(g.area) do wp[#wp + 1] = { a.m, a.x, a.y, 0 } end
+            set.wp = wp
+        else
+            set.wp = false
+        end
+        ns.editSet(sid(s), set)
+    end
+    local listMode, wOff = "way", 0 -- which list shows (waypoints or kill area), scrolled by
+    local function curList(g) return listMode == "area" and g.area or g.way end
+    -- change one entry (k: its number in the list, or "point") and save the step's geometry
+    local function editGeo(k, fn)
+        local s = selected()
+        if not s then return end
+        local g = geometry(s)
+        local list = curList(g)
+        if fn(g, list, k == "point" and g.point or list[k]) == false then return end
+        writeGeometry(s, g)
+        refresh()
+    end
+
+    y = y - 4
+    d.modeWay = button(P3, "Waypoints", 130, function() listMode, wOff = "way", 0
+        if ns.editorMapIsPlacing and ns.editorMapIsPlacing() then ns.editorMapPlacing("way") end
+        refresh() end, "The points the arrow leads through, in this order, on the way to the step's point (P).")
+    d.modeWay:SetPoint("TOPLEFT", 0, y)
+    d.modeArea = button(P3, "Kill area", 130, function() listMode, wOff = "area", 0
+        if ns.editorMapIsPlacing and ns.editorMapIsPlacing() then ns.editorMapPlacing("area") end
+        refresh() end, "The spots of the area where the step's mobs are. From two spots on, the arrow goes from one to the next.")
+    d.modeArea:SetPoint("LEFT", d.modeWay, "RIGHT", 6, 0)
+    d.showMap = button(P3, "Show on map", 110, function()
+        local s = selected()
+        local g = s and geometry(s)
+        local p = g and (g.point or g.way[1] or g.area[1])
+        if p and ns.showOnMap then ns.showOnMap(p.m) else ns.print("this step has no point yet") end
+    end, "Opens the world map at the step. There you see its point (P), its waypoints and kill area: drag a pin to move it, right-click a waypoint or spot to remove it.")
+    d.showMap:SetPoint("TOPRIGHT", P3, "TOPRIGHT", 0, y)
+    y = y - 30
+    local WROWS = 6
+    local listFrame = CreateFrame("Frame", nil, P3)
+    listFrame:SetPoint("TOPLEFT", 0, y); listFrame:SetSize(FW, WROWS * 26)
+    listFrame:EnableMouseWheel(true)
+    listFrame:SetScript("OnMouseWheel", function(_, delta) wOff = math.max(0, wOff - delta); refresh() end)
+    d.wrows = {}
+    local function row(i, isPoint)
+        local r = CreateFrame("Frame", nil, isPoint and P3 or listFrame)
+        r:SetSize(FW, 24)
+        r.n = ui.text(r, 11, 1, 1, 1, 0.5); r.n:SetPoint("LEFT", 0, 0); r.n:SetWidth(22)
+        local key = function() return isPoint and "point" or (wOff + i) end
+        r.coord = editbox(r, 96, function(text)
+            local x, yy = (text or ""):match("(%d+%.?%d*)%s*[,%s]%s*(%d+%.?%d*)")
+            if not x then refresh() return end
+            editGeo(key(), function(_, _, p) if not p then return false end; p.x, p.y = tonumber(x), tonumber(yy) end)
+        end)
+        r.coord:SetPoint("LEFT", 24, 0)
+        r.coord:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("x, y on the zone's map (as /way or a map addon shows them)", 1, 1, 1, true); GameTooltip:Show() end)
+        r.coord:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        r.zone = ui.text(r, 10, 1, 1, 1, 0.4); r.zone:SetPoint("LEFT", r.coord, "RIGHT", 6, 0); r.zone:SetWidth(108); r.zone:SetWordWrap(false)
+        r.here = button(r, "Here", 48, function()
+            local h = here()
+            if not h then return end
+            editGeo(key(), function(g, _, p)
+                if not p and isPoint then g.point = { m = h.m, x = h.x, y = h.y } return end
+                if not p then return false end
+                p.m, p.x, p.y = h.m, h.x, h.y
+            end)
+        end, isPoint and "Puts the step's point where you stand (its waypoints and kill area stay)." or "Moves this one to where you stand.")
+        if isPoint then
+            r.here:SetPoint("LEFT", r.zone, "RIGHT", 52, 0)
+            return r
+        end
+        r.rad = editbox(r, 44, function(text)
+            local n = tonumber((text or ""):match("%d+"))
+            editGeo(key(), function(_, _, p) if not p then return false end; p.r = n end)
+        end)
+        r.rad:SetPoint("LEFT", r.zone, "RIGHT", 4, 0)
+        r.rad:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("How close counts as reached, in yards (15 when empty)", 1, 1, 1, true); GameTooltip:Show() end)
+        r.rad:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        r.here:SetPoint("LEFT", r.rad, "RIGHT", 4, 0)
+        r.up = button(r, "Up", 36, function()
+            editGeo(key(), function(_, list) local k = wOff + i; if k < 2 or not list[k] then return false end; list[k - 1], list[k] = list[k], list[k - 1] end)
+        end, "Earlier in the order.")
+        r.up:SetPoint("LEFT", r.here, "RIGHT", 4, 0)
+        r.down = button(r, "Down", 44, function()
+            editGeo(key(), function(_, list) local k = wOff + i; if not list[k + 1] then return false end; list[k + 1], list[k] = list[k], list[k + 1] end)
+        end, "Later in the order.")
+        r.down:SetPoint("LEFT", r.up, "RIGHT", 4, 0)
+        r.del = button(r, "×", 24, function()
+            editGeo(key(), function(_, list) if not list[wOff + i] then return false end; table.remove(list, wOff + i) end)
+        end, "Removes it.")
+        r.del:SetPoint("LEFT", r.down, "RIGHT", 4, 0)
+        r:SetPoint("TOPLEFT", 0, -(i - 1) * 26)
+        return r
+    end
+    for i = 1, WROWS do d.wrows[i] = row(i) end
+    y = y - WROWS * 26
+    d.wEmpty = ui.text(listFrame, 11, 1, 1, 1, 0.4); d.wEmpty:SetPoint("TOPLEFT", 24, -4); d.wEmpty:SetPoint("RIGHT", 0, 0)
+    d.wpoint = row(0, true)
+    d.wpoint:SetPoint("TOPLEFT", 0, y)
+    y = y - 30
+    local function act3(txt, col, fn, tip)
         local b = button(P3, txt, bw, fn, tip)
-        b:SetPoint("TOPLEFT", (col - 1) * (bw + 6), y - (row - 1) * 28)
+        b:SetPoint("TOPLEFT", (col - 1) * (bw + 6), y)
         return b
     end
-    -- the way to the step's point: the guide's path (zone or world points), or just the point
-    local function wayOf(s)
-        local w = {}
-        if s.path then for _, pt in ipairs(s.path) do w[#w + 1] = copy(pt) end
-        elseif s.x then w[1] = { s.m, s.x, s.y, 0, s.r or 0 } end
-        return w
+    d.addHere = act3("Add here", 1, function()
+        local h = here()
+        if not h then return end
+        editGeo(nil, function(g, list)
+            if listMode == "area" then list[#list + 1] = { m = h.m, x = h.x, y = h.y }
+            elseif not g.point then g.point = { m = h.m, x = h.x, y = h.y }
+            else list[#list + 1] = { m = h.m, x = h.x, y = h.y, r = 15 } end
+        end)
+        wOff = math.max(0, #curList(geometry(selected())) - WROWS)
+        refresh()
+    end, "Adds where you stand at the end of the list (a waypoint goes before the step's point).")
+    d.addMap = act3("Add on map", 2, function()
+        if not (ns.editorMapPlacing and ns.editorMapIsPlacing) then return end
+        if ns.editorMapIsPlacing() then ns.editorMapPlacing(false) return end
+        local s = selected()
+        local g = s and geometry(s)
+        local p = g and (g.point or g.way[1] or g.area[1])
+        if not (WorldMapFrame and WorldMapFrame:IsShown()) and ns.showOnMap then
+            if p then ns.showOnMap(p.m) else ns.showOnMap(C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")) end
+        end
+        ns.editorMapPlacing(listMode)
+    end, "Opens the world map: every click on it adds a waypoint (or kill area spot) there; right-click on the map or this button again stops.")
+    d.clearList = act3("Clear all", 3, function(self)
+        if not self.armed then
+            self.armed = true; self.text:SetText("Click again")
+            C_Timer.After(3, function() self.armed = false; refresh() end)
+            return
+        end
+        self.armed = false
+        editGeo(nil, function(_, list) if #list == 0 then return false end; for k = #list, 1, -1 do list[k] = nil end end)
+    end, "Removes every waypoint (or every kill area spot) of the step (two clicks).")
+    y = y - 30
+    d.mapHint = ui.text(P3, 10, 1, 1, 1, 0.4); d.mapHint:SetPoint("TOPLEFT", 0, y); d.mapHint:SetPoint("RIGHT", 0, 0); d.mapHint:SetWordWrap(true)
+    d.mapHint:SetText("On the world map (M) while the editor is open: the step's point (P), its waypoints (numbered, with the line) and its kill area. Drag a pin to move it, right-click to remove it.")
+
+    -- what the map does with your clicks and drags
+    local mapHandlers = {
+        move = function(kind, k, m, x, yy)
+            local s = selected()
+            if not s then return end
+            local g = geometry(s)
+            local p = kind == "point" and g.point or (kind == "way" and g.way[k]) or g.area[k]
+            if not p then return end
+            p.m, p.x, p.y = m, x, yy
+            writeGeometry(s, g); refresh()
+        end,
+        remove = function(kind, k)
+            local s = selected()
+            if not s then return end
+            local g = geometry(s)
+            local list = kind == "way" and g.way or g.area
+            if not list[k] then return end
+            table.remove(list, k)
+            writeGeometry(s, g); refresh()
+        end,
+        add = function(m, x, yy)
+            local s = selected()
+            if not s then return end
+            local g = geometry(s)
+            local what = (ns.editorMapIsPlacing and ns.editorMapIsPlacing()) or listMode
+            if what == "area" then g.area[#g.area + 1] = { m = m, x = x, y = yy }
+            elseif not g.point then g.point = { m = m, x = x, y = yy } -- (a step without a point: the first click is it)
+            else g.way[#g.way + 1] = { m = m, x = x, y = yy, r = 15 } end
+            writeGeometry(s, g); refresh()
+        end,
+        placingChanged = function() if refresh then refresh() end end,
+    }
+    -- the list's rows, buttons and the map from the selected step
+    d.refreshWay = function(s)
+        local g = geometry(s)
+        local list = curList(g)
+        wOff = math.max(0, math.min(wOff, #list - WROWS))
+        d.modeWay:SetActive(listMode == "way"); d.modeArea:SetActive(listMode == "area")
+        d.modeWay.text:SetText("Waypoints (" .. #g.way .. ")")
+        d.modeArea.text:SetText("Kill area (" .. #g.area .. ")")
+        for i, r in ipairs(d.wrows) do
+            local p = list[wOff + i]
+            r:SetShown(p ~= nil)
+            if p then
+                r.n:SetText(tostring(wOff + i))
+                if not r.coord:HasFocus() then r.coord:SetText(string.format("%.1f, %.1f", p.x, p.y)) end
+                r.zone:SetText(mapName(p.m) or ("map " .. tostring(p.m)))
+                r.rad:SetShown(listMode == "way")
+                if listMode == "way" and not r.rad:HasFocus() then r.rad:SetText(p.r and p.r > 0 and tostring(p.r) or "") end
+                r.up:SetAlpha(wOff + i > 1 and 1 or 0.35)
+                r.down:SetAlpha(list[wOff + i + 1] and 1 or 0.35)
+            end
+        end
+        d.wEmpty:SetShown(#list == 0)
+        d.wEmpty:SetText(listMode == "area" and "No kill area: the arrow leads to the step's point."
+            or "No waypoints: the arrow goes straight to the step's point.")
+        -- the step's point closes the way
+        d.wpoint:SetShown(listMode == "way")
+        d.wpoint.n:SetText("P")
+        if not d.wpoint.coord:HasFocus() then d.wpoint.coord:SetText(g.point and string.format("%.1f, %.1f", g.point.x, g.point.y) or "") end
+        d.wpoint.zone:SetText(g.point and (mapName(g.point.m) or ("map " .. tostring(g.point.m))) or "no point yet")
+        local placing = ns.editorMapIsPlacing and ns.editorMapIsPlacing()
+        d.addMap:SetActive(placing and true or false)
+        d.addMap.text:SetText(placing and "Click the map..." or "Add on map")
+        if not d.clearList.armed then d.clearList.text:SetText("Clear all") end
+        if ns.setEditorMap then ns.setEditorMap(g, mapHandlers) end
     end
-    d.addWay = act3("Add waypoint here", 1, 1, function()
-        local s, p = selected(), here()
-        if not (s and p) then return end
-        local w = wayOf(s)
-        local pt = { p.m, p.x, p.y, 0, 15 }
-        -- (before the step's own point, which stays the end of the way)
-        if #w > 0 and s.x then table.insert(w, #w, pt) else w[#w + 1] = pt end
-        ns.editSet(sid(s), { path = w, way = false })
-        refresh()
-    end, "Adds where you stand as a point on the way to the step: the arrow leads through the waypoints in the order you add them, then to the step's point (into a cave, around a mountain).")
-    d.clearWay = act3("Clear waypoints", 2, 1, function()
-        local s = selected()
-        if s then ns.editSet(sid(s), { path = false, way = false }); refresh() end
-    end, "The arrow goes straight to the step's point again.")
-    d.addArea = act3("Add area spot here", 1, 2, function()
-        local s, p = selected(), here()
-        if not (s and p) then return end
-        local wp = {}
-        for _, pt in ipairs(s.wp or {}) do wp[#wp + 1] = copy(pt) end
-        wp[#wp + 1] = { p.m, p.x, p.y, 0 }
-        ns.editSet(sid(s), { wp = wp, area = false })
-        refresh()
-    end, "For a kill or loot step: adds where you stand as a spot of the area where the mobs are. With two or more spots the arrow leads from one to the next, and they show on the map.")
-    d.clearArea = act3("Clear area", 2, 2, function()
-        local s = selected()
-        if s then ns.editSet(sid(s), { wp = false, area = false }); refresh() end
-    end, "No kill area: the arrow leads to the step's point.")
 
     win.hint = ui.text(win, 11, 1, 1, 1, 0.3)
     win.hint:SetPoint("BOTTOMLEFT", PAD, 14); win.hint:SetWidth(W - PAD * 2); win.hint:SetWordWrap(true)
@@ -1445,7 +1656,7 @@ local function build()
 
         local s = selected()
         win.d:SetShown(s ~= nil)
-        if not s then return end
+        if not s then if ns.setEditorMap then ns.setEditorMap(nil) end return end
         local n = stepNumber(s)
         win.d.head:SetText((n and ("Step " .. n) or "Hidden step") .. "  ·  " ..
             (s.edAdd and "added by you" or s.edHidden and "hidden" or s.edChanged and "changed by you" or "from the route") ..
@@ -1476,9 +1687,7 @@ local function build()
             local base = k == 1 and "Step" or k == 2 and "Conditions" or "More"
             tab.text:SetText(counts[k] and counts[k] > 0 and (base .. " (" .. counts[k] .. ")") or base)
         end
-        local nw, na = s.path and #s.path or 0, s.wp and #s.wp or 0
-        win.d.wayText:SetText((nw > 0 and ("Way: " .. nw .. " points, the last one is where the step ends.") or "Way: straight to the step's point.")
-            .. "  " .. (na > 0 and ("Kill area: " .. na .. " spots" .. (na < 2 and " (the arrow uses it from two on)." or ".")) or "No kill area."))
+        win.d.refreshWay(s)
         local z = s.z or ""
         win.d.posText:SetText(s.x and string.format("Point: %s %.1f, %.1f", z, s.x, s.y) or (s.wx and ("Point: " .. z .. " (from the route)") or "No point (the arrow has nowhere to go)"))
         win.d.hide.text:SetText(s.edAdd and "Delete" or (s.edHidden and "Show" or "Hide"))
@@ -1498,12 +1707,13 @@ local function build()
     -- another route in the editor (picked here or in the panel): start at your step there
     ns.editorRouteChanged = function()
         if not win:IsShown() then return end
+        if ns.editorKeepSelection then refresh() return end
         offset, sel, chap = 0, nil, nil
         scrollToCurrent()
         refresh()
     end
     win:SetScript("OnShow", function() refresh() end)
-    win:SetScript("OnHide", function() menu:Hide() end)
+    win:SetScript("OnHide", function() menu:Hide(); if ns.setEditorMap then ns.setEditorMap(nil) end end)
     win:Hide()
 end
 

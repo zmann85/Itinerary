@@ -38,6 +38,11 @@
 - **Profession trainers** are recorded when you open them: the profession, its ranks and recipes with
   skill, level and price. The tooltip lists only what that trainer teaches, minus what you already
   know (cooks don't all teach the same recipes).
+- **Editor: waypoints and kill areas you can see and change**: on the More page, the step's waypoints (ending at
+  its point) and kill-area spots as lists - type coordinates, set a waypoint's radius, move one to where you
+  stand, change the order, remove one, add at your position or by clicking the world map. While the editor is
+  open, the world map draws the selected step instead of your next stops: its point, numbered waypoints with a
+  line, and its spots; drag a pin to move it, right-click to remove it.
 - **Editor: everything a route step can do**: besides accept, quest, turn in, go, do, train and xp there are now
   fly, flight path, hearth, home (make an inn your home), dungeon, abandon and sell junk; hover a type for what it
   does. Switches for **Optional** and **Death skip**. A **Conditions** page (quests in your log, level, zone,
@@ -125,6 +130,8 @@
   cause small stutters).
 
 ### Fixed
+- Editor: your first change to a route from a pack (which makes your own copy) no longer jumps the editor to
+  step 1; it stays on the step you're changing.
 - The hearth to Stormwind after the Darkshore turn-ins (route version 5, dungeon routes) never showed: the
   guide skips it "while in Darkshore", where you are at that point. A hearth no longer skips itself in the
   zone you're in when the route goes on somewhere else.

@@ -186,8 +186,8 @@ which are never bought) in Settings > Trainer.
 **Weapon masters.** The same kind of instruction appears for weapon skills you don't have yet, at a weapon
 master within 400 yards: *Train 2h Swords, 1h Swords and Polearms at Woo Ping*. Hover it for the list
 and prices.
-- Settings > Trainer > *Weapon skills* chooses which skills count: **All** (every weapon your class can
-  use), **Route** (only the ones the route trains) or **Off**.
+- Settings > Trainer > *Weapon skills* chooses which skills count: **Route** (only the ones the route trains; the
+  default), **All** (every weapon your class can use) or **Off**.
 - Buying them for you is **off** by default (*Buy weapon skills*).
 - Every weapon master you open is remembered with his skills and prices.
 

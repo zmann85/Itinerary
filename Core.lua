@@ -1562,7 +1562,7 @@ local CLASS_WPN = {
 -- (ns.DATA_WEAPON_MASTERS: npc = { map, x, y, { skill ids }, faction }); one you open replaces that
 -- with what he really teaches, and the route's stops give the exact spot.
 local WPN_COST = 1000 -- 10 silver a weapon skill
-local function wpnMode() return ItineraryDB and ItineraryDB.auto and ItineraryDB.auto.weapons or "all" end
+local function wpnMode() return ItineraryDB and ItineraryDB.auto and ItineraryDB.auto.weapons or "route" end
 local wpnCache
 function ns.weaponPlan()
     local steps = ns.steps()
@@ -2239,7 +2239,7 @@ SlashCmdList.ITINERARY = function(input)
             local miss, names = ns.weaponsMissing(), {}
             for _, id in ipairs(ns.weaponPlan().want) do if miss[id] then names[#names + 1] = ns.WPN_NAME[id] end end
             local wm, wd = ns.nearestWeaponMaster()
-            ns.print(string.format("  weapons (%s): missing %s; nearest master %s%s", tostring(ItineraryDB.auto.weapons or "all"),
+            ns.print(string.format("  weapons (%s): missing %s; nearest master %s%s", tostring(ItineraryDB.auto.weapons or "route"),
                 #names > 0 and table.concat(names, ", ") or "none", wm and wm.name or "none",
                 wd and string.format(" at %d yd", math.floor(wd)) or ""))
         end)

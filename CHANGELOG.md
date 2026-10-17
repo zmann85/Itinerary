@@ -46,6 +46,8 @@
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
 
 ### Changed
+- **Weapon skills** (Settings > Trainer) is **Route** by default: only the weapon skills the route trains get a
+  training hint, not every weapon your class can learn. A choice you made yourself stays.
 - The "skipped steps" line: right-click it if you're not doing those quests; quests of a chapter you've left
   drop off it by themselves (unless ready to hand in).
 - Over the arrow, trainer instructions are one line, "Skills to learn nearby - click the instruction panel to go there",

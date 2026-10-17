@@ -270,8 +270,9 @@ Pick one to switch. `/iti routes` lists them in chat. Your place on each route i
 **Which route a new character gets**: the one made for its race and class. When several fit:
 1. **Your default** for that race and class: click **make default** next to a route in the list (on any
    character of that race and class). It counts for every new character of that race and class on your
-   account; for a route from a pack, its newest version. An imported or self-made route is only picked
-   automatically this way. Click **default** again to go back to the automatic choice.
+   account. On the newest version of a route it also counts for later versions; on an older version only
+   for that one. An imported or self-made route is only picked automatically this way. Click **default**
+   again to go back to the automatic choice.
 2. **The route packs in your order** (Settings > General > Route packs): the higher pack wins. A newly
    installed pack goes to the bottom, so it never changes what new characters get until you move it up.
 3. **Within a pack**, the pack decides (ours: the newest version's normal route; the crowded start is

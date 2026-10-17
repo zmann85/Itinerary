@@ -6,7 +6,22 @@
 local ADDON, ns = ...
 
 ---------------------------------------------------------------- the edit layer
-local TYPES = { "accept", "complete", "turnin", "go", "do", "train", "xp" }
+-- every step type the route runs on, in two rows of the editor
+local TYPES = { "accept", "complete", "turnin", "go", "do", "train", "xp", "fly", "fp", "hearth", "sethearth", "dungeon" }
+local TYPE_TIP = {
+    accept = "Accept: pick up the quests in Quest IDs from the NPC.",
+    complete = "Quest: the quests' objectives (kill, loot, use an item). Mobs go on the target button.",
+    turnin = "Turn in: hand in the quests in Quest IDs at the NPC.",
+    go = "Go: travel to the step's point. Done when you get there.",
+    ["do"] = "Do: anything else - the Text says what. Done when you have its Collect items, open its NPC as a vendor, get to its point, or skip it.",
+    train = "Train: visit a trainer (NPC). A class trainer visit is done when nothing new is waiting.",
+    xp = "XP: grind to the Level.",
+    fly = "Fly: take a flight at the NPC (the flight master). Text = where to (\"Menethil Harbor\"): talking to the flight master takes that flight for you (Settings > Travel). Done when you're in the air or there.",
+    fp = "Flight path: get the flight path at the NPC (the flight master). Text = the town (\"Menethil Harbor\"). Done when you learn it, or have it already.",
+    hearth = "Hearth: use your hearthstone (it gets an item button). Text = where it takes you, your home inn (\"Stormwind City\"). Done when you cast it or are there.",
+    sethearth = "Home: make an inn your home at the NPC (the innkeeper; the question is answered for you, Settings > Travel). Text = the place as the game names your home (\"Goldshire\"). Done when it's your home.",
+    dungeon = "Dungeon: enter a dungeon (Text = its name; the step's point = the entrance). Done when you're inside.",
+}
 
 local function anchorKey(s)
     local what = s.q and table.concat(s.q, ",") or (s.name or s.lvl or "")
@@ -599,6 +614,19 @@ local function build()
     local title = ui.text(win, 18, 1, 1, 1, 1); title:SetPoint("TOPLEFT", eyebrow, "BOTTOMLEFT", 0, -3); title:SetText("Route editor")
     win.routeName = ui.text(win, 12, 1, 1, 1, 0.5); win.routeName:SetPoint("LEFT", title, "RIGHT", 12, -1)
     win.routeName:SetWidth(W - 380); win.routeName:SetWordWrap(false)
+    -- (the full story on hover: the line itself is short so it isn't cut off)
+    win.routeTip = CreateFrame("Frame", nil, win)
+    win.routeTip:SetAllPoints(win.routeName)
+    win.routeTip:EnableMouse(true)
+    win.routeTip:SetScript("OnEnter", function(self)
+        local r = ns.route()
+        if not r or r.custom then return end
+        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
+        GameTooltip:AddLine(r.name or "?", 1, 1, 1)
+        GameTooltip:AddLine("This route comes with a route pack and is never changed. Your first change makes your own copy of it, and this character goes on with the copy. The original stays in the route list (Change route).", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    win.routeTip:SetScript("OnLeave", function() GameTooltip:Hide() end)
     win.nameEdit = editbox(win, 220, function(t) ns.renameCustomRoute(ItineraryCharDB.route, t) end)
     win.nameEdit:SetPoint("LEFT", title, "RIGHT", 12, -1)
     -- which route the editor shows: the routes list (switching this character to the one you pick)
@@ -768,17 +796,33 @@ local function build()
     win.d = d
     d.head = ui.text(d, 12, 1, 1, 1, 0.55); d.head:SetPoint("TOPLEFT", 0, 0); d.head:SetPoint("RIGHT", 0, 0)
     d.types = {}
-    local tw = math.floor((W - LIST_W - PAD * 2 - 16) / #TYPES)
+    local PER_ROW = 6
+    local tw = math.floor((W - LIST_W - PAD * 2 - 16) / PER_ROW)
     for k, t in ipairs(TYPES) do
         local b = ui.segment(d, VERB[t])
         b.text:SetFont(ui.fontPath(), 11, "")
         b:SetSize(tw + 1, 22)
-        b:SetPoint("TOPLEFT", d.head, "BOTTOMLEFT", (k - 1) * tw, -8)
-        b:SetScript("OnClick", function() local s = selected(); if s and s.t ~= t then ns.editSet(sid(s), { t = t }); refresh() end end)
+        b:SetPoint("TOPLEFT", d.head, "BOTTOMLEFT", ((k - 1) % PER_ROW) * tw, -8 - math.floor((k - 1) / PER_ROW) * 23)
+        b.tip = TYPE_TIP[t]
+        b:SetScript("OnClick", function()
+            local s = selected()
+            if not (s and s.t ~= t) then return end
+            local set = { t = t }
+            -- a new step's placeholder text becomes what the type needs: your home for a hearth, the place
+            -- you stand for a flight path or a new home
+            local blank = not s.name or s.name == "" or s.name == "New step"
+            if blank and t == "hearth" then set.name = (GetBindLocation and GetBindLocation()) or false
+            elseif blank and (t == "fp" or t == "sethearth") then
+                local sub = GetSubZoneText and GetSubZoneText() or ""
+                set.name = sub ~= "" and sub or ((GetZoneText and GetZoneText()) or false)
+            elseif blank and (t == "fly" or t == "dungeon") then set.name = false end
+            ns.editSet(sid(s), set)
+            refresh()
+        end)
         d.types[t] = b
     end
     local FW = W - LIST_W - PAD * 2 - 16
-    local y = -64
+    local y = -87
     local function field(key, lbl, tip, get, set)
         local l = ui.text(d, 11, 1, 1, 1, 0.45); l:SetPoint("TOPLEFT", 0, y); l:SetText(lbl)
         local e = editbox(d, FW - 90, function(text) local s = selected(); if s then set(s, text); refresh() end end)
@@ -790,7 +834,7 @@ local function build()
         if key == "col" then colBox = e end
         y = y - 30
     end
-    field("name", "Text", "What the step says (travel and to-do steps). Quest steps show the quest's name.",
+    field("name", "Text", "What the step says (travel and to-do steps). Quest steps show the quest's name. Fly: where to. Flight path: the town. Hearth: your home inn. Home: the inn's place. Dungeon: its name.",
         function(s) return s.name or "" end,
         function(s, t) ns.editSet(sid(s), { name = t ~= "" and t or false }) end)
     field("note", "Hint", "A hint: a line under the step (\"Unequip your shirt so you can sell it\").",
@@ -958,6 +1002,23 @@ local function build()
         else ns.editSet(sid(s), { ah = true, ssf = false }) end
         refresh()
     end, "Who gets this step (click to switch). For everyone. Auction house: left out when Settings > Quests > Auction house steps is on Skip (self-found play). Self-found only: shown only then, e.g. buying a vendor item instead of the auction house one.")
+    d.opt = act("Optional", 2, 4, function()
+        local s = selected()
+        if not s then return end
+        ns.editSet(sid(s), { opt = (not s.opt) and true or false })
+        refresh()
+    end, "An optional step: shown as OPTIONAL, and passed by itself once you're done with a later quest step (you went on without it).")
+    d.death = act("Death skip", 3, 4, function()
+        local s = selected()
+        if not s then return end
+        if s.death then
+            ns.editSet(sid(s), { death = false, deathRec = false, along = false })
+        else
+            local blank = not s.name or s.name == "" or s.name == "New step"
+            ns.editSet(sid(s), { t = "go", death = true, name = blank and "Die and respawn at the spirit healer" or nil })
+        end
+        refresh()
+    end, "Die and respawn at the spirit healer: an instruction next to the steps after it (always over the arrow), done once you're alive again. With a point, the arrow leads there first (the place to die).")
 
     win.hint = ui.text(win, 11, 1, 1, 1, 0.3)
     win.hint:SetPoint("BOTTOMLEFT", PAD, 14); win.hint:SetWidth(W - PAD * 2); win.hint:SetWordWrap(true)
@@ -982,7 +1043,8 @@ local function build()
         win.routeName:SetShown(not custom)
         win.nameEdit:SetShown(custom and true or false)
         if custom and not win.nameEdit:HasFocus() then win.nameEdit:SetText(r.name or "") end
-        win.routeName:SetText(r and ((r.name or "?") .. (r.custom and "" or ((r.version and ("  " .. r.version) or "") .. "  ·  comes with the addon: your first change makes your own copy"))) or "no route")
+        win.routeName:SetText(r and ((r.name or "?") .. (r.custom and "" or ((r.version and ("  " .. r.version) or "") .. "  ·  edits make your own copy"))) or "no route")
+        win.routeTip:SetShown(not custom)
         tb.rec:SetActive(recording)
         tb.rec.text:SetText(recording and "Recording" or "Record")
         if not tb.reset.armed then tb.reset.text:SetText("Undo all edits") end
@@ -1036,6 +1098,10 @@ local function build()
         win.d.market.text:SetText(s.ah and "Auction house" or (s.ssf and "Self-found only" or "For everyone"))
         if win.d.market.SetActive then win.d.market:SetActive((s.ah or s.ssf) and true or false) end
         if win.d.along.SetActive then win.d.along:SetActive(s.along and true or false) end
+        if win.d.opt.SetActive then win.d.opt:SetActive(s.opt and true or false) end
+        win.d.opt.text:SetText(s.opt and "Optional: on" or "Optional")
+        if win.d.death.SetActive then win.d.death:SetActive(s.death and true or false) end
+        win.d.death.text:SetText(s.death and "Death skip: on" or "Death skip")
         win.d.along.text:SetText(s.along and "Along: on" or "Along the way")
     end
     ns.refreshEditor = refresh

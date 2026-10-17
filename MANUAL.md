@@ -343,7 +343,18 @@ The **Quest** button picks a quest from your log (click: next, Shift-click: back
 Open the **route editor**: right-click the route button, or `/iti edit`. On the left is the step list
 (with chapters). On the right are the selected step's details.
 
-- **Type**: accept, complete, turn in, go, do, train, xp.
+- **Type** (hover a type for what it does):
+  - **Quests**: accept, quest (the objectives), turn in.
+  - **Travel and the rest**: go, do, train, xp (grind to a level).
+  - **Fly**: Text = where to; at the flight master that flight is taken for you.
+  - **Flight path**: Text = the town; done when you learn it or have it already.
+  - **Hearth**: Text = your home inn; your Hearthstone gets an item button.
+  - **Home** (make an inn your home): Text = the place as the game names your home; the innkeeper's question
+    is answered for you.
+  - **Dungeon**: Text = its name, the step's point = the entrance; done when you're inside.
+
+  A new step's placeholder text becomes what the type needs (your home for a hearth, where you stand for a
+  flight path or a new home).
 - **Fields**:
   - **Text**
   - **Hint**
@@ -376,7 +387,11 @@ Open the **route editor**: right-click the route button, or `/iti edit`. On the 
   - **Go to step**
   - **For everyone / Auction house / Self-found only** (click to switch): an *Auction house* step is left
     out for players who skip auction house steps (self-found). A *Self-found only* step shows only for
-    them, e.g. buying a vendor item instead of the auction house one.
+    them, e.g. buying a vendor item instead of the auction house one. Steps from the guides come marked
+    already: RestedXP's own auction house steps, and any step at an auctioneer counts as one.
+  - **Optional**: shown as OPTIONAL, and passed by itself once you're done with a later quest step.
+  - **Death skip**: makes the step "Die and respawn at the spirit healer": an instruction next to the steps
+    after it, done once you're alive again. With a point, the arrow leads there first (the place to die).
 - **Save**: your changes work in the route immediately. *Save* writes them to disk now (a quick reload).
   Otherwise that happens when you log out.
 

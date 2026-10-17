@@ -539,6 +539,8 @@ function ns.prepareRoute(r)
         return false
     end
     for j, s in ipairs(r.steps) do
+        -- (a quest step made in the editor before its quest IDs are in: an empty list, not none)
+        if (s.t == "accept" or s.t == "complete" or s.t == "turnin") and not s.q then s.q = {} end
         if s.vendor then
             s.along, s.till, s.rec = true, j + 6, true
             s.note = "At any vendor you pass - the grey items are sold when you open one"
@@ -1098,7 +1100,7 @@ local function notApplicable(s)
     -- a step for when you have an item ("cook the Small Eggs") without it
     if s.need and not s.along and not ns.itemNeedMet(s.need) then return true end
     -- a quest step whose quests are all dropped (skipped, or their pre-quest was)
-    if s.q and QUEST_STEP[s.t] then
+    if s.q and #s.q > 0 and QUEST_STEP[s.t] then
         local all = true
         for _, q in ipairs(s.q) do if not dropped(q) then all = false break end end
         if all then return true end
@@ -1224,6 +1226,8 @@ function ns.stepDone(i)
         end
         if anyWorn or not anyHave then return true end
     end
+    -- a quest step without its quests yet (just made one in the editor): done when you skip it
+    if QUEST_STEP[s.t] and (not s.q or #s.q == 0) then return false end
     if QUEST_STEP[s.t] and s.t ~= "accept" then
         local all = true
         -- ("not offered" only counts while you don't have it: you may have got it later after all)

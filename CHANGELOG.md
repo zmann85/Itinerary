@@ -38,6 +38,10 @@
 - **Profession trainers** are recorded when you open them: the profession, its ranks and recipes with
   skill, level and price. The tooltip lists only what that trainer teaches, minus what you already
   know (cooks don't all teach the same recipes).
+- **Editor: every step type**: besides accept, quest, turn in, go, do, train and xp there are now fly, flight
+  path, hearth, home (make an inn your home) and dungeon, in a second row; hover a type for what it does. And
+  two switches: **Optional** and **Death skip**. The route's name line in the header is short now ("edits make
+  your own copy"); hover it for the whole story.
 - **Editor: Ends at step** for along-the-way steps: the step where it stops showing. It follows the step
   when you add, hide or move steps.
 - **Level jumps in route packs**: a route can skip a section above a level; it's decided once when you

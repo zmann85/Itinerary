@@ -85,7 +85,9 @@ local function questItems()
             table.insert(found, 1, { macro = s.macro })
         end
         for _, id in ipairs(s and s.item and (type(s.item) == "table" and s.item or { s.item }) or {}) do
-            if not seen[id] and (getCount(id) or 0) > 0 and getSpell and getSpell(id) then
+            -- (an item that starts the step's quest - "Use Croaky's Head to start the quest" - may have no spell:
+            -- right-clicking it opens the quest, so it gets a button all the same)
+            if not seen[id] and (getCount(id) or 0) > 0 and ((getSpell and getSpell(id)) or (s.t == "accept")) then
                 seen[id] = true; found[#found + 1] = id
             end
         end

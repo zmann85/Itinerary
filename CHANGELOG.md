@@ -85,6 +85,9 @@
   cause small stutters).
 
 ### Fixed
+- An item that starts the step's quest gets its button even when it has no spell (Croaky's Head).
+- A "die and respawn" instruction waits for the quest hand-ins and pick-ups right there (Red Linen Goods in
+  Eastvale).
 - A quest the guide only finishes along the way (Wolves Across The Border while you clear the kobold camp) gets
   a step of its own right before its turn-in: when you're not done yet, that's where the route waits (done
   already: it ticks off at once). About 25-30 such quests per route.

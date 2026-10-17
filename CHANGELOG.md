@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### New
+- **Which route a new character gets** is decided in three levels: your **default** for a race and class
+  ("make default" in the route list; also for imported and your own routes), then the **route packs in
+  your order** (Settings > General > Route packs; a new pack goes to the bottom), then the **pack's own
+  order** (a route's `priority`). Picks with one pack installed are unchanged. The route list shows your
+  default on top and, with several packs, which pack each route is from.
 - Gather mode has two sets of spots (Settings > Professions > Gather data: Both, Shipped or Own), in different
   colours on the map: the shipped spawn spots and our own, which grows silently on every character (any
   profession, gather mode on or off) from the nodes you gather and the ones that come within about 20 yards.

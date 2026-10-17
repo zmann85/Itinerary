@@ -267,6 +267,18 @@ Click the **route button** in the panel footer. The list shows:
 
 Pick one to switch. `/iti routes` lists them in chat. Your place on each route is kept per character.
 
+**Which route a new character gets**: the one made for its race and class. When several fit:
+1. **Your default** for that race and class: click **make default** next to a route in the list (on any
+   character of that race and class). It counts for every new character of that race and class on your
+   account; for a route from a pack, its newest version. An imported or self-made route is only picked
+   automatically this way. Click **default** again to go back to the automatic choice.
+2. **The route packs in your order** (Settings > General > Route packs): the higher pack wins. A newly
+   installed pack goes to the bottom, so it never changes what new characters get until you move it up.
+3. **Within a pack**, the pack decides (ours: the newest version's normal route; the crowded start is
+   picked by hand).
+
+Characters you already play stay on their route; switch them in the list.
+
 ### Recording a route
 
 <p align="center"><img src="manual/recorder.png" alt="The recorder" width="400"></p>
@@ -354,7 +366,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 
 | Tab | What's there |
 |---|---|
-| General | Panel and minimap button on/off, the game's quest tracker, quest sparkles, step sound, forget this character |
+| General | Panel and minimap button on/off, the game's quest tracker, quest sparkles, step sound, route pack order, forget this character |
 | Quests | Accept/hand in, which quests, dialogue, reward picking, sell junk, auction house steps |
 | Travel | Flights, hearthstone, spirit healer, map pins |
 | Trainer | Buy class skills, open the training window, trainer visits (instruction/step), weapon skills, buy weapon skills, the worthwhile/skip list per class |

@@ -325,6 +325,110 @@ function ns.versionCompare(a, b)
     return p == q and 0 or (p > q and 1 or -1)
 end
 
+---------------------------------------------------------------- which route a new character gets
+-- Route packs: each route remembers the add-on it came from (tagged when that add-on has loaded), and you
+-- put the installed packs in an order (Settings > General > Route packs). A pack seen for the first time
+-- goes to the bottom, so installing another pack never changes what new characters get.
+local function tagPack(name)
+    if not (ns.routes and name) then return end
+    local seen = false
+    for id, r in pairs(ns.routes) do
+        if not r.custom and id ~= "none" and not r.pack then r.pack = name end
+        if r.pack == name and not r.custom then seen = true end
+    end
+    if seen and ItineraryDB then
+        ItineraryDB.packOrder = ItineraryDB.packOrder or {}
+        for _, n in ipairs(ItineraryDB.packOrder) do if n == name then return end end
+        table.insert(ItineraryDB.packOrder, name)
+    end
+end
+ns.tagPack = tagPack
+
+local function packRank(r)
+    if r.custom then return 100000 end -- your own routes: after every pack (unless you made one the default)
+    if not r.pack then return 99999 end
+    for i, n in ipairs(ItineraryDB and ItineraryDB.packOrder or {}) do if n == r.pack then return i end end
+    return 99998
+end
+
+-- the installed route packs in your order: { { name, title, routes }, ... }
+function ns.packList()
+    local counts = {}
+    for _, r in pairs(ns.routes or {}) do if r.pack and not r.custom then counts[r.pack] = (counts[r.pack] or 0) + 1 end end
+    local meta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+    local out = {}
+    for _, name in ipairs(ItineraryDB and ItineraryDB.packOrder or {}) do
+        if counts[name] then
+            local title = meta and meta(name, "Title") or nil
+            out[#out + 1] = { name = name, title = (title and title ~= "") and title or name, routes = counts[name] }
+        end
+    end
+    return out
+end
+-- move an installed pack one place up (d = -1) or down (1) among the installed ones
+function ns.movePack(name, d)
+    local order = ItineraryDB and ItineraryDB.packOrder
+    if not order then return end
+    local installed, pos = {}, nil
+    local have = {}
+    for _, p in ipairs(ns.packList()) do have[p.name] = true end
+    for i, n in ipairs(order) do
+        if have[n] then
+            installed[#installed + 1] = i
+            if n == name then pos = #installed end
+        end
+    end
+    local other = pos and installed[pos + d]
+    if not other then return end
+    local i = installed[pos]
+    order[i], order[other] = order[other], order[i]
+end
+
+-- Your default route for a race and class (account-wide), set in the route list: a pack route counts for
+-- that route's line in any version (the newest one is used), your own route as it is
+local function baseRouteId(id) return id and (id:gsub("@.*$", "")) end
+function ns.charRouteKey()
+    local _, race = UnitRace("player")
+    local _, class = UnitClass("player")
+    return (race or "?") .. ":" .. (class or "?")
+end
+function ns.isRouteDefault(id)
+    local d = ItineraryDB and ItineraryDB.routeDefault and ItineraryDB.routeDefault[ns.charRouteKey()]
+    if not (d and id) then return false end
+    return d == id or d == baseRouteId(id)
+end
+function ns.setRouteDefault(id)
+    ItineraryDB.routeDefault = ItineraryDB.routeDefault or {}
+    local key = ns.charRouteKey()
+    if not id then ItineraryDB.routeDefault[key] = nil return end
+    local r = ns.routes[id]
+    ItineraryDB.routeDefault[key] = (r and r.custom) and id or baseRouteId(id)
+end
+
+-- The order of routes that fit a character equally well (same starting zone, same class): your default
+-- for this race and class first, then the route packs in your order, within a pack its own `priority`
+-- (higher first). Without priorities the built-in order: full generated routes before hand-made partial
+-- ones (a reference run), the normal route before a variant (the crowded start), the newest version, then
+-- the id. > 0: a goes first.
+function ns.routeOrder(a, b, ida, idb)
+    if ida and idb then
+        local da, db = ns.isRouteDefault(ida), ns.isRouteDefault(idb)
+        if da ~= db then return da and 1 or -1 end
+    end
+    local ka, kb = packRank(a), packRank(b)
+    if ka ~= kb then return ka < kb and 1 or -1 end
+    local pa, pb = a.priority or 0, b.priority or 0
+    if pa ~= pb then return pa > pb and 1 or -1 end
+    local ga, gb = (a.pool or a.seq) and 1 or 0, (b.pool or b.seq) and 1 or 0
+    if ga ~= gb then return ga > gb and 1 or -1 end
+    local va, vb = a.variant and 0 or 1, b.variant and 0 or 1
+    if va ~= vb then return va > vb and 1 or -1 end
+    local vc = ns.versionCompare(a, b)
+    if vc ~= 0 then return vc end
+    if ida and idb and ida ~= idb then return ida < idb and 1 or -1 end
+    return 0
+end
+
 function ns.pickRoute()
     local c = ItineraryCharDB
     -- your own routes, now that every route pack is loaded too (copies of a pack's route need it)
@@ -347,16 +451,15 @@ function ns.pickRoute()
             ns.print("your route (" .. route .. ") isn't installed - it comes in a route pack. Your place on it is kept for when it's back.")
         end)
     end
+    local myFaction = UnitFactionGroup and UnitFactionGroup("player")
     for id, r in pairs(ns.routes) do
-        -- full generated routes (seq) before hand-made partial ones like a reference run
+        -- how well it fits decides first (the add-on's call); among equally fitting routes the order above
         local f = routeFit(r, race, class)
-        if f > 0 and r.seq then f = f + 0.5 end
-        -- a variant (the crowded-launch start) only when you pick it yourself
-        if f > 0 and r.variant then f = f - 0.25 end
-        -- several versions of the same route: the newest one
-        local newer = best and ns.versionCompare(r, ns.routes[best]) > 0
-        local same = best and ns.versionCompare(r, ns.routes[best]) == 0
-        if f > bestFit or (f == bestFit and best and (newer or (same and id < best))) then best, bestFit = id, f end
+        -- the route you made the default for this race and class wins (any of your faction's)
+        if ns.isRouteDefault(id) and not (r.faction and myFaction and r.faction ~= myFaction) then f = 4 end
+        if f > 0 and (f > bestFit or (f == bestFit and best and ns.routeOrder(r, ns.routes[best], id, best) > 0)) then
+            best, bestFit = id, f
+        end
     end
     local cur = ns.routes[c.route or ""]
     -- a new character, or one sitting on a route for another starting zone (unless you chose it with /iti route)
@@ -364,7 +467,7 @@ function ns.pickRoute()
     if best and (not c.picked or wrong or not cur) and c.route ~= best and not c.parked then
         c.route, c.step, c.manual, c.unavail, c.unavailQ, c.arrived = best, 1, {}, {}, {}, {}
         local r = ns.routes[best]
-        ns.print("using the route for your character: " .. (r.name or best))
+        ns.print("using the route for your character: " .. (r.name or best) .. (bestFit == 4 and " (your default for this race and class)" or ""))
         if math.floor(bestFit) == 2 then
             local _, loc = UnitClass("player")
             ns.print("no route for " .. (loc or class) .. " yet: class quests and trainer visits on it are for "
@@ -1914,7 +2017,7 @@ for _, e in ipairs(events) do pcall(f.RegisterEvent, f, e) end
 local askedPlayed = false
 f:SetScript("OnEvent", function(_, event, a1, a2, a3)
     if event == "ADDON_LOADED" then
-        if a1 == ADDON then defaults() end
+        if a1 == ADDON then defaults() else tagPack(a1) end
         return
     end
     if not ItineraryCharDB then return end

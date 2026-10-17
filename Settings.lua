@@ -107,6 +107,7 @@ local OPTIONS = {
       choices = ON_OFF, get = function() return ItineraryDB.lootSparkle ~= false end,
       set = function(v) ItineraryDB.lootSparkle = v; if ns.applyLootSparkle then ns.applyLootSparkle() end end },
     { tab = 1, kind = "sound", label = "Sound when a step is done", desc = "Plays when a step that takes a while is done: kill or loot objectives, collecting items, grinding a level. Not for talking to NPCs or travelling, and not when you skip. Click one to hear it." },
+    { tab = 1, kind = "packs", label = "Route packs", desc = "When two packs have a route for a new character, the higher one in this list wins. A newly installed pack goes to the bottom. In the route list (the button in the panel footer) you can also make any route your default for a race and class." },
     { tab = 1, kind = "wipe", factory = true, label = "Factory reset", desc = "Itinerary as if just installed: all settings, your route edits and own routes, and every character's progress (each one the next time it logs in). Reloads the UI." },
     { tab = 1, kind = "wipe", label = "This character", desc = "Forgets everything Itinerary saved for this character: route progress, trainer prices, professions. For a new character that reuses a deleted one's name (that's also detected on its own). Settings stay." },
     -- Quests
@@ -412,6 +413,39 @@ local function buildRow(opt, i)
             end
             self.sub:SetText(d)
             self:SetHeight(math.max(ROW_H, 8 + SEG_H + 6 + self.sub:GetStringHeight() + 10))
+        end
+    elseif opt.kind == "packs" then
+        -- the installed route packs in your order, each with Up / Down
+        row.lbl:SetText(opt.label)
+        row.lines = {}
+        function row:Refresh()
+            local list = ns.packList and ns.packList() or {}
+            for k, p in ipairs(list) do
+                local ln = self.lines[k]
+                if not ln then
+                    ln = CreateFrame("Frame", nil, self)
+                    ln:SetSize(W - PAD * 2, SEG_H)
+                    ln.t = text(ln, 12, 1, 1, 1, 0.85); ln.t:SetPoint("LEFT", 0, 0)
+                    ln.t:SetWidth(W - PAD * 2 - SEG_W * 2 - 10); ln.t:SetWordWrap(false)
+                    ln.down = segment(ln, "Down"); ln.down:SetPoint("RIGHT", ln, "RIGHT", 0, 0)
+                    ln.up = segment(ln, "Up"); ln.up:SetPoint("RIGHT", ln.down, "LEFT", 1, 0)
+                    ln.up:SetScript("OnClick", function(b) ns.movePack(b.pack, -1); refresh() end)
+                    ln.down:SetScript("OnClick", function(b) ns.movePack(b.pack, 1); refresh() end)
+                    self.lines[k] = ln
+                end
+                ln:ClearAllPoints()
+                ln:SetPoint("TOPLEFT", self, "TOPLEFT", 0, -(8 + SEG_H + 6 + (k - 1) * (SEG_H + 3)))
+                ln.t:SetText(k .. ".  " .. p.title .. "  |cff8a8a8a" .. p.routes .. " routes|r")
+                ln.up.pack, ln.down.pack = p.name, p.name
+                ln.up:SetActive(false, k == 1); ln.down:SetActive(false, k == #list)
+                ln:Show()
+            end
+            for k = #list + 1, #self.lines do self.lines[k]:Hide() end
+            local listH = #list > 0 and (#list * (SEG_H + 3) + 4) or 0
+            self.sub:ClearAllPoints()
+            self.sub:SetPoint("TOPLEFT", self, "TOPLEFT", 0, -(8 + SEG_H + 6 + listH))
+            self.sub:SetText(#list == 0 and "No route pack installed: record your own route or import one." or opt.desc)
+            self:SetHeight(8 + SEG_H + 6 + listH + self.sub:GetStringHeight() + 10)
         end
     elseif opt.kind == "wipe" then
         row.lbl:SetText(opt.label)

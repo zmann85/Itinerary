@@ -1183,16 +1183,18 @@ local function pickerRoutes(all)
         local fit = ns.routeFit(r, race, class)
         local mine = r.custom and (not r.match or r.match.class == class)
         local sameClass = r.match and r.match.class == class
-        if (all and sameClass) or fit >= 3 or mine or id == ItineraryCharDB.route then
-            out[#out + 1] = { id = id, r = r, fit = fit, mine = r.custom }
+        local def = ns.isRouteDefault(id)
+        if (all and sameClass) or fit >= 3 or mine or def or id == ItineraryCharDB.route then
+            out[#out + 1] = { id = id, r = r, fit = fit, mine = r.custom, def = def }
         end
     end
     table.sort(out, function(a, b)
+        -- your default for this race and class on top
+        if (a.def and 1 or 0) ~= (b.def and 1 or 0) then return a.def and true or false end
         if (a.mine and 1 or 0) ~= (b.mine and 1 or 0) then return not a.mine end
         if a.fit ~= b.fit then return a.fit > b.fit end
-        local vc = ns.versionCompare(a.r, b.r)
-        if vc ~= 0 then return vc > 0 end
-        return a.id < b.id
+        -- the route packs' order (priority), as for the route a new character gets
+        return ns.routeOrder(a.r, b.r, a.id, b.id) > 0
     end)
     return out
 end
@@ -1238,8 +1240,32 @@ function ns.refreshRoutePicker()
             row = CreateFrame("Button", nil, picker)
             row:SetSize(W2 - 16, 32)
             row.hl = row:CreateTexture(nil, "BACKGROUND"); row.hl:SetAllPoints(); row.hl:SetColorTexture(1, 1, 1, 0.06); row.hl:Hide()
-            row.name = text(row, 12, 1, 1, 1, 0.9); row.name:SetPoint("TOPLEFT", 4, -3); row.name:SetPoint("RIGHT", -4, 0); row.name:SetWordWrap(false)
+            row.name = text(row, 12, 1, 1, 1, 0.9); row.name:SetPoint("TOPLEFT", 4, -3); row.name:SetPoint("RIGHT", -84, 0); row.name:SetWordWrap(false)
             row.sub = text(row, 10.5, 1, 1, 1, 0.5); row.sub:SetPoint("TOPLEFT", row.name, "BOTTOMLEFT", 0, -2)
+            row.sub:SetPoint("RIGHT", -84, 0); row.sub:SetWordWrap(false)
+            -- "make default": new characters of this race and class start on this route (account-wide)
+            row.def = CreateFrame("Button", nil, row)
+            row.def:SetSize(78, 28); row.def:SetPoint("RIGHT", -2, 0)
+            row.def.fs = text(row.def, 10.5, 1, 1, 1, 0.35); row.def.fs:SetPoint("RIGHT", -2, 0); row.def.fs:SetJustifyH("RIGHT")
+            row.def:SetScript("OnEnter", function(self)
+                row.hl:Show()
+                if not self.on then self.fs:SetTextColor(1, 1, 1, 0.85) end
+                local race = UnitRace("player"); local cls = UnitClass("player")
+                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                GameTooltip:AddLine(self.on and "Your default" or "Make it your default", 1, 1, 1)
+                GameTooltip:AddLine("New " .. (race or "") .. " " .. (cls or "") .. " characters on this account start on this route"
+                    .. " (a pack route: its newest version). " .. (self.on and "Click: back to the automatic choice." or "Characters you already play stay where they are."), 1, 1, 1, true)
+                GameTooltip:Show()
+            end)
+            row.def:SetScript("OnLeave", function(self)
+                row.hl:Hide(); GameTooltip:Hide()
+                if not self.on then self.fs:SetTextColor(1, 1, 1, 0.35) end
+            end)
+            row.def:SetScript("OnClick", function(self)
+                ns.setRouteDefault(not self.on and row.id or nil)
+                GameTooltip:Hide()
+                ns.refreshRoutePicker()
+            end)
             row:SetScript("OnEnter", function(self) self.hl:Show() end)
             row:SetScript("OnLeave", function(self) self.hl:Hide() end)
             row:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -1261,8 +1287,16 @@ function ns.refreshRoutePicker()
         row.id = e.id
         row.name:SetText(e.r.name or e.id)
         row.name:SetTextColor(active and ar or 1, active and ag or 1, active and ab or 1, 0.95)
+        -- (which pack it comes from, when there's more than one)
+        local packTitle
+        if e.r.pack and not e.mine and #ns.packList() > 1 then
+            for _, p in ipairs(ns.packList()) do if p.name == e.r.pack then packTitle = p.title end end
+        end
         row.sub:SetText((e.r.version or "") .. (active and "  ·  in use" or "") .. (e.fit < 3 and not e.mine and "  ·  other race/class" or "")
-            .. (e.mine and "  ·  right-click: delete" or ""))
+            .. (packTitle and ("  ·  " .. packTitle) or "") .. (e.mine and "  ·  right-click: delete" or ""))
+        row.def.on = e.def
+        row.def.fs:SetText(e.def and "default" or "make default")
+        if e.def then row.def.fs:SetTextColor(ar, ag, ab, 0.95) else row.def.fs:SetTextColor(1, 1, 1, 0.35) end
         row:ClearAllPoints(); row:SetPoint("TOPLEFT", 8, y); row:Show()
         y = y - 34
     end

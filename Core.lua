@@ -863,6 +863,19 @@ function ns.itemStepIdle(s)
     return false
 end
 
+-- a ".skill" condition { key, n, "lt" } that rules the step out right now
+local function skillOff(sk)
+    if not (sk and ns.profKnown) then return false end
+    local known, rank = ns.profKnown(sk[1])
+    if known == nil then return false end -- a skill we can't read: no condition
+    if sk[3] == "lt" then
+        -- (a profession you didn't pick and don't know: its steps aren't for you; riding is no profession)
+        if ns.PROF and ns.PROF[sk[1]] and ns.profIsChosen and not ns.profIsChosen(sk[1]) and not known then return true end
+        if known and (rank or 0) >= sk[2] then return true end
+    elseif not known or (rank or 0) < sk[2] then return true end
+    return false
+end
+
 local function notApplicable(s)
     -- Settings > Quests > "Auction house": playing without it (self-found), its steps are left out
     if ItineraryDB and ItineraryDB.skipAH and isAH(s) then return true end
@@ -886,19 +899,14 @@ local function notApplicable(s)
     -- a step only for those who know a profession (the guide's ".train 2018,3": Blacksmith your Rough Stones)
     if s.needProf and ns.profKnown and not ns.profKnown(s.needProf) then return true end
     -- ".skill cooking,50,1": only while you're below 50 in a profession you picked (or not learned yet);
-    -- without "lt": only from that skill on
-    if s.skill and ns.profKnown then
-        local known, rank = ns.profKnown(s.skill[1])
-        if s.skill[3] == "lt" then
-            if ns.profIsChosen and not ns.profIsChosen(s.skill[1]) and not known then return true end
-            if known and (rank or 0) >= s.skill[2] then return true end
-        elseif not known or (rank or 0) < s.skill[2] then return true end
-    end
-    -- ".money <0.02": only while you have less (or more) than that
+    -- without "lt": only from that skill on. Two of them (skill2) make a range
+    if skillOff(s.skill) or skillOff(s.skill2) then return true end
+    -- RestedXP's ".money <0.02": skipped while you have less than that (the step is for when you can afford
+    -- it); ".money >0.75": skipped once you have that much (grind / sell until you have it)
     if s.money then
         local m = GetMoney and GetMoney() or 0
-        if s.money[1] == "<" and m >= s.money[2] then return true end
-        if s.money[1] == ">" and m <= s.money[2] then return true end
+        if s.money[1] == "<" and m < s.money[2] then return true end
+        if s.money[1] == ">" and m >= s.money[2] then return true end
     end
     -- ".itemStat 16,...DPS,<4.2": only while the weapon in that slot is weaker (a better one dropped: skip)
     if s.dps and ns.slotDps then

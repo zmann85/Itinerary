@@ -85,6 +85,12 @@
   cause small stutters).
 
 ### Fixed
+- Money conditions from the guides were the wrong way round: a step for when you can afford something ("Buy
+  a [Merciless Axe]", "Train Arcane Shot and Hunter's Mark") showed only while you couldn't, and "grind / sell
+  until you have 10 copper" only once you had it. Now as the guides mean them (all route versions).
+- Riding and lockpicking conditions (Horde mount steps at level 40) no longer stop the route with an error;
+  riding counts as known with any riding skill (Wolf Riding, Horse Riding...). A route step can now also
+  have a skill range (Cooking from 10 to below 50).
 - An item that starts the step's quest gets its button even when it has no spell (Croaky's Head).
 - A "die and respawn" instruction waits for the quest hand-ins and pick-ups right there (Red Linen Goods in
   Eastvale).

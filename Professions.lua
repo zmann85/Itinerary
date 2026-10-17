@@ -130,8 +130,29 @@ local function skillLines()
     end
     return out
 end
+-- skills a route can ask about that aren't professions: riding (one skill per mount kind in Classic -
+-- Horse Riding, Ram Riding...) and lockpicking
+local RIDING_SPELLS = { 824, 825, 826, 828, 10861, 10906, 10907, 18995 }
+local function otherSkill(key)
+    if key == "riding" then
+        for name, line in pairs(skillLines()) do
+            if name:find("Riding$") or name:find("Horsemanship$") or name:find("Piloting$") then return true, line[1], line[2] end
+        end
+        if IsPlayerSpell then
+            for _, id in ipairs(RIDING_SPELLS) do if IsPlayerSpell(id) then return true, 75, 75 end end
+        end
+        return false
+    elseif key == "lockpicking" then
+        local line = skillLines()["Lockpicking"]
+        if line then return true, line[1], line[2] end
+        return false
+    end
+    return nil -- not a skill we know how to read
+end
+
 function ns.profKnown(key)
     local p = PROF[key]
+    if not p then return otherSkill(key) end
     local line = skillLines()[p.name]
     if line then return true, line[1], line[2] end
     if IsPlayerSpell and p.spell and IsPlayerSpell(p.spell) then return true end

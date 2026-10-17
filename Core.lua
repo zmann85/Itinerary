@@ -1255,6 +1255,9 @@ function ns.stepDone(i)
         -- already where the step would take you
         local dest = s.name and s.name:match("^([^,]+)")
         if at(dest) then return true end
+    elseif s.t == "fp" then
+        -- a flight path you have already (seen on the flight map)
+        if ns.fpKnown and ns.fpKnown(s) then return true end
     elseif s.t == "sethearth" then
         local bind = GetBindLocation and GetBindLocation()
         if bind and ((s.name and bind == s.name) or (s.bind and bind == areaName(s.bind))) then return true end
@@ -1296,10 +1299,10 @@ function ns.stepDone(i)
 end
 
 -- A step further ahead that is done for good already: a quest taken or handed in, its objectives done, a quest
--- to abandon you don't have (never took it, or handed it in), a level you have, a hearth set there, or left out
--- for you. The list of next steps leaves it out - the route passes it when it gets there. (Not the ones that
--- depend on where you are now or on your spells: a hearth, a trainer visit.)
-local LASTING = { accept = true, complete = true, turnin = true, xp = true, sethearth = true }
+-- to abandon you don't have (never took it, or handed it in), a level you have, a hearth set there, a flight path
+-- you have, or left out for you. The list of next steps leaves it out - the route passes it when it gets there.
+-- (Not the ones that depend on where you are now or on your spells: a hearth, a trainer visit.)
+local LASTING = { accept = true, complete = true, turnin = true, xp = true, sethearth = true, fp = true }
 function ns.doneAhead(j)
     local s = ns.steps()[j]
     if not s then return true end
@@ -1936,6 +1939,41 @@ function ns.back()
 end
 
 -- mark the current step done when an event matches it (flew, hearthed, trained...)
+-- The flight paths this character has, from the flight map whenever it opens ("Menethil Harbor, Wetlands" ->
+-- c.fps["Menethil Harbor, Wetlands"]), and how many flight masters each zone has (c.fpZone): a "get the flight
+-- path" step for one you have already is done (Menethil Harbor from the Darkshore boat, then again on the way to
+-- the Ruins of Lordaeron)
+function ns.noteFlightPaths()
+    local c = ItineraryCharDB
+    if not (c and NumTaxiNodes and TaxiNodeName and TaxiNodeGetType) then return end
+    c.fps, c.fpZone = c.fps or {}, c.fpZone or {}
+    local seen = {}
+    for i = 1, (NumTaxiNodes() or 0) do
+        local name, kind = TaxiNodeName(i), TaxiNodeGetType(i)
+        if name and kind and kind ~= "NONE" then
+            -- (REACHABLE / CURRENT: yours; DISTANT: yours, not reachable from here)
+            c.fps[name] = true
+        end
+        local zone = name and name:match(",%s*(.+)$")
+        if zone then seen[zone] = (seen[zone] or 0) + 1 end
+    end
+    for z, n in pairs(seen) do c.fpZone[z] = n end
+end
+local function fpKnown(s)
+    local c = ItineraryCharDB
+    local want = s.name and s.name:match("^([^,]+)")
+    if not (c and c.fps and want) then return false end
+    want = want:lower()
+    for name in pairs(c.fps) do
+        local city, zone = name:match("^([^,]+),%s*(.+)$")
+        city, zone = (city or name):lower(), zone or ""
+        -- the town ("Menethil Harbor"), or the zone when it has just the one flight master ("Westfall")
+        if city == want or (zone:lower() == want and c.fpZone and c.fpZone[zone] == 1) then return true end
+    end
+    return false
+end
+ns.fpKnown = fpKnown
+
 local function eventDone(kind)
     local c = ItineraryCharDB
     local steps = ns.steps()
@@ -2237,6 +2275,7 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
     elseif event == "SKILL_LINES_CHANGED" or event == "LEARNED_SPELL_IN_TAB" then
         ns.update()
     elseif event == "TAXIMAP_OPENED" then
+        ns.noteFlightPaths()
         eventDone("fp")
     elseif event == "UI_INFO_MESSAGE" then
         -- "New flight path discovered!" (talking to the flight master learns it; the map may not open)

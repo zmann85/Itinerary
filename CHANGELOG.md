@@ -55,6 +55,8 @@
   needs (a quest item, a weapon, arrows, grimoires) stays a step. In every route version.
 - Target button: a step after one particular mob (Anaya Dawnrunner for For Love Eternal: one kind of mob,
   one of it needed) puts it first, ahead of anything closer, until you have what you need from it.
+- "Get the flight path" steps for a flight path you have already are done: Itinerary notes your flight paths
+  whenever the flight map opens.
 - Next steps: steps that are done already are left out ("Abandon Red Leather Bandanas" after you handed it
   in, "Abandon Patrolling Westfall" when you never took it).
 - **Weapon skills** (Settings > Trainer) is **Route** by default: only the weapon skills the route trains get a

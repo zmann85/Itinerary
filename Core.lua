@@ -77,6 +77,9 @@ local function defaults()
     def(g.panel, "recCard", true)
     def(g.arrow, "instr", true)
     def(g.arrow, "deathInstr", true) -- death skips above the arrow even with the other instructions hidden
+    def(g, "pinsWorld", 5) -- map pins: your next stops on the world map, on the minimap, the line between them
+    def(g, "pinsMini", 5)
+    def(g, "pinsLine", true)
     def(g.arrow, "instrSize", 14)
 
     ItineraryCharDB = ItineraryCharDB or {}

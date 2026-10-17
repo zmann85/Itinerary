@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### New
+- **Your next stops on the maps**: numbered pins in route order on the world map (also the continent map)
+  and now on the minimap too, with a dotted line between them on the world map. Steps at the same place
+  share one pin ("2-3"). Settings > Travel: how many on each map (Off, Current, Next 3, Next 5; default
+  Next 5) and the line. On the minimap only the first pin stays at the edge when it's out of range.
 - **Death skips at the arrow** (Settings > Arrow, on): "Die and respawn at the spirit healer" always shows
   above the waypoint arrow, also when *Instructions at the arrow* is off.
 - **Death skips are always an instruction**: the ones a guide wrote as a step of their own (Frostmane Hold,

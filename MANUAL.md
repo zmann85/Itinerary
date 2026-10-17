@@ -104,6 +104,14 @@ points at the area where the mobs are.
   - **Guide**: green when you're heading the right way, red when the target is behind you
   - **Classic**: the game's minimap arrow
 
+**Map pins**: your next stops show as numbered pins in route order, on the world map (also on the
+continent map) and on the minimap. Your current stop is in your theme colour. Steps at the same place
+share one pin: *2-3* is a hand-in and the follow-up quest at the same NPC. On the world map a dotted line
+runs from one stop to the next; the stretch to your next stop is the brighter one. On the minimap only the
+first pin stays at the edge when it's far away; the others show once they're in range. Hover a pin for its
+steps. Settings > Travel: *Map pins* (all of them, also `/iti pins`), how many on the world map and on the
+minimap (Off, Current, Next 3, Next 5; default Next 5), and the line.
+
 ---
 
 ## 4. Item and target buttons
@@ -373,7 +381,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 |---|---|
 | General | Panel and minimap button on/off, the game's quest tracker, quest sparkles, step sound, route pack order, forget this character |
 | Quests | Accept/hand in, which quests, dialogue, reward picking, sell junk, auction house steps |
-| Travel | Flights, hearthstone, spirit healer, map pins |
+| Travel | Flights, hearthstone, spirit healer, map pins (world map, minimap, line between them) |
 | Trainer | Buy class skills, open the training window, trainer visits (instruction/step), weapon skills, buy weapon skills, the worthwhile/skip list per class |
 | Professions | Learn at the trainer, main and secondary professions, first profession, gather mode, gathering tracking, node icons, gathering tools |
 | Panel | Color scheme (Itinerary, Amethyst, Frost, Ember, Slate), instructions card, item links, style, opacity, size, text shadow, grow direction, button corner, lock |

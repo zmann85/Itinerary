@@ -1179,11 +1179,12 @@ local function pickerRoutes(all)
     local _, race = UnitRace("player")
     local _, class = UnitClass("player")
     local out = {}
+    local defId = ns.defaultRouteId and ns.defaultRouteId()
     for id, r in pairs(ns.routes) do
         local fit = ns.routeFit(r, race, class)
         local mine = r.custom and (not r.match or r.match.class == class)
         local sameClass = r.match and r.match.class == class
-        local def = ns.isRouteDefault(id)
+        local def = id == defId
         if (all and sameClass) or fit >= 3 or mine or def or id == ItineraryCharDB.route then
             out[#out + 1] = { id = id, r = r, fit = fit, mine = r.custom, def = def }
         end
@@ -1253,8 +1254,9 @@ function ns.refreshRoutePicker()
                 local race = UnitRace("player"); local cls = UnitClass("player")
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 GameTooltip:AddLine(self.on and "Your default" or "Make it your default", 1, 1, 1)
-                GameTooltip:AddLine("New " .. (race or "") .. " " .. (cls or "") .. " characters on this account start on this route"
-                    .. " (a pack route: its newest version). " .. (self.on and "Click: back to the automatic choice." or "Characters you already play stay where they are."), 1, 1, 1, true)
+                GameTooltip:AddLine("New " .. (race or "") .. " " .. (cls or "") .. " characters on this account start on this route."
+                    .. " The newest version of a route also counts for its later versions; an older one only for itself. "
+                    .. (self.on and "Click: back to the automatic choice." or "Characters you already play stay where they are."), 1, 1, 1, true)
                 GameTooltip:Show()
             end)
             row.def:SetScript("OnLeave", function(self)

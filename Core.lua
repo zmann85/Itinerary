@@ -395,14 +395,37 @@ end
 function ns.isRouteDefault(id)
     local d = ItineraryDB and ItineraryDB.routeDefault and ItineraryDB.routeDefault[ns.charRouteKey()]
     if not (d and id) then return false end
-    return d == id or d == baseRouteId(id)
+    if type(d) == "table" then
+        if d.id then return d.id == id end
+        local r = ns.routes[id]
+        return d.line ~= nil and not (r and r.custom) and baseRouteId(id) == d.line
+    end
+    return d == id or d == baseRouteId(id) -- (saved by the first version of this)
 end
+-- the newest version of a pack route's line marks the line (later versions take over); an older version
+-- marks just that one; your own route itself
 function ns.setRouteDefault(id)
     ItineraryDB.routeDefault = ItineraryDB.routeDefault or {}
     local key = ns.charRouteKey()
     if not id then ItineraryDB.routeDefault[key] = nil return end
     local r = ns.routes[id]
-    ItineraryDB.routeDefault[key] = (r and r.custom) and id or baseRouteId(id)
+    if not r or r.custom then ItineraryDB.routeDefault[key] = { id = id } return end
+    local base, newest = baseRouteId(id), id
+    for oid, o in pairs(ns.routes) do
+        if not o.custom and baseRouteId(oid) == base and ns.versionCompare(o, ns.routes[newest]) > 0 then newest = oid end
+    end
+    ItineraryDB.routeDefault[key] = (newest == id) and { line = base } or { id = id }
+end
+-- the route your default stands for right now (one route, also when it marks a line of versions)
+function ns.defaultRouteId()
+    local best
+    local myFaction = UnitFactionGroup and UnitFactionGroup("player")
+    for id, r in pairs(ns.routes) do
+        if ns.isRouteDefault(id) and not (r.faction and myFaction and r.faction ~= myFaction) then
+            if not best or ns.routeOrder(r, ns.routes[best], id, best) > 0 then best = id end
+        end
+    end
+    return best
 end
 
 -- The order of routes that fit a character equally well (same starting zone, same class): your default

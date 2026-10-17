@@ -264,6 +264,7 @@ to do things by hand that time.
 | What | Default | Where |
 |---|---|---|
 | Accept and hand in quests (only the route's quests, or all) | on | Quests |
+| Share every quest you accept with your group (not the ones shared with you) | off | Quests |
 | Click through quest dialogue | on | Quests |
 | Pick plain armor rewards (white/green armor only) | off | Quests |
 | Gold coin on the best-selling reward | on | Quests |
@@ -395,7 +396,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | Tab | What's there |
 |---|---|
 | General | Panel and minimap button on/off, hide them in dungeons, the game's quest tracker, quest sparkles, step sound, route pack order, forget this character |
-| Quests | Accept/hand in, which quests, dialogue, reward picking, sell junk, auction house steps |
+| Quests | Accept/hand in, which quests, share quests in a group, dialogue, reward picking, sell junk, auction house steps |
 | Travel | Flights, hearthstone, spirit healer, map pins (world map, minimap, line between them) |
 | Trainer | Buy class skills, open the training window, trainer visits (instruction/step), weapon skills, buy weapon skills, the worthwhile/skip list per class |
 | Professions | Learn at the trainer, main and secondary professions, first profession, gather mode, gathering tracking, node icons, gathering tools |

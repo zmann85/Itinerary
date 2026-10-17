@@ -3,6 +3,9 @@
 ## Unreleased
 
 ### New
+- **Share quests in a group** (Settings > Quests, off): in a group, every quest you accept is shared with the
+  others right away (when it can be shared), so whoever is behind doesn't have to run to the quest giver. Quests
+  a group member shared with you aren't shared back.
 - **In dungeons** (Settings > General, Show by default): Hide puts the route panel, the arrow and the item
   buttons away inside a dungeon or raid; they're back when you leave. The minimap button (or `/iti`) shows
   them there for that visit.

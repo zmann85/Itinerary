@@ -21,6 +21,7 @@ function ns.autoDefaults()
     if a.fly == nil then a.fly = true end         -- take the route's flight at the flight master
     if a.spirit == nil then a.spirit = true end     -- resurrect at the spirit healer when you talk to it as a ghost
     if a.bind == nil then a.bind = true end         -- set your hearthstone where the route says
+    if a.share == nil then a.share = false end      -- share the quests you accept with your group
     a.trainSkip = a.trainSkip or {}
     a.trainSeen = a.trainSeen or {} -- [CLASS][spell] = true: spells this class has seen at a trainer (for the filter list)
     if ns.seedClassData then ns.seedClassData() end
@@ -1171,6 +1172,49 @@ local function acceptBind(tries)
     if ns.update then ns.update() end
 end
 
+---------------------------------------------------------------- sharing quests in a group
+-- Settings > Quests > Share quests in a group (off): every quest you accept is shared with your group right away,
+-- when it can be shared, so whoever is behind (skilling a profession, say) doesn't have to run to the quest giver.
+-- Not the ones a group member shared with you: they have it already.
+local fromPlayer = {} -- quest id -> true: offered by a player (shared with you), not by an NPC
+local function noteSharer()
+    local id = GetQuestID and GetQuestID()
+    if not (id and id > 0 and UnitIsPlayer) then return end
+    for _, u in ipairs({ "npc", "questnpc" }) do
+        if UnitExists and UnitExists(u) and UnitIsPlayer(u) and not (UnitIsUnit and UnitIsUnit(u, "player")) then
+            fromPlayer[id] = true
+            return
+        end
+    end
+end
+local function questLogIndex(q)
+    if C_QuestLog and C_QuestLog.GetLogIndexForQuestID then
+        local i = C_QuestLog.GetLogIndexForQuestID(q)
+        if i and i > 0 then return i end
+    end
+    for i = 1, (GetNumQuestLogEntries and GetNumQuestLogEntries() or 0) do
+        if GetQuestLogTitle and select(8, GetQuestLogTitle(i)) == q then return i end
+    end
+end
+local function shareQuest(q, tries)
+    local a = A()
+    if not (a and a.share and q and q > 0) or not (IsInGroup and IsInGroup()) or not QuestLogPushQuest then return end
+    if fromPlayer[q] then fromPlayer[q] = nil return end
+    local idx = questLogIndex(q)
+    if not idx then
+        -- (the quest log may not list it yet)
+        if (tries or 0) < 5 then C_Timer.After(0.5, function() shareQuest(q, (tries or 0) + 1) end) end
+        return
+    end
+    -- the quest log's selection is what gets shared: select it, share, put your selection back
+    local before = GetQuestLogSelection and GetQuestLogSelection()
+    if SelectQuestLogEntry then SelectQuestLogEntry(idx)
+    elseif C_QuestLog and C_QuestLog.SetSelectedQuest then C_QuestLog.SetSelectedQuest(q) end
+    if not GetQuestLogPushable or GetQuestLogPushable() then QuestLogPushQuest() end
+    if before and before > 0 and before ~= idx and SelectQuestLogEntry then SelectQuestLogEntry(before) end
+end
+ns.shareQuest = shareQuest
+
 ---------------------------------------------------------------- events
 local f = CreateFrame("Frame")
 for _, e in ipairs({ "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED",
@@ -1179,7 +1223,7 @@ for _, e in ipairs({ "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_PRO
     pcall(f.RegisterEvent, f, e)
 end
 local trainQueued = false
-f:SetScript("OnEvent", function(_, event)
+f:SetScript("OnEvent", function(_, event, a1, a2)
     if not ItineraryDB or not ItineraryDB.auto then return end
     if event == "CONFIRM_BINDER" then
         -- only the bind we asked for (not one you clicked yourself)
@@ -1195,7 +1239,7 @@ f:SetScript("OnEvent", function(_, event)
         return
     elseif event == "GOSSIP_SHOW" then onGossip()
     elseif event == "QUEST_GREETING" then onGreeting()
-    elseif event == "QUEST_DETAIL" then onDetail(false)
+    elseif event == "QUEST_DETAIL" then noteSharer(); onDetail(false)
     elseif event == "QUEST_PROGRESS" then onProgress()
     elseif event == "QUEST_COMPLETE" then onComplete()
     elseif event == "QUEST_FINISHED" then hideCoins()
@@ -1221,6 +1265,9 @@ f:SetScript("OnEvent", function(_, event)
         vendorStepDone()
     elseif event == "QUEST_ACCEPTED" then
         routeQuestsFor = nil -- cheap: rebuild on next use (the route may have changed)
+        -- (QUEST_ACCEPTED: log index, quest id; some clients give just the id)
+        local q = (type(a2) == "number" and a2 > 0) and a2 or a1
+        if type(q) == "number" and q > 0 then C_Timer.After(0.3, function() shareQuest(q) end) end
     end
 end)
 

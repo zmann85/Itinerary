@@ -125,6 +125,8 @@ local OPTIONS = {
     { tab = 2, label = "Which quests", desc = "Route: only quests this route uses. All: every quest you're offered.",
       choices = { { "Route", "route" }, { "All", "all" } }, get = function() return A().scope end, set = function(v) A().scope = v end,
       enabled = function() return A().quests end },
+    { tab = 2, label = "Share quests in a group", desc = "In a group, every quest you accept is shared with the others right away (when it can be shared), so whoever is behind - skilling a profession, say - doesn't have to run to the quest giver. Not the quests someone shared with you.",
+      choices = ON_OFF, get = function() return A().share == true end, set = function(v) A().share = v end },
     { tab = 2, label = "Quest dialogue", desc = "Chooses dialogue options the game marks as part of a quest, and the ones the route asks for.",
       choices = ON_OFF, get = function() return A().gossip end, set = function(v) A().gossip = v end },
     { tab = 2, label = "Pick gear rewards", desc = "When every reward choice is white or green armor: the best armor type you can wear, then the one that sells for most. Weapons you can use, shields, off-hands and blue items stay your choice.",

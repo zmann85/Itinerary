@@ -29,7 +29,9 @@ in the separate `Itinerary_Data` add-on (GPL v3); without it Itinerary learns th
 - **Gather mode**: a farming route from one herb or ore spawn spot to the next, with map pins; nodes you
   find are remembered.
 - **Route editor and recorder**: record a route while you play (quests, trainers, flights, hearthstone,
-  hints, instructions, along-the-way objectives), edit any step, and share routes as import strings.
+  hints, instructions, along-the-way objectives), change any step and everything it can do (every step type,
+  conditions, waypoints, dialogue, macros), and share routes as import strings.
+- **Group play**: share every quest you accept with your group (optional).
 
 ## Commands
 `/iti` show/hide the panel, `/iti settings`, `/iti edit` (route editor), `/iti recorder`, `/iti routes`,

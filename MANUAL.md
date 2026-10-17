@@ -12,10 +12,11 @@ professions and flights.
 5. [Moving through the route](#5-moving-through-the-route)
 6. [Trainers, weapon masters and professions](#6-trainers-weapon-masters-and-professions)
 7. [Automation](#7-automation)
-8. [Routes: choosing, recording, editing, sharing](#8-routes-choosing-recording-editing-sharing)
-9. [Settings](#9-settings)
-10. [Commands](#10-commands)
-11. [Troubleshooting](#11-troubleshooting)
+8. [Routes: choosing and sharing](#8-routes-choosing-and-sharing)
+9. [The route editor](#9-the-route-editor) (and [recording a route](#recording-a-route))
+10. [Settings](#10-settings)
+11. [Commands](#11-commands)
+12. [Troubleshooting](#12-troubleshooting)
 
 ---
 
@@ -152,7 +153,12 @@ You rarely have to touch anything:
 
 - **Quest steps** tick off from your quest log: accepted, objectives done, turned in.
 - **Travel steps** tick off when you arrive. Flights, hearths, flight paths and setting your hearthstone
-  tick off when you do them.
+  tick off when you do them. A flight path you have already ticks off right away: Itinerary notes your
+  flight paths whenever the flight map opens.
+- **Abandon steps** tick off when the quest isn't in your log (never taken, or handed in already), and when
+  it's finished and the route hands it in later.
+- **Errands at a vendor** (vendor trash, food and water, bags, repairs) are instructions, not steps: they're
+  done when you open that vendor, or left behind after a few steps.
 - **Trainer steps** tick off when you've trained. **Grind steps** tick off at the XP they ask for.
 - Steps that don't apply to you are skipped. This covers another class's quests, quests you already
   did, a quest that isn't offered to you, and a quest you dropped.
@@ -285,7 +291,7 @@ the steps marked *Self-found only* instead.
 
 ---
 
-## 8. Routes: choosing, recording, editing, sharing
+## 8. Routes: choosing and sharing
 
 ### Choosing a route
 Click the **route button** in the panel footer. The list shows:
@@ -306,13 +312,174 @@ Pick one to switch. `/iti routes` lists them in chat. Your place on each route i
 3. **Within a pack**, the pack decides (ours: the newest version's normal route; the crowded start is
    picked by hand).
 
-Characters you already play stay on their route; switch them in the list.
+Characters you already play stay on their route; switch them in the list. When a route pack is updated and
+its steps move, Itinerary finds the step you were on again ("the routes were updated - picked up again at
+step …").
+
+### Sharing a route
+Only your own routes can be shared (a copy of a pack route counts: it carries your changes). In the route
+editor, **Export** gives you a text. Copy it with Ctrl+C and send it. The other player uses **Import** (in
+the editor, or `/iti import`), pastes it with Ctrl+V, and gets it as a new route of their own.
+- A copy of a pack route needs that pack on the other side too; a route made on another version of the pack
+  goes onto the version they have (a few steps may not line up).
+- Item-button macros in an imported route are only kept when they're emotes, targeting and use/cast lines.
+
+---
+
+## 9. The route editor
+
+<p align="center"><img src="manual/route-editor.png" alt="The route editor" width="760"></p>
+
+The editor changes any route, or builds one of your own: add, change, hide and move steps, and set everything
+a route step can do. Open it with a **right-click on the route button** in the panel footer, or `/iti edit`.
+
+### Your own copy
+A route that comes with a route pack is never changed. Your **first edit makes your own copy** of it, and this
+character goes on with the copy. The original stays in the route list. The header line says so ("edits make
+your own copy"; hover it for the details). A copy is a list of your changes on top of the original route, so it
+keeps working when the pack is updated.
+
+Your changes work the moment you make them. **Save** writes them to disk right away (a quick reload, the editor
+opens again). Otherwise that happens when you log out, and a game crash before that would lose them.
+
+### The window
+- **Header**: the route and its version. **Change route** picks the route to look at and change (this
+  character follows it). **Save**.
+- **Toolbar**:
+
+  | Button | Does |
+  |---|---|
+  | **Record** | While on, every quest you accept or turn in that the route doesn't have around your step is added as a step, at your position and NPC |
+  | **Add step here** | A travel step at your position, after the selected step |
+  | **Current step** | Shows the step you're on |
+  | **New route** | An empty route of your own; this character switches to it |
+  | **Make a copy** | Your own copy of this route with your edits so far |
+  | **Undo all edits** | Removes every change you made to this route (two clicks) |
+  | **Recorder** | Opens the [recorder](#recording-a-route) |
+  | **Export** / **Import** | [Share a route](#sharing-a-route) |
+
+- **Step list** (left): one chapter at a time. **<** and **>** go through the chapters; click the chapter name for the
+  list (*All steps* shows the whole route). Each line has the step number, its type and its text. Green = added
+  by you, yellow = changed, dim = hidden, the bar = the step you're on. Scroll with the mouse wheel, click a step
+  to select it.
+- **Step details** (right), on three pages: **Step**, **Conditions** and **More**. The tabs show how many
+  things are set on the other two (*Conditions (2)*). Hover any field or button for what it does.
+
+### The Step page
+**Type** (hover one for what it does):
+
+| Type | Text is | Done when |
+|---|---|---|
+| **Accept** | (the quest's name) | the quests in *Quest IDs* are in your log |
+| **Quest** | (the quest's name) | the quests' objectives are done |
+| **Turn in** | (the quest's name) | the quests are handed in |
+| **Go** | where you go | you get to the step's point (or the zone, see *More*) |
+| **Do** | what to do | you have its *Collect* items, open its NPC as a vendor, get to its point (with *More > Done in* set), or skip it |
+| **Train** | | you've trained (a class trainer: nothing new is waiting) |
+| **XP** | | you reach the *Level* |
+| **Fly** | where to (*Menethil Harbor*) | you're in the air; talking to the flight master takes that flight for you |
+| **Flight path** | the town | you learn it, or already have it |
+| **Hearth** | your home inn | you cast it (or are there already); your Hearthstone gets an item button |
+| **Home** | the place, as the game names your home | it's your home; the innkeeper's question is answered for you |
+| **Dungeon** | its name (the step's point: the entrance) | you're inside |
+| **Abandon** | *Abandon …* (set for you) | none of the quests is in your log (also: never taken, or finished and handed in later on the route) |
+| **Sell junk** | | you open a vendor; it's an instruction next to the next few steps, not a stop |
+
+A new step's placeholder text becomes what the type needs: your home for a hearth, where you stand for a flight
+path or a new home, *Abandon <quest>* for an abandon step. The quests go along when you switch between a quest
+type and Abandon.
+
+**Fields**:
+
+| Field | What goes in |
+|---|---|
+| **Text** | What the step says (travel and to-do steps; see the table above for the others) |
+| **Hint** | A line under the step (*Unequip your shirt so you can sell it*) |
+| **Quest IDs** | The quests, comma separated (the ID is in the quest's Wowhead link). For a Quest step, `12:2` means only objective 2 of quest 12 |
+| **NPC** | Who to talk to. Several, comma separated: the first is the one to talk to, the target button looks for all. *Use target* fills it in |
+| **Mobs** | Mobs for the target button, comma separated |
+| **Items** | Usable items for the item buttons while the step is up: Shift-click an item from your bags |
+| **Collect** | Items to have in your bags with how many: Shift-click an item, then set the count (`2886 Crag Boar Rib x6`) |
+| **Level** | XP steps: the level to reach (table below). Accept steps: the level the quest needs (NEEDS LEVEL until then) |
+| **Ends at step** | For an *Along the way* step: the step number where it stops showing. Empty: until it's done, the chapter ends, or a later step completes or turns in its quest |
+| **New chapter** | Starts a chapter with this name at the step |
+
+| Level: you type | Done when |
+|---|---|
+| `5` | you reach level 5 |
+| `3 1200xp` | you're 1200 XP into level 3 |
+| `3 50%` | you're halfway through level 3 |
+| `4 -300xp` | you're within 300 XP of level 4 |
+
+Under the fields: the step's **point** (*Point: Loch Modan 33.9, 51.0*, or *No point*: the arrow has nowhere
+to go).
+
+**Buttons**:
+
+| Button | Does |
+|---|---|
+| **My position** | Puts the step's point where you stand (its waypoints and kill area go) |
+| **Use target** | Your target becomes the NPC, or is added to the mobs if it's an enemy |
+| **Insert after** | A new step after the selected one, at your position |
+| **Hide / Show / Delete** | Hides a step of the route (shown dimmed, *Show* brings it back), or deletes a step you added |
+| **Move up / Move down** | Moves a step you added |
+| **Undo changes** | The step as the route has it |
+| **Go to step** | Makes it the step you're on |
+| **Along the way** | The step runs alongside the following steps until it's done. A Quest step shows its objectives with live counts (a later step of the same quest takes over from there), a Do step with *Collect* its items, a Do step with only text is an instruction |
+| **For everyone / Auction house / Self-found only** | Who gets the step (click to switch). *Auction house* steps are left out when Settings > Quests > *Auction house steps* is on Skip (self-found play); *Self-found only* steps show only then. Steps from the guides come marked already: RestedXP's own auction house steps, and any step at an auctioneer |
+| **Optional** | Shown as OPTIONAL, and passed by itself once you're done with a later quest step |
+| **Death skip** | Makes the step "Die and respawn at the spirit healer": an instruction next to the steps after it, done once you're alive again. With a point, the arrow leads there first (the place to die) |
+
+### The Conditions page
+The step is only for you while **all** of these hold; it's left out otherwise. Empty: always. The conditions
+the route's own steps have show here too, so you can see why a step is left out.
+
+| Field | You type |
+|---|---|
+| **Quests** | `on 123` (in your log), `ready 123` (finished, not handed in), `done 123` (handed in), each also with `not`: `not done 123`. Comma separated |
+| **Level** | `20+` (from 20 on), `<20` (below 20), `10-19` |
+| **Zone** | `in Darkshore` (only there), `not in Stormwind City`, a subzone by its area ID: `in area 150` |
+| **Item** | `5000 x3` (at least 3 of it), `<5000 x3` (fewer than 3); Shift-click an item |
+| **Until buff** | An item you eat or use for its buff: the step shows while the buff is missing (Shift-click it) |
+| **Profession** | `mining` (you know it), `cooking 50+`, `cooking <50` (below 50, or not learned), `cooking 10-49` |
+| **Money** | `1g 50s+` (at least that much), `<50s` (less than that) |
+| **Weapon** | `<10.5` (main hand DPS below 10.5), `ranged <8`, `off hand <6` |
+| **Level jump** | `14 Westfall end`: the steps with this name form a section that's left out when you get to its first step above level 14 (decided once) |
+
+### The More page
+
+| Field | You type |
+|---|---|
+| **Trainer** (train steps) | `class` (your class trainer), `weapons 202, 196` (a weapon master; the skills' spell IDs), `any of 202, 196` (one is enough). Empty: another trainer (a profession, riding) |
+| **Done in** (go and do steps) | A zone (`Redridge Mountains`: done once you're in it), a subzone by its area ID (`area 150`), or how close counts as there (`20 yd`; 15 when not set) |
+| **Dialogue** | What to say to the NPC: `talk` (when there's just the one option), or the dialogue options' IDs |
+| **Macro** | A button next to the panel that runs it while the step is up (`/sit`); lines separated by `;` |
+
+- **Add waypoint here** / **Clear waypoints**: points the arrow leads through, in the order you add them, before
+  the step's point (into a cave, around a mountain).
+- **Add area spot here** / **Clear area**: the spots of a kill area. From two spots on, the arrow goes from one to
+  the next and they show on the map.
+
+### How do I …
+- **Add a quest the route doesn't have**: switch on **Record** and take it; it's added at your position with
+  the NPC. Or **Insert after**, type **Accept**, the quest's ID, **Use target** on the NPC.
+- **Leave a step out**: **Hide**. Only for some characters: a condition (*Conditions*), or *Self-found only* /
+  *Auction house*.
+- **Add a flight, a flight path, a hearth**: **Insert after** at the flight master or innkeeper, pick the type,
+  check the Text.
+- **Have something shown while you do the next steps**: a Do step with the text, **Along the way**, and
+  **Ends at step**.
+- **Add a death skip**: stand where to die, **Insert after**, **Death skip**.
+- **Guide the arrow through a cave**: select the step, walk the way and press **Add waypoint here** at each
+  turn (*More*).
+- **Share it**: **Export** (your own copy), see [Sharing a route](#sharing-a-route).
 
 ### Recording a route
 
 <p align="center"><img src="manual/recorder.png" alt="The recorder" width="400"></p>
-Open the **recorder**: Shift + right-click the route button, `/iti recorder`, or the *Recorder* button
-in the editor. Press **Record** and play. From then on, these become steps on their own:
+The recorder writes a new route of its own while you play. Open it: Shift + right-click the route button,
+`/iti recorder`, or the *Recorder* button in the editor. Press **Record** and play. From then on, these become
+steps on their own:
 - quests you accept, finish and turn in (with where you were and what you fought)
 - trainers, flight paths, flights
 - your hearthstone and where you set it
@@ -320,7 +487,7 @@ in the editor. Press **Record** and play. From then on, these become steps on th
 A new zone starts a new chapter.
 
 While recording, the panel footer shows a red **REC**. *Pause* stops recording for a while. *Stop* (two
-clicks) ends it, and the route stays in your route list.
+clicks) ends it, and the route stays in your route list. Change it afterwards in the editor.
 
 Type into the recorder's text box and add your own:
 
@@ -337,108 +504,9 @@ Type into the recorder's text box and add your own:
 The **Quest** button picks a quest from your log (click: next, Shift-click: back). *Add instruction* and
 *Along the way* use it.
 
-### Editing a route
-
-<p align="center"><img src="manual/route-editor.png" alt="The route editor" width="760"></p>
-Open the **route editor**: right-click the route button, or `/iti edit`. On the left is the step list
-(with chapters). On the right are the selected step's details, on three pages: **Step**, **Conditions** and
-**More** (the tabs show how many things are set on the other two). Everything a route step can do can be set
-here, also on the steps that come with a route.
-
-**Step** page:
-
-- **Type** (hover a type for what it does):
-  - **Quests**: accept, quest (the objectives), turn in.
-  - **Travel and the rest**: go, do, train, xp (grind to a level).
-  - **Fly**: Text = where to; at the flight master that flight is taken for you.
-  - **Flight path**: Text = the town; done when you learn it or have it already.
-  - **Hearth**: Text = your home inn; your Hearthstone gets an item button.
-  - **Home** (make an inn your home): Text = the place as the game names your home; the innkeeper's question
-    is answered for you.
-  - **Dungeon**: Text = its name, the step's point = the entrance; done when you're inside.
-  - **Abandon**: drops the quests in *Quest IDs* from your log. Done once none of them is in your log (also
-    when you never took it, or when it's finished and the route hands it in later).
-  - **Sell junk**: sell your grey items at any vendor: an instruction next to the next few steps.
-
-  A new step's placeholder text becomes what the type needs (your home for a hearth, where you stand for a
-  flight path or a new home).
-- **Fields**:
-  - **Text**
-  - **Hint**
-  - **Quest IDs**: for a quest step, `12:2` means only objective 2 of quest 12.
-  - **NPC**: several, comma separated: the first is the one to talk to, the target button looks for all.
-  - **Mobs**
-  - **Items**: Shift-click items from your bags to put them on the item buttons.
-  - **Collect**: Shift-click an item, then set the count, e.g. `2886 Crag Boar Rib x6`.
-  - **Level**: for XP steps:
-
-    | You type | Done when |
-    |---|---|
-    | `5` | you reach level 5 |
-    | `3 1200xp` | you're 1200 XP into level 3 |
-    | `3 50%` | you're halfway through level 3 |
-    | `4 -300xp` | you're within 300 XP of level 4 |
-
-    For an accept step, **Level** is the level the quest needs (NEEDS LEVEL until then).
-
-  - **Ends at step**: for an *Along the way* step, the step number where it stops showing. Left empty, it
-    shows until it's done, the chapter ends, or a later step completes or turns in its quest.
-  - **New chapter**
-- **Buttons**:
-  - **My position**: puts the step's waypoint where you stand.
-  - **Use target**: your target becomes the NPC, or is added to the mobs if it's an enemy.
-  - **Insert after**: adds a step after the selected one.
-  - **Hide / Show / Delete**
-  - **Move up / down**: steps you added.
-  - **Undo changes**
-  - **Along the way**: the step runs alongside the following steps until it's done. A quest objective
-    run this way hands over to a later step of the same quest: from there that step shows the counts.
-  - **Go to step**
-  - **For everyone / Auction house / Self-found only** (click to switch): an *Auction house* step is left
-    out for players who skip auction house steps (self-found). A *Self-found only* step shows only for
-    them, e.g. buying a vendor item instead of the auction house one. Steps from the guides come marked
-    already: RestedXP's own auction house steps, and any step at an auctioneer counts as one.
-  - **Optional**: shown as OPTIONAL, and passed by itself once you're done with a later quest step.
-  - **Death skip**: makes the step "Die and respawn at the spirit healer": an instruction next to the steps
-    after it, done once you're alive again. With a point, the arrow leads there first (the place to die).
-
-**Conditions** page: the step is only for you while all of these hold (empty: always).
-
-| Field | You type |
-|---|---|
-| Quests | `on 123` (in your log), `ready 123` (finished), `done 123` (handed in), each also with `not` |
-| Level | `20+`, `<20`, `10-19` |
-| Zone | `in Darkshore`, `not in Stormwind City`, a subzone by its area ID: `in area 150` |
-| Item | `5000 x3` (at least 3), `<5000 x3` (fewer than 3); Shift-click an item |
-| Until buff | an item you eat or use: the step shows while its buff is missing |
-| Profession | `mining` (you know it), `cooking 50+`, `cooking <50`, `cooking 10-49` |
-| Money | `1g 50s+`, `<50s` |
-| Weapon | `<10.5` (main hand DPS), `ranged <8`, `off hand <6` |
-| Level jump | `14 Westfall end`: the steps with this name are left out when you get to the first of them above level 14 |
-
-**More** page:
-- **Trainer** (train steps): `class` (your class trainer), `weapons 202, 196` (a weapon master, skill spell IDs),
-  `any of 202, 196`; empty: another trainer.
-- **Done in** (go and do steps): a zone (`Redridge Mountains`), a subzone (`area 150`), or how close counts as
-  there (`20 yd`).
-- **Dialogue**: `talk` (when there's just one option) or the dialogue options' IDs.
-- **Macro**: a button that runs it while the step is up (`/sit`); lines separated by `;`.
-- **Add waypoint here / Clear waypoints**: points the arrow leads through on the way to the step.
-- **Add area spot here / Clear area**: the spots of a kill area (the arrow goes from one to the next).
-
-**Save**: your changes work in the route immediately. *Save* writes them to disk now (a quick reload).
-Otherwise that happens when you log out.
-
-A route that came with a route pack is never changed. Your first edit makes **your own copy**, and you go
-on with the copy. *Make a copy*, *New route* and *Undo all edits* are in the toolbar.
-
-### Sharing a route
-In the editor, **Export** gives you a text. Copy it with Ctrl+C and send it. The other player uses
-**Import** (or `/iti import`), pastes it with Ctrl+V, and gets it as a new route of their own.
-
 ---
 
-## 9. Settings
+## 10. Settings
 
 Open them with the gear in the panel footer, Shift + click on the minimap button, or `/iti settings`.
 
@@ -470,7 +538,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 
 ---
 
-## 10. Commands
+## 11. Commands
 
 | Command | Does |
 |---|---|
@@ -498,13 +566,15 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 - **The panel says "No route loaded".** You have no route for this character yet. Record one, import
   one, or install a route pack. If you were on a route from a pack that's no longer installed, your place
   on it is kept. Install the pack again and you continue where you were.
 - **The route jumped ahead or seems wrong.** `/iti find` goes back to the first step you haven't done.
   `/iti back` undoes a skip.
+- **"The routes were updated - picked up again at step …"**: a route pack update moved the steps; Itinerary
+  found the step you were on. Check the step and use `/iti find` if it's off.
 - **A quest step doesn't tick off.** Quests the giver doesn't offer you (a missing pre-quest, too low
   level) are skipped after a moment. `/iti debug` shows what the game reports for the step's quests.
 - **No trainer instruction.** The trainer must be within 400 yards, and you need the money for a

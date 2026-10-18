@@ -40,6 +40,89 @@ local function bagItem(bag, slot)
 end
 
 local HEARTHSTONE = 6948
+
+-- What an open objective of a step's quest asks you to do yourself, for any route (also when the route doesn't
+-- say): an emote ("Sit near the campfire", "Salute Guard Thomas", "Use the /dance emote") gets a macro button, a
+-- quest item with a Use effect in your bags that the objective or the quest's name mentions gets an item button.
+local EMOTES = { sit = true, dance = true, kneel = true, salute = true, bow = true, cheer = true, wave = true,
+    roar = true, flex = true, sleep = true, kiss = true, hug = true, applaud = true, clap = true, laugh = true,
+    thank = true, greet = true, pray = true, beg = true, chicken = true, flirt = true, cry = true, cower = true,
+    plead = true, bonk = true, tickle = true, shy = true }
+local EMOTE_ICON = { sit = "Interface\\Icons\\Spell_Nature_Sleep", sleep = "Interface\\Icons\\Spell_Nature_Sleep",
+    kneel = "Interface\\Icons\\Spell_Holy_PrayerOfHealing", pray = "Interface\\Icons\\Spell_Holy_PrayerOfHealing" }
+local function emoteOf(text)
+    local t = text:lower()
+    local w = t:match("/(%a+)")
+    if w and EMOTES[w] then return w end
+    w = t:match("^%s*(%a+)")
+    if w and EMOTES[w] then return w end
+    w = t:match("(%a+)%s+emote")
+    if w and EMOTES[w] then return w end
+end
+local STOP = { the = true, with = true, from = true, near = true, into = true, your = true, this = true, that = true,
+    collect = true, collected = true, slain = true, killed = true, bring = true, gather = true, find = true, found = true }
+local function stems(t, out)
+    out = out or {}
+    for x in (t or ""):lower():gmatch("%a+") do if #x >= 4 and not STOP[x] then out[x:sub(1, 5)] = true end end
+    return out
+end
+local function isQuestItem(bag, slot)
+    local qinfoFn = C_Container and C_Container.GetContainerItemQuestInfo or GetContainerItemQuestInfo
+    if not qinfoFn then return false end
+    local a = qinfoFn(bag, slot)
+    if type(a) == "table" then return a.isQuestItem end
+    return a and true or false
+end
+local function nameOf(id)
+    if C_Item and C_Item.GetItemNameByID then return C_Item.GetItemNameByID(id) end
+    return GetItemInfo and (GetItemInfo(id)) or nil
+end
+-- -> macros { name, icon, text }, item ids
+function ns.objectiveHelpers(s)
+    local macros, items, have = {}, {}, {}
+    if not (s and s.t == "complete" and s.q and C_QuestLog and C_QuestLog.GetQuestObjectives) then return macros, items end
+    local want = {}
+    for k, q in ipairs(s.q) do
+        local oi = s.qo and s.qo[k] or 0
+        local on = C_QuestLog.IsOnQuest and C_QuestLog.IsOnQuest(q)
+        if on then
+            local any = false
+            for i, o in ipairs(C_QuestLog.GetQuestObjectives(q) or {}) do
+                if (oi == 0 or oi == i) and not o.finished and o.text and o.text ~= "" then
+                    any = true
+                    local text = o.text:gsub("^%s*%d+/%d+%s*", ""):gsub(":%s*%d+%s*/%s*%d+%s*$", "")
+                    local e = o.type ~= "item" and o.type ~= "monster" and emoteOf(text)
+                    if e and not s.macro then
+                        -- at someone the step names: target them first
+                        local who
+                        local names = {}
+                        if s.npc then for n in tostring(s.npc):gmatch("[^,]+") do names[#names + 1] = n:match("^%s*(.-)%s*$") end end
+                        for _, n in ipairs(s.mobs or {}) do names[#names + 1] = n end
+                        for _, n in ipairs(names) do if n ~= "" and text:lower():find(n:lower(), 1, true) then who = n break end end
+                        local line = (who and ("/tar " .. who .. "\n") or "") .. "/" .. e
+                        macros[#macros + 1] = { e:sub(1, 1):upper() .. e:sub(2), EMOTE_ICON[e] or "Interface\\Icons\\Ability_Warrior_BattleShout", line }
+                    end
+                    stems(text, want)
+                end
+            end
+            if any and C_QuestLog.GetTitleForQuestID then stems(C_QuestLog.GetTitleForQuestID(q), want) end
+        end
+    end
+    if next(want) then
+        for bag = 0, 4 do
+            for slot = 1, bagSlots(bag) or 0 do
+                local id = bagItem(bag, slot)
+                if id and not have[id] and getSpell and getSpell(id) and isQuestItem(bag, slot) then
+                    for st in pairs(stems(nameOf(id))) do
+                        if want[st] then items[#items + 1] = id; have[id] = true; break end
+                    end
+                end
+            end
+        end
+    end
+    return macros, items
+end
+
 -- the current step's quest items (from the route) that are in your bags and have a Use effect
 local function questItems()
     local found = {}
@@ -83,6 +166,14 @@ local function questItems()
         if s and s.macro and not seen["m:" .. s.macro[3]] then
             seen["m:" .. s.macro[3]] = true
             table.insert(found, 1, { macro = s.macro })
+        end
+        -- what the quest's open objectives ask for, when the route doesn't say (an emote, a quest item to use)
+        local macros, objItems = ns.objectiveHelpers(s)
+        for _, m in ipairs(macros) do
+            if not seen["m:" .. m[3]] then seen["m:" .. m[3]] = true; table.insert(found, 1, { macro = m }) end
+        end
+        for _, id in ipairs(objItems) do
+            if not seen[id] then seen[id] = true; found[#found + 1] = id end
         end
         for _, id in ipairs(s and s.item and (type(s.item) == "table" and s.item or { s.item }) or {}) do
             -- (an item that starts the step's quest - "Use Croaky's Head to start the quest" - may have no spell:

@@ -146,6 +146,11 @@ Settings > Keys, or in the game's key bindings under *Itinerary*.
 
 - **Quest item buttons (up to 4)**: the usable items your step needs (a quest item to use at a spot, a
   book to learn a profession). Your **Hearthstone** shows on hearth steps, with its cooldown.
+- **From the quest itself**: Itinerary also reads your step's open quest objectives, for any route. One that
+  asks for an **emote** gets a button for it: *Sit near the campfire* gives a **/sit** button, *Salute Guard
+  Thomas* one that targets him and salutes. A **quest item** in your bags with a Use effect gets its button when
+  the objective or the quest's name mentions it (*Totem placed at the shrine* and a *Fiery Totem*). The button
+  goes away once that objective is done.
 - **Target button**: one press finds what your step is about:
   - **Enemies**: it targets the nearest of the step's mobs, marks it with a **skull**, and tags it with
     an instant spell (Judgement, Earth Shock, Shadow Word: Pain, Moonfire, Arcane Shot, Fire Blast,
@@ -539,7 +544,9 @@ The recorder writes a new route of its own while you play. Open it: Shift + righ
 `/iti recorder`, or the *Recorder* button in the editor. Press **Record** and play. From then on, these become
 steps on their own:
 - **Quests** you accept, finish and turn in: where you were, what you fought and the kill-area spots. A quest
-  item you used for it goes on the quest's item button. A quest you **abandon** becomes an abandon step.
+  item you used for it goes on the quest's item button, an **emote** you did right before an objective moved
+  (*/sit* at the campfire, */salute* at a guard) on a macro button. A quest you **abandon** becomes an abandon
+  step.
 - **Trainers**: your class trainer, profession trainers, and a **weapon master** you learned a weapon skill at
   (a train step for that skill).
 - **Vendors**: food, drink and bags you buy are an errand at that vendor (an instruction you can click);

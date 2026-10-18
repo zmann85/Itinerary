@@ -58,6 +58,10 @@ local SAFE_SLASH = {
     ["/cheer"] = true, ["/bow"] = true, ["/salute"] = true, ["/emote"] = true, ["/e"] = true, ["/me"] = true,
     ["/target"] = true, ["/tar"] = true, ["/targetexact"] = true, ["/tm"] = true, ["/cleartarget"] = true,
     ["/use"] = true, ["/cast"] = true, ["/stopcasting"] = true, ["/equip"] = true, ["/startattack"] = true,
+    ["/roar"] = true, ["/flex"] = true, ["/kiss"] = true, ["/hug"] = true, ["/applaud"] = true, ["/clap"] = true,
+    ["/laugh"] = true, ["/thank"] = true, ["/greet"] = true, ["/pray"] = true, ["/beg"] = true, ["/chicken"] = true,
+    ["/flirt"] = true, ["/cry"] = true, ["/cower"] = true, ["/plead"] = true, ["/bonk"] = true, ["/tickle"] = true,
+    ["/shy"] = true,
 }
 local function safeMacro(text)
     if type(text) ~= "string" then return false end

@@ -2236,6 +2236,18 @@ end
 -- quest items you use: the bag item with the spell you just cast, if it's a quest item. It goes on the item
 -- button of the quest whose objectives move within a minute.
 local usedItems = {}
+-- emotes you do (/sit at the campfire, /salute a guard): one an objective moves right after (10 s) becomes the
+-- quest step's macro button
+local lastEmote
+if hooksecurefunc and DoEmote then
+    hooksecurefunc("DoEmote", function(token, target)
+        local R = REC and REC()
+        if not (R and R.state == "on") or type(token) ~= "string" then return end
+        local who = target
+        if not who or who == "" or who == "none" then who = UnitName and UnitName("target") or nil end
+        lastEmote = { t = GetTime(), token = token:lower(), who = who }
+    end)
+end
 local function questItemFor(spellID)
     local want = spellName(spellID)
     local qinfo = C_Container and C_Container.GetContainerItemQuestInfo or GetContainerItemQuestInfo
@@ -2333,6 +2345,8 @@ local function recScan()
                         if not have and #P.mobs < 5 then P.mobs[#P.mobs + 1] = name end
                     end
                 end
+                -- an emote just before
+                if lastEmote and now - lastEmote.t <= 10 then P.emote = lastEmote end
                 -- a quest item you used just before
                 for id, t in pairs(usedItems) do
                     if now - t < 60 then
@@ -2379,6 +2393,13 @@ local function recScan()
                 if not have then table.insert(items, 1, sp) end
             end
             if #items > 0 then s.item = items end
+            if P.emote then
+                -- at whom, when an objective names them
+                local e, line = P.emote, "/" .. P.emote.token
+                if e.who and table.concat(texts, " "):lower():find(e.who:lower(), 1, true) then line = "/tar " .. e.who .. "\n" .. line end
+                local icons = { sit = "Spell_Nature_Sleep", sleep = "Spell_Nature_Sleep", kneel = "Spell_Holy_PrayerOfHealing", pray = "Spell_Holy_PrayerOfHealing" }
+                s.macro = { e.token:sub(1, 1):upper() .. e.token:sub(2), "Interface\\Icons\\" .. (icons[e.token] or "Ability_Warrior_BattleShout"), line }
+            end
             recAdd(s)
         end
     end

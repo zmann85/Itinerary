@@ -22,7 +22,12 @@
   step and selects it. *All steps* searches the whole route.
 - **Route editor: Ends at step** for along-the-way steps: the step where it stops showing. It follows the
   step when you add, hide or move steps.
-- **The recorder records much more**: quest items you use (on the quest step's item button), abandoned
+- **Buttons from the quest itself**, for any route: an open objective that asks for an emote ("Sit near the
+  campfire", "Salute Guard Thomas") gets a macro button for it (targeting whoever the objective names), and a
+  quest item in your bags with a Use effect gets its button when the objective or the quest's name mentions
+  it. Shared routes keep emote macros (/hug, /pray, /roar ... are allowed in imported item-button macros now).
+- **The recorder records much more**: quest items you use (on the quest step's item button), emotes you do
+  right before an objective moves (a macro button on the quest step), abandoned
   quests, weapon masters, vendors (food, drink and bags as an errand, anything else as a step with Collect,
   or *Vendor trash* / *Repair*), dungeons (at the entrance, and the quests you finish inside), boats and
   zeppelins to the other continent (at the dock), the Deeprun Tram, death skips (back at the spirit healer

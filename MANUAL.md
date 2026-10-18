@@ -44,11 +44,15 @@ The **minimap button** (the brass compass):
 | Right-click | Show or hide the arrow |
 | Shift + click | Open the settings |
 
+Two things Itinerary changes in the game right away, both switched back in Settings > General: the game's own
+**quest tracker** is hidden (the panel tracks your objectives), and **quest sparkles** are on (quest objects
+on the ground and NPCs with a quest for you sparkle, without the outlines around everything else).
+
 ---
 
 ## 2. The route panel
 
-<p align="center"><img src="manual/route-panel.png" alt="The route panel" width="430"></p>
+<p align="center"><img src="manual/route-panel.png" alt="The route panel" width="434"></p>
 
 From top to bottom:
 
@@ -59,19 +63,13 @@ From top to bottom:
   counts (*Rockjaw Trogg slain 3/10*).
 - **Hint**: a line under the step with extra advice (*Unequip your shirt so you can sell it*). Items and
   spells in the text show their icon. Hover them for the tooltip; Shift-click links them in chat.
-- **INSTRUCTIONS**: things to keep doing next to your step. Examples: sell junk, use your hearthstone,
-  learn new skills at a trainer close by, a weapon master, a profession trainer, "don't sell the meat".
-  The guide's errands at a vendor are instructions too, not stops of their own: *Vendor trash at Rallic
-  Finn*, *Buy Ice Cold Milk*, food and water, bags, repairs. They're done when you open that vendor (selling
-  junk: any vendor). Buying something the route needs (a quest item, a weapon, arrows) stays a step.
-  Click an instruction that has a place, and the arrow points there. Click it again to go back to the
-  route.
-- **ALONG THE WAY** (green): side objectives you work on while you go, with live counts. These are quest
-  objectives or items to collect (*Crag Boar Rib 2/6*). Once the route reaches its own step for that
-  quest, that step shows the counts instead. A "turn in / accept it if you pass by" that the route does
-  as one of the next steps anyway isn't listed as an instruction too.
+- **ALONG THE WAY**: side objectives you work on while you go, with live counts. These are quest
+  objectives or items to collect (*Chunk of Boar Meat 3/10*), one per line; finished ones stay listed,
+  greyed. Once the route reaches its own step for that quest, that step shows the counts instead.
 - **Next steps**: a preview of what comes after. Steps that are done already are left out (a quest you
   have, an *Abandon* step for a quest you never took or handed in already).
+- **Skipped quests** (*2 skipped quests still open · hover for the list*): quests you skipped that are still
+  in your log, see [Skipping a quest](#5-moving-through-the-route).
 - **Footer**:
   - **Level timer**: time on this level and your pace against the route's reference run. Hover it for
     every level's time; scroll on it for more.
@@ -83,6 +81,21 @@ From top to bottom:
   - **Gear**: the settings. Hover it to see how much memory Itinerary and your top 5 addons use
     (measured only while you hover).
   - **‹ ›**: one step back or forward.
+- **INSTRUCTIONS**, in their own card under the panel (Settings > Panel > *Instructions*: *In the panel* puts
+  them inside it): things to keep doing next to your step. Examples: sell junk, use your hearthstone,
+  learn new skills at a trainer close by, a weapon master, a profession trainer, "don't sell the meat".
+  - The guide's errands at a vendor are instructions too, not stops of their own: *Vendor trash at Corina
+    Steele*, *Buy Ice Cold Milk*, food and water, bags, repairs. They're done when you open that vendor
+    (selling junk: any vendor). Buying something the route needs (a quest item, a weapon, arrows) stays a
+    step.
+  - **Click** an instruction that has a place (*Click to point the arrow here*), and the arrow points there.
+    Click it again to go back to the route.
+  - A timed quest's time left counts down on the instruction that runs until its turn-in (or on your step).
+  - A "turn in / accept it if you pass by" that the route does as one of the next steps anyway isn't listed.
+
+**A sound when a step is done**: Settings > General > *Sound when a step is done* plays one of nine sounds
+(from a quest chime to a meow) when a step that takes a while is done: kill or loot objectives, collecting
+items, grinding a level. Not for talking to NPCs, travelling or skipping. Off by default.
 
 **Moving the panel**: Alt + right-click the panel to unlock it, drag it, then Alt + right-click again to
 lock it.
@@ -107,7 +120,7 @@ points at the area where the mobs are.
   (Settings > Arrow > *Death skips at the arrow*, on).
   Trainer visits show there as one line, *Skills to learn nearby*: the arrow only leads to a trainer once you
   click its instruction in the panel.
-- Hover the arrow for the step's details.
+- Hover the arrow for the step's details (Settings > Arrow > *Arrow tooltip*, on).
 - **Alt + right-click** the arrow to unlock it, drag it, then Alt + right-click again to lock it.
 - Arrow styles (Settings > Arrow):
   - **Itinerary**, **Gold**, **White**, **Big**
@@ -142,6 +155,9 @@ Settings > Keys, or in the game's key bindings under *Itinerary*.
     comes first, ahead of anything closer, until you have what you need from it.
   - **NPCs**: it targets the NPC you need to talk to and marks them with an orange circle. Press the key
     again to talk to them. That's handy for taking a contested escort quest first.
+  - Settings > Keys (all on by default): *Show target button* (off hides the button; its key still works),
+    *Talk on second press* (outside combat, for 8 seconds or until you talk), *Tag with a spell* (auto
+    attack until you know one), *Mark the target* (the skull and the orange circle).
 
 Which corner of the panel the buttons sit at: Settings > Panel > *Item & target buttons*.
 
@@ -177,7 +193,7 @@ later steps and all follow-up quests are left out too, and chat tells you how ma
 anyway (or going back with ‹) brings them back. Abandoning a quest in your quest log drops it the same
 way.
 
-Skipped quests that are still open show as a line at the bottom of the panel (*1 skipped step*): hover for
+Skipped quests that are still open show as a line at the bottom of the panel (*1 skipped quest still open*): hover for
 the list, click to go back to the first one, **right-click** if you're not doing them (the line goes away,
 the steps stay skipped). Once you've moved on to the next chapter (zone), they drop off by themselves,
 except a quest that's ready to hand in.
@@ -194,8 +210,18 @@ except a quest that's ready to hand in.
 **Class trainer.** When new skills worth buying are waiting and you can pay for them, an instruction
 appears as soon as a trainer of your class is **within 400 yards**: *Train new skills at …*. Hover it
 for **READY TO LEARN**, which lists each skill with its icon and price, and how much money you have.
-Worthwhile skills are green, and only those are bought (Settings > Trainer > *Only worthwhile skills*; with it off, the rest too from level 10). You choose which skills count as worthwhile (and
-which are never bought) in Settings > Trainer.
+With *Buy class skills* on (Settings > Trainer, off by default), opening your trainer buys what you can
+afford: only the worthwhile skills (*...only worthwhile ones*, on); with that off, the rest too from level
+10.
+
+**Your class's skill list** (Settings > Trainer, at the bottom) has two views:
+- **Worth a visit**: lit skills are worth a trip, so an instruction sends you to the trainer for them
+  (damage spells by default). The rest is bought when you're there anyway. A dimmed skill is one you
+  won't buy.
+- **Auto-buy**: lit skills are bought at the trainer; click one to leave it out.
+
+Click a skill to switch it; **All** and **None** switch the whole view. The list fills after your first visit
+to a class trainer.
 
 **Money kept back**: from level 6 on, buying keeps a small reserve for your next skills. It starts at
 40 copper at level 6, doubles every other level, and stops at 5 gold.
@@ -272,7 +298,7 @@ to do things by hand that time.
 | Accept and hand in quests (only the route's quests, or all) | on | Quests |
 | Share every quest you accept with your group (not the ones shared with you) | off | Quests |
 | Click through quest dialogue | on | Quests |
-| Pick plain armor rewards (white/green armor only) | off | Quests |
+| Pick gear rewards (all white/green armor: the best armor type you wear, then the best-selling) | off | Quests |
 | Gold coin on the best-selling reward | on | Quests |
 | Sell grey items at any vendor | on | Quests |
 | Take the route's flight when you talk to the flight master | on | Travel |
@@ -328,7 +354,7 @@ the editor, or `/iti import`), pastes it with Ctrl+V, and gets it as a new route
 
 ## 9. The route editor
 
-<p align="center"><img src="manual/route-editor.png" alt="The route editor" width="760"></p>
+<p align="center"><img src="manual/route-editor.png" alt="The route editor, Step page" width="760"></p>
 
 The editor changes any route, or builds one of your own: add, change, hide and move steps, and set everything
 a route step can do. Open it with a **right-click on the route button** in the panel footer, or `/iti edit`.
@@ -343,8 +369,8 @@ Your changes work the moment you make them. **Save** writes them to disk right a
 opens again). Otherwise that happens when you log out, and a game crash before that would lose them.
 
 ### The window
-- **Header**: the route and its version. **Change route** picks the route to look at and change (this
-  character follows it). **Save**.
+- **Header**: the route and its version; on a route of your own its name, which you can change right there.
+  **Change route** picks the route to look at and change (this character follows it). **Save**.
 - **Toolbar**:
 
   | Button | Does |
@@ -448,6 +474,8 @@ the route's own steps have show here too, so you can see why a step is left out.
 
 ### The More page
 
+<p align="center"><img src="manual/route-editor-more.png" alt="The route editor, More page with waypoints" width="760"></p>
+
 | Field | You type |
 |---|---|
 | **Trainer** (train steps) | `class` (your class trainer), `weapons 202, 196` (a weapon master; the skills' spell IDs), `any of 202, 196` (one is enough). Empty: another trainer (a profession, riding) |
@@ -534,14 +562,14 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 
 | Tab | What's there |
 |---|---|
-| General | Panel and minimap button on/off, hide them in dungeons, the game's quest tracker, quest sparkles, step sound, route pack order, forget this character |
-| Quests | Accept/hand in, which quests, share quests in a group, dialogue, reward picking, sell junk, auction house steps |
-| Travel | Flights, hearthstone, spirit healer, map pins (world map, minimap, line between them) |
-| Trainer | Buy class skills, open the training window, trainer visits (instruction/step), weapon skills, buy weapon skills, the worthwhile/skip list per class |
-| Professions | Learn at the trainer, main and secondary professions, first profession, gather mode, gathering tracking, node icons, gathering tools |
-| Panel | Color scheme (Itinerary, Amethyst, Frost, Ember, Slate), instructions card, item links, style, opacity, size, text shadow, grow direction, button corner, lock |
-| Arrow | Arrow on/off, style, instructions above it, death skips above it, their size, tooltip, lock |
-| Keys | Key bindings for the target and item buttons, and how the target button behaves |
+| General | Route panel and minimap button, hide them in dungeons, the game's quest tracker, quest sparkles, the sound when a step is done, route pack order, factory reset, forget this character |
+| Quests | Accept and hand in, which quests (route or all), share quests in a group, quest dialogue, pick gear rewards, best-selling reward coin, sell junk, auction house steps |
+| Travel | Take flights, set hearthstone, spirit healer, map pins (on the world map, on the minimap, the line between them) |
+| Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills, buy weapon skills, your class's skill list (worth a visit / auto-buy) |
+| Professions | Learn at the trainer, main professions, first profession, secondary professions, gather mode, gather data (shipped, own, both), gathering tracking, node icons, gathering tools |
+| Panel | Color scheme (Itinerary, Amethyst, Frost, Ember, Slate), instructions (own card or in the panel), item and spell links, panel style (card or minimal), opacity, size, text on a see-through panel (shadow or outline), grow direction, item & target button corner, lock |
+| Arrow | Arrow on/off, arrow look, instructions at the arrow, death skips at the arrow, their size, tooltip, lock |
+| Keys | Key bindings for the target and item buttons; show the target button, talk on second press, tag with a spell, mark the target |
 
 <details>
 <summary><b>Screenshots of every settings tab</b> (click to open)</summary>

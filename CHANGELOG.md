@@ -132,6 +132,7 @@
   cause small stutters).
 
 ### Fixed
+- Settings: a switch with a longer label is wider instead of cut off (Panel > Instructions: "In the panel").
 - Editor: your first change to a route from a pack (which makes your own copy) no longer jumps the editor to
   step 1; it stays on the step you're changing.
 - The hearth to Stormwind after the Darkshore turn-ins (route version 5, dungeon routes) never showed: the

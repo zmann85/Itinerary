@@ -270,6 +270,9 @@ local function switchRow(row, opt)
     local segs = {}
     for c = #opt.choices, 1, -1 do
         local b = segment(row, opt.choices[c][1])
+        -- (a longer label gets a wider segment instead of being cut off: "In the panel")
+        local tw = b.text.GetStringWidth and b.text:GetStringWidth()
+        if type(tw) == "number" and tw + 14 > SEG_W then b:SetWidth(math.ceil(tw + 14)) end
         if c == #opt.choices then b:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, -8)
         else b:SetPoint("RIGHT", segs[c + 1], "LEFT", 1, 0) end
         b:SetScript("OnClick", function()

@@ -1203,6 +1203,32 @@ local function stepNames(name)
     for _, n in ipairs(names) do if n == name or n:gsub("s$", "") == name then return true end end
     return false
 end
+-- an unfinished objective of a quest in your log that names the object ("Followed Kobold Tracks 2/6" for
+-- Kobold Tracks), or one whose thing is in the object's name ("Gold Dust: 3/10" for a Sack of Gold Dust)
+local function inObjectives(name)
+    if type(name) ~= "string" or name == "" or not (GetNumQuestLogEntries and GetQuestLogTitle) then return false end
+    local QL = C_QuestLog
+    if not (type(QL) == "table" and type(QL.GetQuestObjectives) == "function") then return false end
+    local low = name:lower()
+    local one = low:gsub("s$", "")
+    local n = tonumber((GetNumQuestLogEntries())) or 0
+    for i = 1, n do
+        local _, _, _, header, _, _, _, id = GetQuestLogTitle(i)
+        if not header and tonumber(id) then
+            local ok, objs = pcall(QL.GetQuestObjectives, id)
+            for _, o in ipairs(ok and type(objs) == "table" and objs or {}) do
+                local t = type(o) == "table" and not o.finished and type(o.text) == "string" and o.text:lower()
+                if t and t ~= "" then
+                    if t:find(low, 1, true) or (#one > 3 and t:find(one, 1, true)) then return true end
+                    local thing = t:gsub("^%s*%-%s*", ""):gsub("%s*:?%s*%d+%s*/%s*%d+.*$", ""):gsub("^%d+%s*/%s*%d+%s*", "")
+                    if #thing > 3 and low:find(thing, 1, true) then return true end
+                end
+            end
+        end
+    end
+    return false
+end
+ns.objTagInObjectives = inObjectives
 local function questObject(u)
     local QL = C_QuestLog
     if type(QL) == "table" and type(QL.UnitIsRelatedToActiveQuest) == "function" then
@@ -1210,7 +1236,9 @@ local function questObject(u)
         if ok and r then return "quest" end
     end
     if #objectiveLines(u) > 0 then return "objective" end
-    if stepNames(UnitName(u)) then return "step" end
+    local name = UnitName(u)
+    if inObjectives(name) then return "log" end
+    if stepNames(name) then return "step" end
     return false
 end
 local function writeTag(open)
@@ -1259,6 +1287,34 @@ local function tagCheck(force)
     if not tag.open then hideLine() end
 end
 ns.objTagCheck = tagCheck
+-- /iti tags: what the game gives for the object in front of you, for bug reports
+function ns.objTagDebug()
+    local u = "softinteract"
+    local function yn(v) return v and "yes" or "no" end
+    ns.print(string.format("tags: %s%s; SoftTargetInteract %s, IconGameObject %s, NameplateInteract %s%s",
+        tagMode(), glimmerOn() and " (left to Glimmer)" or (tagsActive() and "" or " (not active)"),
+        tostring(getCV("SoftTargetInteract")), tostring(getCV("SoftTargetIconGameObject")), tostring(getCV(TAG_CV)),
+        tag.combat and ", resting in combat" or ""))
+    if not UnitExists(u) then
+        ns.print("soft target: none - the game picks no object here (stand close, face it; it shows an icon over it when picked)")
+        return
+    end
+    local name, guid = UnitName(u), UnitGUID(u)
+    local apiObj
+    if type(UnitIsGameObject) == "function" then local ok, r = pcall(UnitIsGameObject, u); apiObj = ok and yn(r) or "error" else apiObj = "no API" end
+    local QL = C_QuestLog
+    local rel = "no API"
+    if type(QL) == "table" and type(QL.UnitIsRelatedToActiveQuest) == "function" then
+        local ok, r = pcall(QL.UnitIsRelatedToActiveQuest, u); rel = ok and yn(r) or "error"
+    end
+    local lines = objectiveLines(u)
+    ns.print(string.format("soft target: %s (%s); object: %s; quest related: %s; tooltip objectives: %s; in your quest log: %s; step names it: %s",
+        tostring(name), tostring(guid), apiObj, rel, #lines > 0 and table.concat(lines, " / ") or (type(C_TooltipInfo) == "table" and "none" or "no API"),
+        yn(inObjectives(name)), yn(stepNames(name))))
+    local CN = C_NamePlate
+    local plate = type(CN) == "table" and type(CN.GetNamePlateForUnit) == "function" and CN.GetNamePlateForUnit(u)
+    ns.print(string.format("tag: %s (%s); its nameplate: %s", tag.open and "open" or "closed", tostring(tag.kind), plate and "there" or "none"))
+end
 function ns.applyObjTags(say)
     local a = ItineraryDB and ItineraryDB.auto
     if not a then return end

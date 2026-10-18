@@ -671,6 +671,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | `/iti debug` | Details about the current step, trainers and weapons (for bug reports) |
 | `/iti target` | What the target button looks for and which nameplate it picks |
 | `/iti track` | What gathering tracking sees and did lately |
+| `/iti tags` | The object the game picks in front of you and why it gets a name tag or not |
 
 ---
 

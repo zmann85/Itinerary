@@ -2558,6 +2558,8 @@ SlashCmdList.ITINERARY = function(input)
     elseif cmd == "minimap" then if ns.toggleMinimap then ns.toggleMinimap() end
     elseif cmd == "target" then
         if ns.targetDebug then ns.targetDebug() end
+    elseif cmd == "tags" then
+        if ns.objTagDebug then ns.objTagDebug() end
     elseif cmd == "track" then
         if ns.trackState then ns.print("tracking: " .. ns.trackState()) end
         for _, l in ipairs(ItineraryDB.trackLog or {}) do print("  " .. l) end

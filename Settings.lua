@@ -253,8 +253,6 @@ local OPTIONS = {
     { tab = 8, kind = "key", bind = "ItineraryTarget", label = "Target button", desc = "Targets the quest mobs of your step (or the NPC to talk to)." },
     { tab = 8, label = "Show target button", desc = "Off hides the button next to the panel; its key binding above still works.",
       choices = ON_OFF, get = function() return A().targetBtn ~= false end, set = function(v) A().targetBtn = v; if ns.updateItems then ns.updateItems() end end },
-    { tab = 8, label = "Portrait on the target button", desc = "The button shows the face of the mob or NPC it would target right now, when one has a nameplate in view (for NPCs: friendly nameplates on); otherwise its usual icon.",
-      choices = ON_OFF, get = function() return A().targetPortrait ~= false end, set = function(v) A().targetPortrait = v; if ns.updateItems then ns.updateItems() end end },
     { tab = 8, label = "Talk on second press", desc = "When the target button found a friendly NPC, pressing its key again talks to them (Interact with Target) - spam it on a contested escort to take the quest first. Outside combat; back to normal after 8 seconds or once you talk.",
       choices = ON_OFF, get = function() return A().interact ~= false end, set = function(v) A().interact = v end },
     { tab = 8, label = "Tag with a spell", desc = "The target button also casts an instant spell on the enemy it finds (Judgement, Earth Shock, Shadow Word: Pain, Curse of Agony, Fire Blast, Arcane Shot, Moonfire, Throw, Charge), auto attack until you know one. Spam it on a contested respawn to tag it first.",

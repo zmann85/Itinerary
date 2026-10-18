@@ -403,6 +403,7 @@ function ns.targetDebug()
     end
     local ok, plate = pcall(nearestPlate, names, friendly, prio, main)
     ns.print("pick: " .. tostring(ok and plate or ("error: " .. tostring(plate))))
+    if ns.portraitInfo then ns.print(ns.portraitInfo()) end
     ns.print("button: " .. tostring(target and target:IsShown()) .. ", combat " .. tostring(InCombatLockdown()) .. ", macro:")
     print((target and target:GetAttribute("macrotext") or "none"):gsub("\n", " | "))
     end)
@@ -437,26 +438,107 @@ local function targetMacro(names, friendly, plate, prio)
     return text .. tail
 end
 
--- The button's face: the portrait of the mob or NPC it would target now (its nameplate unit), round like the
--- game's unit frames; without a pick (no nameplate in view) the usual icon. Drawn again only when the pick is
--- another mob (a portrait is a small render of the model).
-local function portraitOn() return not (ItineraryDB and ItineraryDB.auto and ItineraryDB.auto.targetPortrait == false) end
+-- The button's face, round like the game's unit frames:
+--   1) the mob or NPC it would target now: the nameplate it picked, or your target when that's one of them
+--   2) before you see them: the face remembered from an earlier meeting (the name's display ID), for the one
+--      it goes for first
+--   3) else its usual icon
+-- Drawn again only for another mob or another face (a portrait is a small render of the model).
+local function npcIdOf(guid)
+    local kind, _, _, _, _, id = strsplit("-", guid or "")
+    if kind == "Creature" or kind == "Vehicle" then return tonumber(id) end
+end
+local probe -- (a model frame that only reads a unit's display ID)
+local function displayOf(unit)
+    if probe == nil then
+        local ok, m = pcall(CreateFrame, "PlayerModel", nil, UIParent)
+        probe = (ok and m and m.SetUnit and m.GetDisplayInfo) and m or false
+        if probe then probe:SetSize(1, 1); probe:SetPoint("TOPRIGHT", UIParent, "BOTTOMLEFT", -20, -20) end
+    end
+    if not probe then return nil end
+    local ok, d = pcall(function() probe:SetUnit(unit); return probe:GetDisplayInfo() end)
+    if probe.ClearModel then pcall(probe.ClearModel, probe) end
+    d = ok and tonumber(d) or nil
+    return (d and d > 0) and d or nil
+end
+-- Who a creature is, for every NPC and mob you target or hover and your step's ones on nameplates (account-wide):
+-- ItineraryDB.portraits[name] = { npc = NPC ID, disp = display ID }
+local function learn(unit)
+    if not (ItineraryDB and unit and UnitExists(unit)) or UnitIsPlayer(unit) then return end
+    local npc, name = npcIdOf(UnitGUID(unit)), UnitName(unit)
+    if not (npc and name and name ~= "" and name ~= (UNKNOWNOBJECT or "Unknown")) then return end
+    ItineraryDB.portraits = ItineraryDB.portraits or {}
+    local e = ItineraryDB.portraits[name]
+    if e and e.npc == npc and e.disp then return end
+    local disp = displayOf(unit)
+    if e and e.npc == npc and not disp then return end
+    ItineraryDB.portraits[name] = { npc = npc, disp = disp }
+end
+ns.learnPortrait = learn
+local function wanted(names)
+    local want = {}
+    for _, n in ipairs(names or {}) do want[n] = true; want[(n:gsub("s$", ""))] = true end
+    return want
+end
+-- your target, when it's one of the step's mobs (alive, attackable) or its NPC
+local function targetFits()
+    if not (target and type(target.names) == "table" and UnitExists("target")) or UnitIsPlayer("target") or UnitIsDead("target") then return false end
+    if not wanted(target.names)[UnitName("target") or ""] then return false end
+    if target.friendly then return not UnitCanAttack("player", "target") end
+    return UnitCanAttack("player", "target") and true or false
+end
+-- the one the button goes for when it can't see any of them: the one particular mob, else the first name
+local function firstName()
+    local names, prio = target.names, target.prio
+    if type(names) ~= "table" then return nil end
+    for _, n in ipairs(names) do if type(prio) == "table" and prio[n] then return n end end
+    return names[1]
+end
+local function known(name)
+    local P = ItineraryDB and ItineraryDB.portraits
+    if not (P and name) then return nil end
+    return P[name] or P[(name:gsub("s$", ""))]
+end
 local function setPortrait(unit)
     if not (target and target.portrait) then return end
-    local guid = unit and portraitOn() and SetPortraitTexture and UnitExists(unit) and UnitGUID(unit)
+    local guid = unit and SetPortraitTexture and UnitExists(unit) and UnitGUID(unit)
     if guid then
-        if guid ~= target.portraitGUID then
+        if guid ~= target.portraitKey then
             SetPortraitTexture(target.portrait, unit)
-            target.portraitGUID = guid
+            target.portraitKey = guid
         end
         target.portraitUnit, target.pickName = unit, UnitName(unit)
+        learn(unit)
         target.portrait:Show(); target.icon:Hide()
-    else
-        target.portraitGUID, target.portraitUnit, target.pickName = nil, nil, nil
-        target.portrait:Hide(); target.icon:Show()
+        return
     end
+    target.portraitUnit, target.pickName = nil, nil
+    local e = known(firstName())
+    if e and e.disp and SetPortraitTextureFromCreatureDisplayID then
+        local key = "disp:" .. e.disp
+        local ok = true
+        if key ~= target.portraitKey then
+            ok = pcall(SetPortraitTextureFromCreatureDisplayID, target.portrait, e.disp)
+            target.portraitKey = ok and key or nil
+        end
+        if ok then target.portrait:Show(); target.icon:Hide() return end
+    end
+    target.portraitKey = nil
+    target.portrait:Hide(); target.icon:Show()
 end
 ns.targetPortrait = setPortrait
+-- (/iti target: what the face is and what the game lets it do)
+function ns.portraitInfo()
+    local P, n = ItineraryDB.portraits or {}, 0
+    for _ in pairs(P) do n = n + 1 end
+    local fn = target and firstName()
+    local e = fn and known(fn)
+    return string.format("portrait: %s; faces known: %d; %s: %s; drawing from display IDs: %s, reading them: %s",
+        target and type(target.portraitUnit) == "string" and ("live " .. target.portraitUnit)
+            or (target and type(target.portraitKey) == "string" and "remembered" or "icon"),
+        n, tostring(fn), e and ("NPC " .. tostring(e.npc) .. ", display " .. tostring(e.disp)) or "not met yet",
+        SetPortraitTextureFromCreatureDisplayID and "yes" or "no", probe and "yes" or (probe == false and "no" or "not tried yet"))
+end
 
 -- out of combat the button follows the nearest fitting mob a few times a second (a secure button can't
 -- change in combat: there the last pick, its face and the names stay)
@@ -474,14 +556,22 @@ do
             target.lastMacro = text
             target:SetAttribute("macrotext", text)
         end
-        setPortrait(ok and plate or nil)
+        setPortrait((ok and plate) or (targetFits() and "target") or nil)
     end)
-    -- (a model that wasn't loaded yet when its portrait was drawn: draw it again once the game has it)
-    tf:RegisterEvent("UNIT_PORTRAIT_UPDATE")
-    tf:RegisterEvent("UNIT_MODEL_CHANGED")
-    tf:SetScript("OnEvent", function(_, _, unit)
+    -- (a model that wasn't loaded yet when its portrait was drawn: draw it again once the game has it) and
+    -- who the creatures you target, hover or see of your step are
+    for _, e in ipairs({ "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "NAME_PLATE_UNIT_ADDED" }) do
+        pcall(tf.RegisterEvent, tf, e)
+    end
+    tf:SetScript("OnEvent", function(_, event, unit)
+        if event == "PLAYER_TARGET_CHANGED" then pcall(learn, "target") return end
+        if event == "UPDATE_MOUSEOVER_UNIT" then pcall(learn, "mouseover") return end
+        if event == "NAME_PLATE_UNIT_ADDED" then
+            if unit and target and type(target.names) == "table" and wanted(target.names)[UnitName(unit) or ""] then pcall(learn, unit) end
+            return
+        end
         if target and target.portraitUnit and unit == target.portraitUnit and target.portrait and target.portrait:IsShown()
-           and UnitGUID(unit) == target.portraitGUID and SetPortraitTexture then
+           and UnitGUID(unit) == target.portraitKey and SetPortraitTexture then
             SetPortraitTexture(target.portrait, unit)
         end
     end)
@@ -548,7 +638,7 @@ local function update()
         target:SetAttribute("macrotext", target.lastMacro)
         target.icon:SetTexture(friendly and "Interface\\Icons\\Ability_EyeOfTheOwl" or "Interface\\Icons\\Ability_Hunter_SniperShot")
         local sig = table.concat(names, "|") .. (friendly and "+" or "-")
-        if sig ~= target.sig or not portraitOn() then target.sig = sig; setPortrait(nil) end
+        if sig ~= target.sig then target.sig = sig; setPortrait(nil) end
         target.hotkey:SetText(hotkey(target))
         target:Show()
         -- hidden by setting: invisible and not clickable, but its key binding keeps working

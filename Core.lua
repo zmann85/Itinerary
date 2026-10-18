@@ -146,6 +146,108 @@ local function readyToTurnIn(q)
 end
 ns.quest = { flaggedDone = flaggedDone, onQuest = onQuest, ready = readyToTurnIn }
 
+---------------------------------------------------------------- route pack options
+-- A route pack can offer on/off choices of its own (shown in Settings > General under Route packs) and leave
+-- steps of its routes out by them. Itinerary only shows the list, keeps your choices (per character) and asks
+-- the pack's filter about each step when one of its routes is built; what a choice means is up to the pack.
+--   ns.registerPackOptions(pack, { id = "dungeons", title = "Dungeons", text = "...",
+--       items = { { key = "STOCKS", label = "The Stockade", tip = "...", default = true }, ... } })
+--   ns.registerStepFilter(pack, function(step, on) return <keep the step?> end)   -- on(key) -> true/false
+-- pack is the route pack's add-on folder name (its files get it as the first value of "...").
+ns.packGroups = ns.packGroups or {}
+ns.stepFilters = ns.stepFilters or {}
+function ns.registerPackOptions(pack, spec)
+    if type(pack) ~= "string" or type(spec) ~= "table" then return end
+    local id = tostring(spec.id or spec.title or "options")
+    local g = { pack = pack, id = id, title = spec.title or "Options", text = spec.text, items = {} }
+    for _, it in ipairs(spec.items or {}) do
+        if type(it) == "table" and it.key ~= nil then
+            g.items[#g.items + 1] = { key = tostring(it.key), label = it.label or tostring(it.key), tip = it.tip,
+                                      default = it.default and true or false }
+        end
+    end
+    for i, o in ipairs(ns.packGroups) do
+        if o.pack == pack and o.id == id then ns.packGroups[i] = g; return g end -- registered again: replaced
+    end
+    ns.packGroups[#ns.packGroups + 1] = g
+    return g
+end
+function ns.registerStepFilter(pack, fn)
+    if type(pack) == "string" and type(fn) == "function" then ns.stepFilters[pack] = fn end
+end
+local function packItem(pack, key)
+    for _, g in ipairs(ns.packGroups) do
+        if g.pack == pack then for _, it in ipairs(g.items) do if it.key == key then return it end end end
+    end
+end
+function ns.packOption(pack, key)
+    local mine = ItineraryCharDB and ItineraryCharDB.packOptions and ItineraryCharDB.packOptions[pack]
+    if mine and mine[key] ~= nil then return mine[key] end
+    local it = packItem(pack, key)
+    return it and it.default or false
+end
+function ns.setPackOption(pack, key, on)
+    if not ItineraryCharDB then return end
+    on = on and true or false
+    if ns.packOption(pack, key) == on then return end
+    ItineraryCharDB.packOptions = ItineraryCharDB.packOptions or {}
+    local mine = ItineraryCharDB.packOptions[pack] or {}
+    ItineraryCharDB.packOptions[pack] = mine
+    local it = packItem(pack, key)
+    if it and it.default == on then mine[key] = nil else mine[key] = on end -- (the pack's default isn't stored)
+    -- the route you follow was built with the old choice: building it again takes a reload
+    local r = ItineraryCharDB.route and ns.routes[ItineraryCharDB.route]
+    local src = r and r.from and ns.routes[r.from] or r
+    if src and src.pack == pack and src.base and ns.stepFilters[pack] and ns.askReload then
+        ns.askReload("Your route changes with that choice.")
+    end
+end
+-- the groups of the installed packs, in your pack order
+function ns.packOptionGroups()
+    local out = {}
+    for _, p in ipairs(ns.packList and ns.packList() or {}) do
+        for _, g in ipairs(ns.packGroups) do
+            if g.pack == p.name and #g.items > 0 then out[#out + 1] = { group = g, packTitle = p.title } end
+        end
+    end
+    return out
+end
+-- a pack route's steps after its pack's filter; the along-the-way steps and chapters that pointed at a step
+-- that's left out move on to the next one kept (a chapter with nothing left goes)
+function ns.filterPackSteps(r, steps)
+    local f = r and r.pack and ns.stepFilters[r.pack]
+    if not f or not steps or #steps == 0 then return steps end
+    local pack = r.pack
+    local function on(key) return ns.packOption(pack, tostring(key)) end
+    local keep, at = {}, {}
+    for i, s in ipairs(steps) do
+        at[i] = #keep + 1
+        local ok, res = pcall(f, s, on)
+        if not ok or res ~= false then keep[#keep + 1] = s end -- (a filter error keeps the step)
+    end
+    if #keep == #steps then return steps end
+    local n = #keep
+    for _, s in ipairs(keep) do
+        if s.till then s.till = math.min(at[s.till] or n, n) end
+    end
+    local chs = r.chapters
+    if chs and #chs > 0 then
+        local out = {}
+        for _, c in ipairs(chs) do
+            local first = at[c.first or 1] or (n + 1)
+            if first <= n then
+                c.first = first
+                if out[#out] and out[#out].first == first then out[#out] = c else out[#out + 1] = c end
+            end
+        end
+        if #out == 0 then out[1] = chs[1]; out[1].first = 1 end
+        out[1].first = 1
+        for k = #chs, 1, -1 do chs[k] = nil end -- the same table (copies of the route share it)
+        for k, c in ipairs(out) do chs[k] = c end
+    end
+    return keep
+end
+
 ---------------------------------------------------------------- route + steps
 -- A pooled route ("seq" over its faction's step pool): "a" = pool entry a, "a-n" = n entries from a,
 -- "a+d" = entry a running along until d steps later. Each step is its own copy (the same pool entry can
@@ -226,6 +328,7 @@ baseSteps = function(r)
         if r.seq then r.base = decodeRoute(r) or {}; releasePools(r)
         elseif r.stepsFn then r.base = r.stepsFn(); r.stepsFn = nil
         else r.base = r.staticSteps or {} end
+        r.base = ns.filterPackSteps(r, r.base)
         for _, s in ipairs(r.base) do s.till0 = s.till end
     end
     for _, s in ipairs(r.base) do s.till = s.till0 end

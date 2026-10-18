@@ -350,6 +350,15 @@ Characters you already play stay on their route; switch them in the list. When a
 its steps move, Itinerary finds the step you were on again ("the routes were updated - picked up again at
 step …").
 
+### A route pack's own choices
+A route pack can offer choices of its own, for example which dungeons your route includes. They show in
+**Settings > General**, right under Route packs, as a row of switches per list (lit = on; hover one for what
+it means). What a choice does is up to the pack: Itinerary only shows the list, keeps your choices for each
+character and lets the pack leave steps of its routes out by them.
+- A change rebuilds the route you follow with a quick reload; you stay at your place in the route.
+- A copy you made of one of the pack's routes follows the same choices. Your own and imported routes don't.
+- Without a pack that offers choices, there's nothing to see there.
+
 ### Sharing a route
 Only your own routes can be shared (a copy of a pack route counts: it carries your changes). In the route
 editor, **Export** gives you a text. Copy it with Ctrl+C and send it. The other player uses **Import** (in
@@ -594,7 +603,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 
 | Tab | What's there |
 |---|---|
-| General | Route panel and minimap button, hide them in dungeons, the game's quest tracker, quest sparkles, the sound when a step is done, route pack order, factory reset, forget this character |
+| General | Route panel and minimap button, hide them in dungeons, the game's quest tracker, quest sparkles, the sound when a step is done, route pack order and the packs' own choices, factory reset, forget this character |
 | Quests | Accept and hand in, which quests (route or all), share quests in a group, quest dialogue, pick gear rewards, best-selling reward coin, sell junk, auction house steps |
 | Travel | Take flights, set hearthstone, spirit healer, map pins (on the world map, on the minimap, the line between them) |
 | Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills, buy weapon skills, your class's skill list (worth a visit / auto-buy) |

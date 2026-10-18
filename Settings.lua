@@ -527,6 +527,20 @@ local function buildRow(opt, i)
             end
             return out
         end)
+    elseif opt.kind == "packopt" then
+        -- a route pack's own on/off choices (registered by the pack; Itinerary only shows and keeps them)
+        local g = opt.group
+        row.lbl:SetText(g.title .. "  |cff8a8a8a" .. (opt.packTitle or g.pack) .. "|r")
+        chipRow(row, 4, function()
+            local out = {}
+            for _, it in ipairs(g.items) do
+                local on = ns.packOption(g.pack, it.key)
+                out[#out + 1] = { it.label, on, false, function() ns.setPackOption(g.pack, it.key, not on) end, it.tip }
+            end
+            return out
+        end, function(self)
+            self.sub:SetText((g.text and (g.text .. " ") or "") .. "Lit = on. For this character; a change rebuilds your route with a quick reload.")
+        end)
     elseif opt.kind == "anchor" then
         row.lbl:SetText(opt.label)
         row.sub:SetText(opt.desc)
@@ -730,7 +744,17 @@ local function build()
     div:SetPoint("RIGHT", win, "RIGHT", -PAD, 0)
 
     win.rows = {}
-    for i, opt in ipairs(OPTIONS) do buildRow(opt, i) end
+    -- the route packs' own choices go right under Route packs (one row per list a pack registered)
+    local list = {}
+    for _, opt in ipairs(OPTIONS) do
+        list[#list + 1] = opt
+        if opt.kind == "packs" and ns.packOptionGroups then
+            for _, e in ipairs(ns.packOptionGroups()) do
+                list[#list + 1] = { tab = opt.tab, kind = "packopt", group = e.group, packTitle = e.packTitle }
+            end
+        end
+    end
+    for i, opt in ipairs(list) do buildRow(opt, i) end
 
     local hint = text(win, 11, 1, 1, 1, 0.3)
     hint:SetPoint("BOTTOMLEFT", win, "BOTTOMLEFT", PAD, 14); hint:SetWidth(W - PAD * 2); hint:SetWordWrap(true)

@@ -12,9 +12,13 @@
 - **Object name tags** (Settings > Quests): the quest object in front of you that you can click gets a
   nameplate with its name and the quest objective under it, using the game's interact nameplate. *All*
   names herbs, ore veins and chests too; NPCs, doors and mailboxes never get one, and it's closed in combat.
-  While Glimmer (NaowhForever QoL) is on, it's left to Glimmer.
+  While Glimmer (NaowhForever QoL) is on, it's left to Glimmer. The name shows even when a nameplate add-on hides
+  the game's own, and objects that give a quest's items count too (Fishing Traps for Half-Eaten Fish): from the
+  data add-on, and learned when you loot one.
 
 ### Changed
+- *Quest sparkles* moved to Settings > Quests. The target and item buttons' tooltips show their key and point
+  to Keys in Itinerary's settings.
 - **Optional buys are instructions**, like food and vendor trash: a weapon "if you can afford it", items for a
   quest later, potions if in stock and the auction house's "buy these for quicker turn-ins" no longer stop
   the route. Click one to point the arrow at the vendor; it's done when you have the items or close that

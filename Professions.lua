@@ -1219,71 +1219,184 @@ local function stepNames(name)
     for _, n in ipairs(names) do if n == name or n:gsub("s$", "") == name then return true end end
     return false
 end
--- an unfinished objective of a quest in your log that names the object ("Followed Kobold Tracks 2/6" for
--- Kobold Tracks), or one whose thing is in the object's name ("Gold Dust: 3/10" for a Sack of Gold Dust)
-local function inObjectives(name)
-    if type(name) ~= "string" or name == "" or not (GetNumQuestLogEntries and GetQuestLogTitle) then return false end
+-- the unfinished objectives of the quests in your log: { {text, thing}, ... } ("1/7 Half-Eaten Fish" ->
+-- "half-eaten fish"; "Gold Dust: 3/10" -> "gold dust")
+local function thingOf(t)
+    return (t:lower():gsub("^%s*%-%s*", ""):gsub("^%d+%s*/%s*%d+%s*", ""):gsub("%s*:?%s*%d+%s*/%s*%d+.*$", ""))
+end
+local function openObjectives()
+    local out = {}
+    if not (GetNumQuestLogEntries and GetQuestLogTitle) then return out end
     local QL = C_QuestLog
-    if not (type(QL) == "table" and type(QL.GetQuestObjectives) == "function") then return false end
-    local low = name:lower()
-    local one = low:gsub("s$", "")
+    if not (type(QL) == "table" and type(QL.GetQuestObjectives) == "function") then return out end
     local n = tonumber((GetNumQuestLogEntries())) or 0
     for i = 1, n do
         local _, _, _, header, _, _, _, id = GetQuestLogTitle(i)
         if not header and tonumber(id) then
             local ok, objs = pcall(QL.GetQuestObjectives, id)
             for _, o in ipairs(ok and type(objs) == "table" and objs or {}) do
-                local t = type(o) == "table" and not o.finished and type(o.text) == "string" and o.text:lower()
-                if t and t ~= "" then
-                    if t:find(low, 1, true) or (#one > 3 and t:find(one, 1, true)) then return true end
-                    local thing = t:gsub("^%s*%-%s*", ""):gsub("%s*:?%s*%d+%s*/%s*%d+.*$", ""):gsub("^%d+%s*/%s*%d+%s*", "")
-                    if #thing > 3 and low:find(thing, 1, true) then return true end
+                if type(o) == "table" and not o.finished and type(o.text) == "string" and o.text ~= "" then
+                    out[#out + 1] = { o.text, thingOf(o.text) }
                 end
+            end
+        end
+    end
+    return out
+end
+-- an objective that names the object ("Followed Kobold Tracks 2/6" for Kobold Tracks), or one whose thing is in
+-- the object's name ("Gold Dust: 3/10" for a Sack of Gold Dust): its text
+local function inObjectives(name)
+    if type(name) ~= "string" or name == "" then return false end
+    local low = name:lower()
+    local one = low:gsub("s$", "")
+    for _, o in ipairs(openObjectives()) do
+        local t, th = o[1]:lower(), o[2]
+        if t:find(low, 1, true) or (#one > 3 and t:find(one, 1, true)) or (#th > 3 and low:find(th, 1, true)) then return o[1] end
+    end
+    return false
+end
+ns.objTagInObjectives = inObjectives
+-- Objects that give a quest's items (A Net Disaster's Fishing Traps give Half-Eaten Fish): from the data add-on
+-- (QuestieDB and our logs) and learned when you loot them (ItineraryDB.questObjects, account-wide):
+-- object id = { item id = item name }
+local function objectId(guid)
+    if type(guid) ~= "string" then return nil end
+    local kind, _, _, _, _, id = strsplit("-", guid)
+    return kind == "GameObject" and tonumber(id) or nil
+end
+local function itemsOf(id)
+    local a = ItineraryDB and ItineraryDB.questObjects and ItineraryDB.questObjects[id]
+    local b = ns.DATA_QUEST_OBJECTS and ns.DATA_QUEST_OBJECTS[id]
+    if a and b then
+        local m = {}
+        for k, v in pairs(b) do m[k] = v end
+        for k, v in pairs(a) do m[k] = v end
+        return m
+    end
+    return a or b
+end
+-- the objective one of the object's items is for, while it's open
+local function itemObjective(guid)
+    local items = itemsOf(objectId(guid))
+    if not items then return false end
+    local objs = openObjectives()
+    for _, n in pairs(items) do
+        local low = type(n) == "string" and n:lower()
+        if low and low ~= "" then
+            for _, o in ipairs(objs) do
+                if o[2] == low or (#o[2] > 3 and o[2]:find(low, 1, true)) then return o[1] end
             end
         end
     end
     return false
 end
-ns.objTagInObjectives = inObjectives
+ns.objTagItemObjective = itemObjective
+-- looting an object: its items that an open objective asks for are remembered for that object
+function ns.objTagLearnLoot()
+    if not (ItineraryDB and GetNumLootItems and GetLootSourceInfo) then return end
+    local objs
+    for slot = 1, (tonumber((GetNumLootItems())) or 0) do
+        local link = GetLootSlotLink and GetLootSlotLink(slot)
+        local item = type(link) == "string" and tonumber(link:match("item:(%d+)"))
+        local name = item and select(2, GetLootSlotInfo(slot))
+        if item and type(name) == "string" and name ~= "" then
+            local src = { GetLootSourceInfo(slot) }
+            for k = 1, #src, 2 do
+                local id = objectId(src[k])
+                if id then
+                    objs = objs or openObjectives()
+                    local low = name:lower()
+                    for _, o in ipairs(objs) do
+                        if o[2] == low then
+                            ItineraryDB.questObjects = ItineraryDB.questObjects or {}
+                            ItineraryDB.questObjects[id] = ItineraryDB.questObjects[id] or {}
+                            ItineraryDB.questObjects[id][item] = name
+                            break
+                        end
+                    end
+                end
+            end
+        end
+    end
+end
+-- is it a quest object, and the objective to show under its name
 local function questObject(u)
     local QL = C_QuestLog
+    local lines = objectiveLines(u)
+    if #lines > 0 then return "objective", table.concat(lines, "\n") end
     if type(QL) == "table" and type(QL.UnitIsRelatedToActiveQuest) == "function" then
         local ok, r = pcall(QL.UnitIsRelatedToActiveQuest, u)
-        if ok and r then return "quest" end
+        if ok and r then return "quest", itemObjective(softGUID(u)) or inObjectives(ns.objTagName(u)) or nil end
     end
-    if #objectiveLines(u) > 0 then return "objective" end
+    local t = itemObjective(softGUID(u))
+    if t then return "item", t end
     local name = ns.objTagName(u)
-    if inObjectives(name) then return "log" end
-    if stepNames(name) then return "step" end
+    t = inObjectives(name)
+    if t then return "log", t end
+    if stepNames(name) then return "step", nil end
     return false
 end
 local function writeTag(open)
     local v = open and "1" or "0"
     if getCV(TAG_CV) ~= v then setCV(TAG_CV, v) end
 end
--- the objective line under the quest object's name, on its nameplate
+-- Blizzard's own name on that nameplate, when it shows (a nameplate add-on may hide it)
+local function plateName(plate)
+    local ok, fs = pcall(function()
+        local uf = plate.UnitFrame
+        if type(uf) ~= "table" or (uf.IsForbidden and uf:IsForbidden()) then return nil end
+        if not uf:IsVisible() or (uf.GetEffectiveAlpha and uf:GetEffectiveAlpha() < 0.1) then return nil end
+        local n = uf.name
+        if type(n) == "table" and n.IsVisible and n:IsVisible() and (n:GetText() or "") ~= "" then return n end
+        return nil
+    end)
+    return ok and fs or nil
+end
+-- the name tag: our own name on the nameplate when the game's isn't showing, and the objective under it
 local function tagLine(unit)
     local L = tag.line
-    if not (tag.open and tag.kind ~= "other" and unit and UnitIsUnit(unit, "softinteract")) then return end
+    if not (tag.open and unit and UnitIsUnit(unit, "softinteract")) then return end
     local CN = C_NamePlate
     local plate = type(CN) == "table" and type(CN.GetNamePlateForUnit) == "function" and CN.GetNamePlateForUnit(unit)
-    local lines = plate and objectiveLines("softinteract") or {}
-    if #lines == 0 then
+    if not plate then
+        if L then L:Hide() end
+        return
+    end
+    local own = plateName(plate)
+    local name = not own and ns.objTagName("softinteract") or nil
+    local obj = tag.kind ~= "other" and tag.text or nil
+    if not (name or obj) then
         if L then L:Hide() end
         return
     end
     if not L then
         L = CreateFrame("Frame", nil, UIParent)
-        L:SetSize(200, 14)
+        L:SetSize(220, 30)
+        L.name = L:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         L.text = L:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-        L.text:SetPoint("TOP")
+        for _, fs in ipairs({ L.name, L.text }) do
+            local font, size = fs:GetFont()
+            if font then fs:SetFont(font, size or 12, "OUTLINE") end
+        end
         L.text:SetTextColor(1, 0.82, 0)
         tag.line = L
     end
     L:SetParent(plate)
+    L:SetFrameStrata("HIGH")
     L:ClearAllPoints()
-    L:SetPoint("TOP", plate, "BOTTOM", 0, -1)
-    L.text:SetText(table.concat(lines, "\n"))
+    L:SetAllPoints(plate)
+    L.name:ClearAllPoints(); L.text:ClearAllPoints()
+    if name then
+        L.name:SetPoint("BOTTOM", plate, "CENTER", 0, 0)
+        L.name:SetText(name)
+        L.name:Show()
+        L.text:SetPoint("TOP", L.name, "BOTTOM", 0, -2)
+    else
+        L.name:Hide()
+        L.text:SetPoint("TOP", own, "BOTTOM", 0, -2)
+    end
+    L.text:SetText(obj or "")
+    L.text:SetShown(obj ~= nil)
     L.unit = unit
     L:Show()
 end
@@ -1293,10 +1406,10 @@ local function tagCheck(force)
     if not tagsActive() or tag.combat then return end
     local g = softGUID("softinteract")
     if g == tag.guid and not force then return end
-    tag.guid, tag.open, tag.kind = g, false, "none"
+    tag.guid, tag.open, tag.kind, tag.text = g, false, "none", nil
     if g and isObject("softinteract") then
-        local q = questObject("softinteract")
-        tag.kind = q or "other"
+        local q, t = questObject("softinteract")
+        tag.kind, tag.text = q or "other", t
         tag.open = q and true or (tagMode() == "all")
     end
     writeTag(tag.open)
@@ -1325,12 +1438,19 @@ function ns.objTagDebug()
         local ok, r = pcall(QL.UnitIsRelatedToActiveQuest, u); rel = ok and yn(r) or "error"
     end
     local lines = objectiveLines(u)
-    ns.print(string.format("soft target: %s (%s, UnitExists %s); object: %s; quest related: %s; tooltip objectives: %s; in your quest log: %s; step names it: %s",
+    local items = itemsOf(objectId(guid))
+    local il = {}
+    for _, n in pairs(items or {}) do il[#il + 1] = n end
+    local io = itemObjective(guid)
+    ns.print(string.format("soft target: %s (%s, UnitExists %s); object: %s; quest related: %s; tooltip objectives: %s; gives: %s%s; in your quest log by name: %s; step names it: %s",
         tostring(name), tostring(guid), yn(UnitExists(u)), apiObj, rel, #lines > 0 and table.concat(lines, " / ") or (type(C_TooltipInfo) == "table" and "none" or "no API"),
-        yn(inObjectives(name)), yn(stepNames(name))))
+        #il > 0 and table.concat(il, ", ") or "nothing known", io and (" (" .. io .. ")") or "", yn(inObjectives(name)), yn(stepNames(name))))
     local CN = C_NamePlate
     local plate = type(CN) == "table" and type(CN.GetNamePlateForUnit) == "function" and CN.GetNamePlateForUnit(u)
-    ns.print(string.format("tag: %s (%s); its nameplate: %s", tag.open and "open" or "closed", tostring(tag.kind), plate and "there" or "none"))
+    local L = tag.line
+    ns.print(string.format("tag: %s (%s%s); its nameplate: %s%s; our label: %s", tag.open and "open" or "closed", tostring(tag.kind),
+        tag.text and (": " .. tag.text) or "", plate and "there" or "none", plate and (plateName(plate) and ", the game's name shows" or ", no name of the game's") or "",
+        (L and L.unit and L:IsShown()) and ("shown" .. (L.name:IsShown() and (" (" .. tostring(L.name:GetText()) .. ")") or "")) or "not shown"))
 end
 function ns.applyObjTags(say)
     local a = ItineraryDB and ItineraryDB.auto
@@ -1372,11 +1492,12 @@ end
 do
     local tf = CreateFrame("Frame")
     for _, e in ipairs({ "PLAYER_SOFT_INTERACT_CHANGED", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED",
-                         "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "QUEST_LOG_UPDATE" }) do
+                         "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "QUEST_LOG_UPDATE", "LOOT_OPENED" }) do
         pcall(tf.RegisterEvent, tf, e)
     end
     tf:SetScript("OnEvent", function(_, event, unit)
         if not ItineraryDB then return end
+        if event == "LOOT_OPENED" then pcall(ns.objTagLearnLoot) return end
         if event == "PLAYER_REGEN_DISABLED" then
             -- (just before the lockdown: close it, rest until combat ends)
             if tagsActive() then tag.combat = true; tag.guid = false; writeTag(false); hideLine() end
@@ -1393,7 +1514,12 @@ do
             if tag.line and tag.line.unit == unit then hideLine() end
             return
         end
-        if event == "QUEST_LOG_UPDATE" and tag.line and tag.line.unit then pcall(tagLine, tag.line.unit) end
+        if event == "QUEST_LOG_UPDATE" and tag.guid then
+            -- (the count went up, or the objective is done: its line, or no tag)
+            local unit = tag.line and tag.line.unit
+            tagCheck(true)
+            if unit and tag.open then pcall(tagLine, unit) end
+        end
     end)
     -- (in case the client has no PLAYER_SOFT_INTERACT_CHANGED: a look four times a second)
     local acc = 0

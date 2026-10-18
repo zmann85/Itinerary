@@ -6,7 +6,7 @@ local MAX, SIZE = 4, 30
 local row, buttons, target = nil, {}, nil
 local pending = false
 
--- Key bindings (Options > Keybindings > AddOns > Itinerary; Bindings.xml)
+-- Key bindings (Itinerary's Settings > Keys, also the game's Options > Keybindings > AddOns > Itinerary; Bindings.xml)
 BINDING_HEADER_ITINERARY = "Itinerary"
 _G["BINDING_NAME_CLICK ItineraryTarget:LeftButton"] = "Target quest mobs / NPC"
 for i = 1, MAX do _G["BINDING_NAME_CLICK ItineraryItem" .. i .. ":LeftButton"] = "Quest item " .. i end
@@ -723,6 +723,13 @@ do
     end)
 end
 
+-- the tooltip's key line: the key, and where to change it (Itinerary's settings, Keys)
+local function keyLine(b)
+    local key = GetBindingKey and b.bindName and GetBindingKey("CLICK " .. b.bindName .. ":LeftButton")
+    local text = key and ("Key: " .. (GetBindingText and GetBindingText(key) or key) .. " - change it under Keys in Itinerary's settings (/iti settings)")
+        or "Bind a key under Keys in Itinerary's settings (/iti settings)"
+    GameTooltip:AddLine(text, 0.5, 0.5, 0.5, true)
+end
 -- the key bound to a button, short (S-1, C-F, M4 ...)
 local function hotkey(b)
     local key = GetBindingKey and GetBindingKey("CLICK " .. b.bindName .. ":LeftButton")
@@ -874,7 +881,7 @@ function ns.buildItems(panel)
         GameTooltip:AddLine(self.friendly and "Target the NPC" or "Target quest mobs", 1, 1, 1)
         if self.pickName then GameTooltip:AddLine("Now: " .. self.pickName, 1, 0.82, 0) end
         for _, n in ipairs(self.names or {}) do GameTooltip:AddLine(n, 0.75, 0.75, 0.75) end
-        GameTooltip:AddLine("Bind a key: Options > Keybindings > AddOns > Itinerary", 0.5, 0.5, 0.5, true)
+        keyLine(self)
         GameTooltip:Show()
     end)
     target:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -928,12 +935,14 @@ function ns.buildItems(panel)
                 GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
                 GameTooltip:AddLine(self.macro[1], 1, 1, 1)
                 GameTooltip:AddLine(self.macro[3], 0.7, 0.7, 0.7)
+                keyLine(self)
                 GameTooltip:Show()
                 return
             end
             if not self.itemID then return end
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:SetItemByID(self.itemID)
+            keyLine(self)
             GameTooltip:Show()
         end)
         b:SetScript("OnLeave", function() GameTooltip:Hide() end)

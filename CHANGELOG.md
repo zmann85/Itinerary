@@ -1,148 +1,126 @@
 # Changelog
 
-## Unreleased
+## 2.0.0
 
 ### New
-- **Editor: search the step list**: a search box over the list; the chapter's steps whose text has what you
-  type (quest steps by the quest's name) drop down under it, and a click on one takes the list to that step and
-  selects it. *All steps* searches the whole route.
-- **The recorder records much more**: quest items you use (on the quest step's item button), abandoned quests,
-  weapon masters, vendors (food, drink and bags as an errand, anything else as a step with Collect, or *Vendor
-  trash* / *Repair*), dungeons (at the entrance, and the quests you finish inside), boats and zeppelins to the
-  other continent (at the dock), the Deeprun Tram, death skips (back at the spirit healer far from where you
-  died), and the way you walk to each step as its waypoints when it isn't about straight. New button **Level
-  here**: a step done at your level and XP right now, for "grind to here".
+- **Route editor: everything a route step can do**: besides accept, quest, turn in, go, do, train and xp there
+  are fly, flight path, hearth, home (make an inn your home), dungeon, abandon and sell junk; hover a type for
+  what it does. Switches for **Optional** and **Death skip**. A **Conditions** page (quests in your log, level,
+  zone, items, a buff, professions, money, your weapon, level jumps) and a **More** page (trainer kind, when a
+  travel step is done, dialogue, a macro button, waypoints and kill-area spots). Quest steps take objectives
+  (`12:2`), accept steps a level, the NPC field several names. The route's name line in the header is short
+  ("edits make your own copy"); hover it for the whole story.
+- **Route editor: waypoints and kill areas you can see and change**: on the More page, the step's waypoints
+  (ending at its point) and kill-area spots as lists - type coordinates, set a waypoint's radius, move one to
+  where you stand, change the order, remove one, add at your position or by clicking the world map. While the
+  editor is open, the world map draws the selected step instead of your next stops: its point, numbered
+  waypoints with a line, and its spots; drag a pin to move it, right-click to remove it. Each one's zone can be
+  changed too (type a zone's name, the start of it or its map ID), coordinates can come with a zone
+  (`Westfall 56.3, 47.5`) or as a pasted `/way` line, and a step without a point gets one by typing it in.
+- **Route editor: search the step list**: a search box over the list; the chapter's steps whose text has what
+  you type (quest steps by the quest's name) drop down under it, and a click on one takes the list to that
+  step and selects it. *All steps* searches the whole route.
+- **Route editor: Ends at step** for along-the-way steps: the step where it stops showing. It follows the
+  step when you add, hide or move steps.
+- **The recorder records much more**: quest items you use (on the quest step's item button), abandoned
+  quests, weapon masters, vendors (food, drink and bags as an errand, anything else as a step with Collect,
+  or *Vendor trash* / *Repair*), dungeons (at the entrance, and the quests you finish inside), boats and
+  zeppelins to the other continent (at the dock), the Deeprun Tram, death skips (back at the spirit healer
+  far from where you died), and the way you walk to each step as its waypoints when it isn't about straight.
+  New button **Level here**: a step done at your level and XP right now, for "grind to here".
+- **Which route a new character gets** is decided in three levels: your **default** for a race and class
+  ("make default" in the route list; also for imported and your own routes), then the **route packs in your
+  order** (Settings > General > Route packs; a new pack goes to the bottom), then the **pack's own order**.
+  The route list shows your default on top and, with several packs, which pack each route is from.
+- **Level jumps**: a route can skip a section above a level; it's decided once when you get there.
+- **Your next stops on the maps**: numbered pins in route order on the world map (also the continent map)
+  and on the minimap, with a dotted line between them on the world map. Steps at the same place share one
+  pin ("2-3"). Settings > Travel: how many on each map (Off, Current, Next 3, Next 5; default Next 5) and the
+  line. On the minimap only the first pin stays at the edge when it's out of range.
+- **Death skips are always an instruction**: a death skip a route has as a step of its own shows next to the
+  steps after it, like all the others. With a place to die at, the arrow leads there first; reaching it
+  doesn't tick the death skip off (only being alive again does), and two in a row show one after the other.
+- **Death skips at the arrow** (Settings > Arrow, on): "Die and respawn at the spirit healer" always shows
+  above the waypoint arrow, also when *Instructions at the arrow* is off.
 - **Share quests in a group** (Settings > Quests, off): in a group, every quest you accept is shared with the
-  others right away (when it can be shared), so whoever is behind doesn't have to run to the quest giver. Quests
-  a group member shared with you aren't shared back.
+  others right away (when it can be shared), so whoever is behind doesn't have to run to the quest giver.
+  Quests a group member shared with you aren't shared back.
 - **In dungeons** (Settings > General, Show by default): Hide puts the route panel, the arrow and the item
   buttons away inside a dungeon or raid; they're back when you leave. The minimap button (or `/iti`) shows
   them there for that visit.
-- **Your next stops on the maps**: numbered pins in route order on the world map (also the continent map)
-  and now on the minimap too, with a dotted line between them on the world map. Steps at the same place
-  share one pin ("2-3"). Settings > Travel: how many on each map (Off, Current, Next 3, Next 5; default
-  Next 5) and the line. On the minimap only the first pin stays at the edge when it's out of range.
-- **Death skips at the arrow** (Settings > Arrow, on): "Die and respawn at the spirit healer" always shows
-  above the waypoint arrow, also when *Instructions at the arrow* is off.
-- **Death skips are always an instruction**: the ones a guide wrote as a step of their own (Frostmane Hold,
-  the jump to Baradin Bay, Everlook...) now show next to the steps after them like all the others, in every
-  route version. With a place to die at, the arrow leads there first; reaching it no longer ticks the death
-  skip off (only being alive again does), and two in a row show one after the other.
-- **Which route a new character gets** is decided in three levels: your **default** for a race and class
-  ("make default" in the route list; also for imported and your own routes), then the **route packs in
-  your order** (Settings > General > Route packs; a new pack goes to the bottom), then the **pack's own
-  order** (a route's `priority`). Picks with one pack installed are unchanged. The route list shows your
-  default on top and, with several packs, which pack each route is from.
-- Gather mode has two sets of spots (Settings > Professions > Gather data: Both, Shipped or Own), in different
-  colours on the map: the shipped spawn spots and our own, which grows silently on every character (any
-  profession, gather mode on or off) from the nodes you gather and the ones that come within about 20 yards.
-  Itinerary_Data 1.1 holds both sets (OwnNodes.lua: our finds from the beta) and the node object ids.
 - **Open the training window** (Settings > Trainer, on): talking to a trainer you came to train at (the
   route's trainer stop or a trainer instruction) skips the dialogue and opens the training window, so with Buy
   class skills on it's one click. Hold Shift to see the dialogue.
-- **Own icon**: a brass compass in the AddOns list and on the minimap button.
 - **Trainer tooltips everywhere**: every trainer instruction has a READY TO LEARN tooltip on hover (class
-  trainers, weapon masters and profession trainers), also when a trainer visit is your current step
-  (hover its title).
-- **Profession trainers** are recorded when you open them: the profession, its ranks and recipes with
-  skill, level and price. The tooltip lists only what that trainer teaches, minus what you already
-  know (cooks don't all teach the same recipes).
-- **Editor: waypoints and kill areas you can see and change**: on the More page, the step's waypoints (ending at
-  its point) and kill-area spots as lists - type coordinates, set a waypoint's radius, move one to where you
-  stand, change the order, remove one, add at your position or by clicking the world map. While the editor is
-  open, the world map draws the selected step instead of your next stops: its point, numbered waypoints with a
-  line, and its spots; drag a pin to move it, right-click to remove it. Each one's zone can be changed too
-  (type a zone's name, the start of it or its map ID), coordinates can come with a zone (`Westfall 56.3, 47.5`)
-  or as a pasted `/way` line, and a step without a point gets one by typing it in.
-- **Editor: everything a route step can do**: besides accept, quest, turn in, go, do, train and xp there are now
-  fly, flight path, hearth, home (make an inn your home), dungeon, abandon and sell junk; hover a type for what it
-  does. Switches for **Optional** and **Death skip**. A **Conditions** page (quests in your log, level, zone,
-  items, a buff, professions, money, your weapon, level jumps) and a **More** page (trainer kind, when a travel
-  step is done, dialogue, a macro button, waypoints and kill-area spots). Quest steps take objectives (`12:2`),
-  accept steps a level, the NPC field several names. The route's name line in the header is short now ("edits
-  make your own copy"); hover it for the whole story.
-- **Editor: Ends at step** for along-the-way steps: the step where it stops showing. It follows the step
-  when you add, hide or move steps.
-- **Level jumps in route packs**: a route can skip a section above a level; it's decided once when you
-  get there.
-
-- **Gather mode** (`/iti gather`, experimental): a farming route. The arrow leads from one spot where a herb
-  or ore vein of your skill can spawn to the next; the zone's spots show on the minimap and world map; nodes
-  you find that aren't known yet are remembered.
-- **Itinerary_Data** add-on (GPL v3, separate): where every class trainer, profession trainer, weapon master
-  and tool vendor stands, and the herb and ore spawn spots for gather mode. Itinerary works without it.
+  trainers, weapon masters and profession trainers), also when a trainer visit is your current step (hover
+  its title).
+- **Profession trainers** are recorded when you open them: the profession, its ranks and recipes with skill,
+  level and price. The tooltip lists only what that trainer teaches, minus what you already know (cooks don't
+  all teach the same recipes).
+- **Gather mode** (`/iti gather`, experimental): a farming route. The arrow leads from one spot where a herb or
+  ore vein of your skill can spawn to the next; the zone's spots show on the minimap and world map. Two sets of
+  spots (Settings > Professions > Gather data: Both, Shipped or Own), in different colours on the map: the
+  shipped spawn spots and your own, which grows silently on every character (any profession, gather mode on or
+  off) from the nodes you gather and the ones that come within about 20 yards.
 - **Gathering tracking** (Settings > Professions): Find Herbs / Find Minerals is switched on when no minimap
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
+- **Itinerary_Data** add-on (GPL v3, separate): where every class trainer, profession trainer, weapon master
+  and tool vendor stands, which ranks a profession trainer teaches, and the herb and ore spawn spots for
+  gather mode (shipped spots and finds from the beta). Itinerary works without it.
+- **Own icon**: a brass compass in the AddOns list and on the minimap button.
 
 ### Changed
-- **Errands at a vendor are instructions**, not stops of their own: "Vendor trash" at a named vendor, "Buy
-  Ice Cold Milk", food and water, bags, repairs. Click one to point the arrow at that vendor; it's done when
-  you open them (selling junk: any vendor). The arrow no longer leads there by itself. Buying what the route
-  needs (a quest item, a weapon, arrows, grimoires) stays a step. In every route version.
-- Target button: a step after one particular mob (Anaya Dawnrunner for For Love Eternal: one kind of mob,
-  one of it needed) puts it first, ahead of anything closer, until you have what you need from it.
+- **Errands at a vendor are instructions**, not stops of their own: vendor trash at a named vendor, buying a
+  drink, food and water, bags, repairs. Click one to point the arrow at that vendor; it's done when you open
+  them (selling junk: any vendor). The arrow doesn't lead there by itself. Buying what the route needs (a
+  quest item, a weapon, arrows) stays a step.
+- **Weapon skills** (Settings > Trainer) is **Route** by default: only the weapon skills the route trains get
+  a training hint, not every weapon your class can learn. A choice you made yourself stays.
+- Buying class skills: only the worthwhile skills (new setting Settings > Trainer > Only worthwhile skills,
+  on); with it off, the others too from level 10.
+- Over the arrow, trainer instructions are one line, "Skills to learn nearby - click the instruction panel to
+  go there", until you click one (the arrow doesn't lead there before).
+- Profession instructions only show when you can pay for what they're for (secondary professions after the
+  money for your next class skills, a new rank when you have its price).
+- Target button: with enemy nameplates on, a step's mob kinds are tried closest first (alive, not tagged by
+  someone else, not fighting another player). A step after one particular mob (one kind, one of it needed)
+  puts it first, ahead of anything closer, until you have what you need from it. `/iti target` shows what it
+  sees.
+- Route steps can depend on more: a profession's skill range (only if you picked that profession), knowing a
+  profession, being short of money, your weapon being weaker than a reward, a quest not finished yet or not in
+  your log, and the experience rate. Of two grind steps for "side quest done" and "not done", only the one
+  that fits shows.
+- Steps for an item you need to have only show while you have it (or, for "fewer than", while you don't).
+  Food instructions ("Eat the Herb Baked Eggs") get the food on an item button and stay hidden while its buff is
+  up, until a minute before it runs out (the buff is learned the first time you eat).
+- Along the way: one objective per line, the count in the hint colour; finished ones stay listed, greyed. The
+  same objectives or the same entry from two steps show once (the fuller one); tiers of one item (4, then 10
+  and 50) show one at a time; a quest's collect goes away once that quest is handed in; items collected for
+  another quest are an entry of their own. An objective hands over to the
+  route's own step for that quest: from there that step shows the counts instead of both.
+- Next steps: steps that are done already are left out (an abandon step for a quest you handed in or never
+  took).
 - "Get the flight path" steps for a flight path you have already are done: Itinerary notes your flight paths
   whenever the flight map opens.
-- Next steps: steps that are done already are left out ("Abandon Red Leather Bandanas" after you handed it
-  in, "Abandon Patrolling Westfall" when you never took it).
-- **Weapon skills** (Settings > Trainer) is **Route** by default: only the weapon skills the route trains get a
-  training hint, not every weapon your class can learn. A choice you made yourself stays.
+- "Die and respawn at the spirit healer" instructions and steps are done once you're alive again.
+- A "turn in / accept it if you pass by" instruction isn't listed when the route does the same as one of the
+  next steps.
+- A turn-in the route only does "if it's done by now" isn't listed as one to go back for when you passed it.
 - The "skipped steps" line: right-click it if you're not doing those quests; quests of a chapter you've left
   drop off it by themselves (unless ready to hand in).
-- Over the arrow, trainer instructions are one line, "Skills to learn nearby - click the instruction panel to go there",
-  until you click one (the arrow doesn't lead there before).
-- Two grind steps in a row (one for "if you finished the side quest", one for "if not"): only the one that
-  fits shows. Steps the guide meant for a different experience rate are left out.
-- More of the guide's conditions are kept: steps for a profession skill range (Cooking below 50 - only if you picked
-  it), for when you're short of money, for when your weapon is weaker than a reward, "not finished yet" and "not in
-  your log".
-- Along the way: the same objectives from two guide steps show once, and tiers of the same items (cloth for 60,
-  then 240) one at a time.
-- Steps the guide marks for a profession you know (Rough Stones to blacksmith into sharpening stones) only show
-  when you know it.
-- The same objectives twice along the way (with and without a side quest like Lost Book): only the fuller one.
-- A guide's tiers of one item (4 Chunks of Boar Meat for Pie for Billy, then 10 and 50 for Cooking) show one at a
-  time under along the way, and a quest's collect goes away once that quest is handed in.
-- Pie for Billy has a step to get the boar meat before its turn-in (the guide only collected it along the way).
-- The best-selling quest reward gets a gold coin in the corner of its name box instead of a golden frame (the frame was hard to tell
-  apart from the game's highlight on the reward you pick).
-- Items a guide collects for another quest (Crag Boar Ribs for Beer Basted Boar Ribs on the Stocking Jetsteam
-  step) are an along-the-way entry of their own ("For Beer Basted Boar Ribs") instead of part of that step.
-- Stocking Jetsteam's bears and boars are along the way until its turn-in (through the Grizzled Den).
-- The same along-the-way entry from two guide steps shows once.
-- Target button: with enemy nameplates on, a step's mob kinds are tried closest first (alive, not tagged by
-  someone else, not fighting another player) instead of in the guide's order. `/iti target` shows what it sees.
-- Buying class skills: only the worthwhile skills (new setting Settings > Trainer > Only worthwhile skills, on); with
-  it off, the others too from level 10.
-- Timed quests (Durnan's Scalding Mornbrew and the like): the time left from the game's quest timer shows on
-  the instruction that runs until its turn-in (or on your step when there is none), counting down.
-- Coldridge Valley crowded start: The Troll Cave, The Stolen Journal and Senir's Observations (and The
-  Adventurer) are back in; A New Threat is picked up after the mail delivery and worked on along the way, and
-  handed in before Senir's Observations only if it's done by then.
-- Gathering tracking switches on right after you learn Mining or Herbalism (it tries again for a few
-  seconds until the game lists the new tracking), also over another tracking that was on, once.
-- Gathering tracking comes back after you're resurrected, also when the game still lists it as on.
-- Gathering tracking no longer mistakes the map filters (flight masters, mailboxes, trainers ...) for tracking you
-  switched on yourself: it was never switched on with them active.
-- A turn-in the route only does "if it's done by now" isn't listed as one to go back for when you passed it.
-- Steps for an item you need to have only show while you have it (or, for "fewer
-  than", while you don't). "Eat the Herb Baked Eggs" instructions get the eggs on an item button and stay
-  hidden while their buff is up, until a minute before it runs out (the buff is learned the first time you eat).
-- "Die and respawn at the spirit healer" instructions and steps are done once you're alive again.
-- An along-the-way quest objective hands over to the route's own step for that quest: from there that
-  step shows the counts instead of both.
-- A "turn in / accept it if you pass by" instruction isn't listed when the route does the same as one of
-  the next steps.
-- Profession instructions only show when you can pay for what they're for (secondary professions after
-  the money for your next class skills, a new rank when you have its price).
-- Along-the-way objectives: one objective per line, the count in the hint colour; finished ones stay listed, greyed.
-- Memory use is shown in the settings button's tooltip (Itinerary, all addons, the top 5), measured only
-  while you hover it. The footer display and its setting are gone (measuring every few seconds could
-  cause small stutters).
+- Timed quests: the time left from the game's quest timer shows on the instruction that runs until its
+  turn-in (or on your step when there is none), counting down.
+- The best-selling quest reward gets a gold coin in the corner of its name box instead of a golden frame (the
+  frame was hard to tell apart from the game's highlight on the reward you pick).
+- Gathering tracking switches on right after you learn Mining or Herbalism (it tries again for a few seconds
+  until the game lists the new tracking), also over another tracking that was on, once; it comes back after
+  you're resurrected; and the map filters (flight masters, mailboxes, trainers ...) no longer count as
+  tracking you switched on yourself.
+- Memory use is shown in the settings button's tooltip (Itinerary, all addons, the top 5), measured only while
+  you hover it. The footer display and its setting are gone (measuring every few seconds could cause small
+  stutters).
 
 ### Fixed
-- Credits: *Meow* is "Cat Meow 2" by Cat Stevens (SoundBible.com, CC BY 3.0); LICENSE.txt now names every
-  library with its author and license, and the manual has a Credits and license section.
 - Buying at a trainer with another dialogue option (a quest, unlearning talents): the training window stayed
   closed unless the route had sent you there, so nothing was bought. Now it opens wherever Itinerary would buy
   or learn something: your class trainer with skills to buy, a weapon master with a weapon skill to buy (Buy
@@ -150,45 +128,34 @@
   found by its icon first, never the one for unlearning talents.
 - Recorder: a weapon master was recorded as a class trainer visit (a step waiting for class skills); now it's a
   train step for the weapon skill you learned there, and nothing when you only had a look.
-- Settings: a switch with a longer label is wider instead of cut off (Panel > Instructions: "In the panel").
-- Editor: your first change to a route from a pack (which makes your own copy) no longer jumps the editor to
-  step 1; it stays on the step you're changing.
-- The hearth to Stormwind after the Darkshore turn-ins (route version 5, dungeon routes) never showed: the
-  guide skips it "while in Darkshore", where you are at that point. A hearth no longer skips itself in the
-  zone you're in when the route goes on somewhere else.
-- "Abandon X" for a quest that's finished and handed in later on the route (Patrolling Westfall) is done
-  without abandoning it.
-- Profession instructions only send you to a trainer who teaches what you need: Kitta Firewind at the Tower
-  of Azora (Expert Enchanting only) no longer for learning Enchanting, a village trainer not for Journeyman.
-  Itinerary_Data 1.2 knows the ranks from the trainers' titles; a trainer you opened counts by what they
-  showed you.
-- Money conditions from the guides were the wrong way round: a step for when you can afford something ("Buy
-  a [Merciless Axe]", "Train Arcane Shot and Hunter's Mark") showed only while you couldn't, and "grind / sell
-  until you have 10 copper" only once you had it. Now as the guides mean them (all route versions).
-- Riding and lockpicking conditions (Horde mount steps at level 40) no longer stop the route with an error;
-  riding counts as known with any riding skill (Wolf Riding, Horse Riding...). A route step can now also
-  have a skill range (Cooking from 10 to below 50).
+- Route editor: your first change to a route from a pack (which makes your own copy) no longer jumps the
+  editor to step 1; it stays on the step you're changing.
+- Money conditions worked the wrong way round: a step for when you can afford something showed only while you
+  couldn't, and "until you have 10 copper" only once you had it.
+- Riding and lockpicking conditions no longer stop the route with an error; riding counts as known with any
+  riding skill (Wolf Riding, Horse Riding...). A step can have a skill range (Cooking from 10 to below 50).
+- A hearth step no longer skips itself in the zone you're in when the route goes on somewhere else.
+- "Abandon X" for a quest that's finished and handed in later on the route is done without abandoning it.
+- A route's vendor visits (vendor trash at a named vendor, selling junk, buying from someone) are done when
+  you open that vendor; before, only some were.
 - An item that starts the step's quest gets its button even when it has no spell (Croaky's Head).
-- A "die and respawn" instruction waits for the quest hand-ins and pick-ups right there (Red Linen Goods in
-  Eastvale).
-- A quest the guide only finishes along the way (Wolves Across The Border while you clear the kobold camp) gets
-  a step of its own right before its turn-in: when you're not done yet, that's where the route waits (done
-  already: it ticks off at once). About 25-30 such quests per route.
-- Setting your hearthstone at an innkeeper you also hand a quest in to (Goldshire on the human route) is a step
-  again, and so is the hearth back there later. The same for a flight path, a flight, a hearth or a junk sale the
-  guide does at a quest NPC.
-- Camping 101 quests for professions you didn't pick (or know) are left out of the route and not taken; a step
-  with two of them only names the one that's yours.
-- The guide's vendor visits ("Vendor trash" at a named vendor, "Sell junk", buying from someone) are done when you
-  open that vendor; before, only the starting-area ones were.
-- The class trainer instruction no longer shows when its tooltip says there's nothing new: both now go by the
-  trainer's recorded list against your spellbook.
+- A "die and respawn" instruction waits for the quest hand-ins and pick-ups right there.
+- Camping 101 quests for professions you didn't pick (or know) aren't taken; a step with two of them only
+  names the one that's yours.
+- Profession instructions only send you to a trainer who teaches what you need (Kitta Firewind at the Tower of
+  Azora teaches only Expert Enchanting, a village trainer only Apprentice): Itinerary_Data knows the ranks from
+  the trainers' titles; a trainer you opened counts by what they showed you.
+- Profession trainers that WoW Forever added (like the junior trainers in the starting areas) are picked up as
+  soon as you target, hover or open them.
 - Class trainer instructions in every starting area: with Itinerary_Data all class trainers are known (before,
-  only trainers you had opened were known, so e.g. the Shadowglen rogue trainer never showed up).
-- The trainer instruction no longer waits for a route trainer stop a few steps ahead when that stop is
-  itself shown as an instruction.
-- Profession trainers that WoW Forever added (like the junior trainers in the starting areas) are
-  picked up as soon as you target, hover or open them.
+  only trainers you had opened were known).
+- The class trainer instruction no longer shows when its tooltip says there's nothing new: both go by the
+  trainer's recorded list against your spellbook.
+- The trainer instruction no longer waits for a route trainer stop a few steps ahead when that stop is itself
+  shown as an instruction.
+- Settings: a switch with a longer label is wider instead of cut off (Panel > Instructions: "In the panel").
+- Credits: *Meow* is "Cat Meow 2" by Cat Stevens (SoundBible.com, CC BY 3.0); LICENSE.txt names every library
+  with its author and license, and the manual has a Credits and license section.
 
 ## 1.2.0 (2026-10-15)
 First version in this repository.

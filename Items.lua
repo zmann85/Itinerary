@@ -203,8 +203,10 @@ local function objectiveMobs(s)
     return out
 end
 -- Which of a step's mobs are still worth targeting: a mob drops out once the objectives it's for are done
--- ("8/8 Elder Crag Boar slain" -> no more boars, the bears and leopards stay). A mob counts for an open
--- objective that names it or shares a word with it ("Crag Boar Rib" needs the Elder Crag Boars).
+-- ("8/8 Elder Crag Boar slain" -> no more boars, the bears and leopards stay). A kill objective ("Kobold
+-- Workers slain") is for the mob of that name only - not the Kobold Vermin of the quest before; any other
+-- objective (an item) for the mobs that share a word with it ("Crag Boar Rib" needs the Elder Crag Boars).
+-- A kill objective none of the step's mobs is called like (credit for several kinds) goes by words too.
 -- Without live objectives (not on the quest yet) every mob stays.
 local stillNeeded
 local GENERIC = { slain = true, killed = true, collected = true, the = true, of = true }
@@ -213,14 +215,34 @@ local function words(t)
     for x in t:lower():gmatch("[%a']+") do if #x >= 4 and not GENERIC[x] then w[x] = true end end
     return w
 end
+local function killName(text)
+    local t = text:lower():gsub("^%s*%d+%s*/%s*%d+%s*", ""):gsub(":%s*%d+%s*/%s*%d+%s*$", "")
+    t = t:match("^%s*(.-)%s*$")
+    return t:match("^(.-)%s+slain$") or t:match("^(.-)%s+killed$")
+end
+local function sameMob(name, kill)
+    name = name:lower()
+    return kill == name or kill == name .. "s" or kill == name .. "es"
+        or (name:sub(-1) == "y" and kill == name:sub(1, -2) .. "ies") or (name:sub(-1) == "f" and kill == name:sub(1, -2) .. "ves")
+end
+ns.sameMob, ns.killName = sameMob, killName
 stillNeeded = function(st)
     if st.t ~= "complete" or not ns.objectiveLines then return nil end
     local lines = ns.objectiveLines(st)
     if #lines == 0 then return nil end
-    local open = {}
-    for _, l in ipairs(lines) do if not l[2] then open[#open + 1] = words(l[1]) end end
-    if #open == 0 then return nil end
+    local kills, open, any = {}, {}, false
+    for _, l in ipairs(lines) do
+        if not l[2] then
+            any = true
+            local k = killName(l[1])
+            local named = false
+            if k then for _, m in ipairs(st.mobs or {}) do if sameMob(m, k) then named = true break end end end
+            if named then kills[#kills + 1] = k else open[#open + 1] = words(l[1]) end
+        end
+    end
+    if not any then return nil end
     return function(name)
+        for _, k in ipairs(kills) do if sameMob(name, k) then return true end end
         local mw = words(name)
         for _, ow in ipairs(open) do
             for x in pairs(mw) do

@@ -126,6 +126,9 @@
   stutters).
 
 ### Fixed
+- Target button on a kill step: a kill objective ("Kobold Workers slain") counts only the mob of that name, so a
+  step's other mobs that merely share a word (the Kobold Vermin of the quest before) are no longer targeted;
+  objectives for items still go by shared words, and a kill credit no mob is called like as before.
 - Buying at a trainer with another dialogue option (a quest, unlearning talents): the training window stayed
   closed unless the route had sent you there, so nothing was bought. Now it opens wherever Itinerary would buy
   or learn something: your class trainer with skills to buy, a weapon master with a weapon skill to buy (Buy

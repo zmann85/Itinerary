@@ -225,17 +225,24 @@ function ns.filterPackSteps(r, steps)
         local ok, res = pcall(f, s, on)
         if not ok or res ~= false then keep[#keep + 1] = s end -- (a filter error keeps the step)
     end
-    if #keep == #steps then return steps end
+    -- chapters can carry the pack's marks too: the filter decides about them like about a step (a pack with
+    -- two versions of a stretch gives each its own chapters)
+    local chs = r.chapters
+    local chOut = {}
+    for k, c in ipairs(chs or {}) do
+        local ok, res = pcall(f, c, on)
+        if ok and res == false then chOut[k] = true end
+    end
+    if #keep == #steps and not next(chOut) then return steps end
     local n = #keep
     for _, s in ipairs(keep) do
         if s.till then s.till = math.min(at[s.till] or n, n) end
     end
-    local chs = r.chapters
     if chs and #chs > 0 then
         local out = {}
-        for _, c in ipairs(chs) do
+        for k, c in ipairs(chs) do
             local first = at[c.first or 1] or (n + 1)
-            if first <= n then
+            if first <= n and not chOut[k] then
                 c.first = first
                 if out[#out] and out[#out].first == first then out[#out] = c else out[#out + 1] = c end
             end

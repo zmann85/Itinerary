@@ -39,8 +39,8 @@
   The route list shows your default on top and, with several packs, which pack each route is from.
 - **Route pack choices**: a route pack can offer on/off choices of its own (for example which dungeons your
   route includes). They show as switches in Settings > General under Route packs and are kept per
-  character; the pack decides which of its steps they leave out. A change rebuilds your route with a quick
-  reload.
+  character; the pack decides which of its steps and chapters they leave out. A change rebuilds your route
+  with a quick reload.
 - **Level jumps**: a route can skip a section above a level; it's decided once when you get there.
 - **Your next stops on the maps**: numbered pins in route order on the world map (also the continent map)
   and on the minimap, with a dotted line between them on the world map. Steps at the same place share one

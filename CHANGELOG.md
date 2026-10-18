@@ -129,6 +129,9 @@
 - Target button on a kill step: a kill objective ("Kobold Workers slain") counts only the mob of that name, so a
   step's other mobs that merely share a word (the Kobold Vermin of the quest before) are no longer targeted;
   objectives for items still go by shared words, and a kill credit no mob is called like as before.
+- Target button with along-the-way quests: your step's own mobs come first (one range band ahead), so the
+  workers of your step win over the vermin you also kill for a book along the way, unless one of those is
+  right next to you.
 - Buying at a trainer with another dialogue option (a quest, unlearning talents): the training window stayed
   closed unless the route had sent you there, so nothing was bought. Now it opens wherever Itinerary would buy
   or learn something: your class trainer with skills to buy, a weapon master with a weapon skill to buy (Buy

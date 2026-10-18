@@ -121,12 +121,21 @@ local function here()
     local x, y = pos:GetXY()
     return map, x * 100, y * 100
 end
-local function yards(map, p)
-    local pc, px, py = ns.playerWorld()
+-- (a spot's world position is worked out once and kept on the spot: zones have up to ~2,000 of them)
+local function spotWorld(map, p)
+    if p.wc == nil then
+        local c, wx, wy = ns.worldPos(map, p.x / 100, p.y / 100)
+        p.wc, p.wx, p.wy = c or false, wx, wy
+    end
+    return p.wc, p.wx, p.wy
+end
+local function yards(map, p, pc, px, py)
+    if not pc then pc, px, py = ns.playerWorld() end
     if not pc then return nil end
-    local c, wx, wy = ns.worldPos(map, p.x / 100, p.y / 100)
+    local c, wx, wy = spotWorld(map, p)
     if c ~= pc then return nil end
-    return math.sqrt((wx - px) ^ 2 + (wy - py) ^ 2)
+    local dx, dy = wx - px, wy - py
+    return math.sqrt(dx * dx + dy * dy)
 end
 local function seen(p)
     local t = state.visited[p.id]
@@ -135,9 +144,10 @@ end
 
 local function pick(map)
     local best, bd
+    local pc, px, py = ns.playerWorld()
     for _, p in ipairs(spots(map)) do
         if not seen(p) then
-            local d = yards(map, p)
+            local d = yards(map, p, pc, px, py)
             if d and (not bd or d < bd) then best, bd = p, d end
         end
     end
@@ -267,22 +277,35 @@ function ns.gatherPins(force)
     local D = loadData()
     if not (map and D) then return end
     local list = spots(map)
-    -- the nearest ones on the minimap, every one on the world map
-    local near = {}
+    -- the nearest ones on the minimap: kept in order as the spots go by (no sort of the whole zone, and the
+    -- distance on the spot itself instead of a table per spot)
+    local pc, px, py = ns.playerWorld()
+    local near, n = {}, 0
     for _, p in ipairs(list) do
-        local d = yards(map, p)
-        if d then near[#near + 1] = { p = p, d = d } end
+        local d = yards(map, p, pc, px, py)
+        if d and (n < MINIPINS or d < near[n].d) then
+            p.d = d
+            local k = n < MINIPINS and n + 1 or n
+            n = k
+            while k > 1 and near[k - 1].d > d do near[k] = near[k - 1]; k = k - 1 end
+            near[k] = p
+        end
     end
-    table.sort(near, function(a, b) return a.d < b.d end)
-    for k, e in ipairs(near) do
-        if k > MINIPINS then break end
-        local kind = D.kinds[e.p.name] and D.kinds[e.p.name][1]
-        HBDP:AddMinimapIconMap(PINREF, pin(kind, seen(e.p), 9, e.p.src), map, e.p.x / 100, e.p.y / 100, true, true)
-    end
-    for _, p in ipairs(list) do
+    for k, p in ipairs(near) do
         local kind = D.kinds[p.name] and D.kinds[p.name][1]
-        HBDP:AddWorldMapIconMap(PINREF, pin(kind, seen(p), 8, p.src), map, p.x / 100, p.y / 100)
+        HBDP:AddMinimapIconMap(PINREF, pin(kind, seen(p), 9, p.src), map, p.x / 100, p.y / 100, true, true)
     end
+    -- every one on the world map, but only while it's open (the pin library places each pin on the map the
+    -- world map last showed even when it's closed: ~2,000 of them every few seconds in Arathi)
+    if WorldMapFrame and WorldMapFrame:IsShown() then
+        for _, p in ipairs(list) do
+            local kind = D.kinds[p.name] and D.kinds[p.name][1]
+            HBDP:AddWorldMapIconMap(PINREF, pin(kind, seen(p), 8, p.src), map, p.x / 100, p.y / 100)
+        end
+    end
+end
+if WorldMapFrame and WorldMapFrame.HookScript then
+    WorldMapFrame:HookScript("OnShow", function() if ns.gatherOn() then ns.gatherPins(true) end end)
 end
 
 ---------------------------------------------------------------- live: arriving at spots, gathering nodes

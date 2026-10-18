@@ -1952,7 +1952,10 @@ function ns.arrowWanted(s)
     if not s then return false end
     if s.m and s.m > 0 and s.x then return true end
     if s.detour then return false end
-    if #ns.arrowRoute(ItineraryCharDB.step) > 0 then return true end
+    -- (the arrow's own way for this step, while it's up to date: this is asked 20 times a second)
+    local nav, step = arrow and arrow.nav, ItineraryCharDB.step
+    local seq = nav and nav.seq and nav.seqStep == step and not ns.arrowDirty and nav.seq or ns.arrowRoute(step)
+    if #seq > 0 then return true end
     return s.npc ~= nil -- no place known, but someone to look for (shown faded with their name)
 end
 -- click an instruction with a place (a trainer): the arrow goes there instead until you talk to them;

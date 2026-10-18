@@ -128,6 +128,12 @@
 - Memory use is shown in the settings button's tooltip (Itinerary, all addons, the top 5), measured only while
   you hover it. The footer display and its setting are gone (measuring every few seconds could cause small
   stutters).
+- **Faster late in a route**: the "skipped steps" line no longer looks through every step behind you after
+  each kill, loot or quest update. Near the end of a 1-60 route that took several milliseconds every time
+  (small hitches in fights); now it's well under one, anywhere on the route.
+- Gather mode in zones with many spots (Arathi, Burning Steppes, Stranglethorn) costs a fraction of what it
+  did, and its spots only go on the world map while the map is open (they're placed when you open it).
+  Your own spell casts and the arrow on steps without a place of their own cost less too.
 
 ### Fixed
 - Target button on a kill step: a kill objective ("Kobold Workers slain") counts only the mob of that name, so a

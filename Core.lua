@@ -791,40 +791,75 @@ local QUEST_STEP = { accept = true, complete = true, turnin = true }
 ns.QUEST_STEP = QUEST_STEP
 
 -- quest steps you skipped by hand whose quests still aren't done (worth going back for)
+local EMPTY = {}
+-- What the list needs from a route's steps, worked out once per step list (it changes only when the route is
+-- built again): the last turn-in of each quest, and the turn-ins that are a quest's last one (an earlier one
+-- of the same quest never counts: the route still hands it in later).
+local skipIndex = setmetatable({}, { __mode = "k" })
+local function skipInfo(steps)
+    local e = skipIndex[steps]
+    if e and e.n == #steps then return e end
+    local last, list = {}, {}
+    for j = 1, #steps do
+        local t = steps[j]
+        if t.t == "turnin" and t.q then for _, x in ipairs(t.q) do last[x] = j end end
+    end
+    for j = 1, #steps do
+        local t = steps[j]
+        if t.t == "turnin" and t.q then
+            -- (a turn-in "only if it's done by now" that wasn't isn't worth going back for)
+            local ifReady = false
+            if t.cond then for _, cd in ipairs(t.cond) do if cd[1] == "ready" then ifReady = true end end end
+            if not ifReady then
+                for k, x in ipairs(t.q) do if last[x] == j then list[#list + 1] = { j, k, x } end end
+            end
+        end
+    end
+    e = { n = #steps, last = last, list = list }
+    skipIndex[steps] = e
+    return e
+end
+local doneSeen = {} -- quests the server has said are done (that doesn't change back)
 function ns.skippedBehind()
     local out, c, steps = {}, ItineraryCharDB, ns.steps()
-    local seen = {}
-    -- turn-ins behind you for quests that are ready in your log and not handed in later on the route either
-    -- (skipped by hand, or passed while the route thought they were done)
-    local function laterTurnin(i, q)
-        for j = i + 1, #steps do
-            local t = steps[j]
-            if t.t == "turnin" and t.q then for _, x in ipairs(t.q) do if x == q then return true end end end
+    local n = math.min(c.step - 1, #steps)
+    local info = skipInfo(steps)
+    -- what may go on the list, in route order: quest steps behind you that you skipped by hand, and turn-ins
+    -- behind you for quests that are ready in your log and not handed in later on the route either (passed
+    -- while the route thought they were done)
+    local cand = {}
+    for i in pairs(c.manual) do
+        local s = type(i) == "number" and i <= n and steps[i]
+        if s and QUEST_STEP[s.t] and s.q then
+            for k, q in ipairs(s.q) do if not doneSeen[q] then cand[#cand + 1] = { i, k, q } end end
         end
-        return false
     end
+    for _, e in ipairs(info.list) do
+        local i, q = e[1], e[3]
+        if i > n then break end
+        if not c.manual[i] and not doneSeen[q] then
+            if onQuest(q) and readyToTurnIn(q) then cand[#cand + 1] = { i, e[2], q, true }
+            elseif flaggedDone(q) then doneSeen[q] = true end
+        end
+    end
+    table.sort(cand, function(x, y) return x[1] < y[1] or (x[1] == y[1] and x[2] < y[2]) end)
     -- quests you said you're not doing (right-click on the line) stay out; a skipped quest of an earlier chapter
     -- (zone) too - you've moved on - unless it's ready to hand in
-    local ignored = c.skipIgnored or {}
+    local ignored = c.skipIgnored or EMPTY
     local curCh = ns.chapterOf(c.step)
-    for i = 1, math.min(c.step - 1, #steps) do
-        local s = steps[i]
+    local seen = {}
+    for _, e in ipairs(cand) do
+        local i, k, q = e[1], e[2], e[3]
+        local ready = e[4] or (onQuest(q) and readyToTurnIn(q))
         local oldCh = curCh and (ns.chapterOf(i) or curCh) < curCh
-        -- (a turn-in "only if it's done by now" that wasn't isn't worth going back for)
-        local ifReady = false
-        for _, cd in ipairs(s.cond or {}) do if cd[1] == "ready" then ifReady = true end end
-        local passed = s.t == "turnin" and s.q and not c.manual[i] and not ifReady
-        if (c.manual[i] and QUEST_STEP[s.t]) or passed then
-            for k, q in ipairs(s.q) do
-                local ready = onQuest(q) and readyToTurnIn(q)
-                if passed and not (ready and not laterTurnin(i, q)) then
-                    -- only the ready ones count here
-                elseif ignored[q] or (oldCh and not ready) then
-                    -- not doing it / left behind
-                elseif not seen[q] and not flaggedDone(q) then
-                    seen[q] = true
-                    out[#out + 1] = { step = i, q = q, name = s.n and s.n[k] or ("Quest " .. q), t = s.t }
-                end
+        if ignored[q] or (oldCh and not ready) then
+            -- not doing it / left behind
+        elseif not seen[q] then
+            if flaggedDone(q) then doneSeen[q] = true
+            else
+                seen[q] = true
+                local s = steps[i]
+                out[#out + 1] = { step = i, q = q, name = s.n and s.n[k] or ("Quest " .. q), t = s.t }
             end
         end
     end
@@ -1116,21 +1151,31 @@ end
 do
     -- learning: you use the item, and a new buff lasting minutes shows up within half a minute
     local watch
+    local buffItems = {}
     local f = CreateFrame("Frame")
-    f:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-    f:RegisterEvent("UNIT_AURA")
+    -- (only your own casts and auras: the client then doesn't call this for every mob around you)
+    for _, e in ipairs({ "UNIT_SPELLCAST_SUCCEEDED", "UNIT_AURA" }) do
+        if f.RegisterUnitEvent then f:RegisterUnitEvent(e, "player") else f:RegisterEvent(e) end
+    end
     f:SetScript("OnEvent", function(_, event, unit, _, spellId)
         if unit ~= "player" or not ItineraryDB then return end
         if event == "UNIT_SPELLCAST_SUCCEEDED" then
-            -- an item a route step wants you to eat for its buff
+            -- an item a route step wants you to eat for its buff (the route's few such items, found once per step list)
             local steps = ns.steps and ns.steps() or {}
-            for _, s in ipairs(steps) do
-                if s.buffItem and not (ItineraryDB.itemBuffs and ItineraryDB.itemBuffs[s.buffItem]) then
-                    local _, sid = GetItemSpell and GetItemSpell(s.buffItem)
+            if buffItems.steps ~= steps or buffItems.n ~= #steps then
+                local list, seen = {}, {}
+                for _, s in ipairs(steps) do
+                    if s.buffItem and not seen[s.buffItem] then seen[s.buffItem] = true; list[#list + 1] = s.buffItem end
+                end
+                buffItems.steps, buffItems.n, buffItems.list = steps, #steps, list
+            end
+            for _, item in ipairs(buffItems.list) do
+                if not (ItineraryDB.itemBuffs and ItineraryDB.itemBuffs[item]) then
+                    local _, sid = GetItemSpell and GetItemSpell(item)
                     if sid and sid == spellId then
                         local before = {}
                         eachBuff(function(_, id) if id then before[id] = true end end)
-                        watch = { item = s.buffItem, before = before, untilT = GetTime() + 40 }
+                        watch = { item = item, before = before, untilT = GetTime() + 40 }
                         break
                     end
                 end

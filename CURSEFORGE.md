@@ -28,7 +28,8 @@ The **brass compass** on the minimap: click shows or hides the panel, right-clic
 
 - A **waypoint arrow** to the step's NPC, objective area or travel path, with the distance and the instruction above it. Several arrow styles and colour schemes.
 - Your **next stops as numbered pins** on the world map and minimap, with a dotted line between them
-- **Quest item buttons** for the step's usable items and the hearthstone, and a **target button** that finds the step's mobs or NPC (key bindings for all of them)
+- **Quest item buttons** for the step's usable items and the hearthstone, and a **target button** that finds the step's mobs or NPC and shows their face (key bindings for all of them)
+- **Name tags** on the quest objects you can click near you, with the objective under the name
 
 ---
 

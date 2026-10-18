@@ -1,28 +1,29 @@
 # Changelog
 
-## Unreleased
+## v2.1.0 (2026-10-18)
 
 ### New
-- **Portrait on the target button**: the button shows the face of the mob or NPC it would target now
-  (the one on a nameplate it picked, or your target when that's one of them), round like the game's unit
-  frames, and its tooltip names it. Hovering one of them picks up the face too, and it stays when they leave
-  nameplate range or you clear your target.
-  Faces of the NPCs and mobs you target, hover or meet on your step are remembered for all your characters,
-  so the button can show them before they're in sight; someone you've never met keeps the usual icon.
-- **Object name tags** (Settings > Quests): the quest object in front of you that you can click gets a
-  nameplate with its name and the quest objective under it, using the game's interact nameplate. *All*
-  names herbs, ore veins and chests too; NPCs, doors and mailboxes never get one, and it's closed in combat.
-  While Glimmer (NaowhForever QoL) is on, it's left to Glimmer. The name shows even when a nameplate add-on hides
-  the game's own, and objects that give a quest's items count too (Fishing Traps for Half-Eaten Fish): from the
-  data add-on, and learned when you loot one.
+- **Portrait on the target button**: the button shows the face of the mob or NPC it would target now (the one
+  on a nameplate it picked, your target when that's one of them, or one you hover), round like the game's unit
+  frames, and its tooltip names it. The face stays when they leave nameplate range or you clear your target.
+  Faces of the NPCs and mobs you target, hover or meet on your step are remembered for all your characters, so
+  the button can show them before they're in sight; someone you've never met keeps the usual icon.
+- **Object name tags** (Settings > Quests): a quest object you can click close by (within about 15 yards, in
+  any direction) gets a nameplate with its name and the quest objective under it. Quest objects are the ones
+  your quest log names and the ones that give an item a quest asks for (Fishing Traps for Half-Eaten Fish: known
+  from the data add-on, and learned when you loot one). *All* names herbs, ore veins and chests too; NPCs, doors
+  and mailboxes never get one, and it's hidden in combat. The name shows even when a nameplate add-on hides the
+  game's own. While Glimmer (NaowhForever QoL) is on, it's left to Glimmer. `/iti tags` says what the game
+  picked and why it gets a tag or not.
 
 ### Changed
-- *Quest sparkles* moved to Settings > Quests. The target and item buttons' tooltips show their key and point
-  to Keys in Itinerary's settings.
 - **Optional buys are instructions**, like food and vendor trash: a weapon "if you can afford it", items for a
   quest later, potions if in stock and the auction house's "buy these for quicker turn-ins" no longer stop
   the route. Click one to point the arrow at the vendor; it's done when you have the items or close that
   vendor or the auction house. Buys the route needs and a hunter's arrows stay steps.
+- *Quest sparkles* moved to Settings > Quests. The target and item buttons' tooltips show their key and point
+  to Keys in Itinerary's settings.
+- Itinerary_Data 1.3: which objects give the items a quest asks for (for the name tags).
 
 ### Fixed
 - A quest you had left out (skipped where you'd take it, or abandoned) and take after all: when the route had

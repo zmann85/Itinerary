@@ -14,7 +14,7 @@ ignore:
   - manual
   - README.md
   - MANUAL.md
-  - CURSEFORGE.html
+  - CURSEFORGE.md
   - .gitignore
 
 embedded-libraries:

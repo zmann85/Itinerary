@@ -1877,17 +1877,136 @@ recZone = function()
     end
     return (GetZoneText and GetZoneText()) or (GetRealZoneText and GetRealZoneText()) or ""
 end
+---------------------------------------------------------------- the way you walk
+-- Every second while recording (not flying, dead or inside a dungeon) where you are, in zone coordinates and
+-- in world yards - a new spot only once you've moved a few yards, so standing still leaves a gap in the times
+-- (that's how the dock you waited at is found). A recorded step with a place gets the corners of the way you
+-- walked to it as its waypoints (when it wasn't about straight) and starts a new trail.
+local trail = {}
+local function dist(a, b) return math.sqrt((a.wx - b.wx) ^ 2 + (a.wy - b.wy) ^ 2) end
+local function sample()
+    if UnitOnTaxi and UnitOnTaxi("player") then return end
+    if UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") then return end
+    if IsInInstance and IsInInstance() then return end
+    local p = here()
+    local c, wx, wy
+    if ns.playerWorld then c, wx, wy = ns.playerWorld() end
+    if not (p and c and wx) then return end
+    local pt = { m = p.m, x = p.x, y = p.y, z = p.z, c = c, wx = wx, wy = wy, t = GetTime and GetTime() or 0 }
+    local last = trail[#trail]
+    if last and last.c == c and dist(last, pt) < 3 then return end
+    trail[#trail + 1] = pt
+    -- a long walk: the older half thinned out
+    if #trail > 600 then
+        local keep = {}
+        for i, q in ipairs(trail) do if i > 300 or i % 2 == 1 then keep[#keep + 1] = q end end
+        trail = keep
+    end
+end
+ns.recorderSample = sample -- (tests)
+local function segDist(p, a, b)
+    local dx, dy = b.wx - a.wx, b.wy - a.wy
+    local l2 = dx * dx + dy * dy
+    if l2 == 0 then return dist(p, a) end
+    local t = math.max(0, math.min(1, ((p.wx - a.wx) * dx + (p.wy - a.wy) * dy) / l2))
+    return math.sqrt((p.wx - a.wx - t * dx) ^ 2 + (p.wy - a.wy - t * dy) ^ 2)
+end
+-- the corners of a line of spots (Douglas-Peucker: what's more than eps yards off the line between two kept ones)
+local function simplify(pts, eps)
+    local keep = { [1] = true, [#pts] = true }
+    local function dp(i, j)
+        local best, at = 0, nil
+        for k = i + 1, j - 1 do
+            local d = segDist(pts[k], pts[i], pts[j])
+            if d > best then best, at = d, k end
+        end
+        if at and best > eps then keep[at] = true; dp(i, at); dp(at, j) end
+    end
+    dp(1, #pts)
+    local out = {}
+    for i = 1, #pts do if keep[i] then out[#out + 1] = pts[i] end end
+    return out
+end
+local function r2(v) return math.floor(v * 100 + 0.5) / 100 end
+-- out and back again (to a herb, a mob a bit off the way): you come back within 12 yards of a spot within the
+-- next 60 spots after being more than 20 away - the loop goes
+local function dropLoops(pts)
+    local out, i = {}, 1
+    while i <= #pts do
+        local p = pts[i]
+        out[#out + 1] = p
+        local back, far = nil, 0
+        for j = i + 1, math.min(#pts, i + 60) do
+            local d = dist(p, pts[j])
+            if d > far then far = d end
+            if far > 20 and d < 12 then back = j end
+        end
+        i = (back or i) + 1
+    end
+    return out
+end
+-- a step's waypoints from a trail: the corners of the way you walked to its point, at most 8; nothing when the
+-- way was short or about straight (the arrow's line does it), and not the detours out and back (a herb, a mob)
+local function trailPath(s, tr)
+    if not (s.m and s.x and s.y and ns.worldPos) then return nil end
+    local c, ex, ey = ns.worldPos(s.m, s.x / 100, s.y / 100)
+    if not c then return nil end
+    local pts = {}
+    for _, p in ipairs(tr or {}) do if p.c == c then pts[#pts + 1] = p end end
+    pts = dropLoops(pts)
+    if #pts < 2 then return nil end
+    local goal = { m = s.m, x = s.x, y = s.y, c = c, wx = ex, wy = ey }
+    pts[#pts + 1] = goal
+    local first = pts[1]
+    local direct, walked = dist(first, goal), 0
+    for i = 2, #pts do walked = walked + dist(pts[i - 1], pts[i]) end
+    if direct < 60 or walked < direct * 1.15 then return nil end
+    local eps, way = 30, {}
+    for _ = 1, 6 do
+        local simple = simplify(pts, eps)
+        local again = true
+        while again do
+            again = false
+            for i = 2, #simple - 1 do
+                local a, p, b = simple[i - 1], simple[i], simple[i + 1]
+                if dist(a, b) < 0.4 * (dist(a, p) + dist(p, b)) then table.remove(simple, i); again = true; break end
+            end
+        end
+        way = {}
+        for i = 2, #simple - 1 do
+            local p = simple[i]
+            if dist(p, first) > 25 and dist(p, goal) > 25 then way[#way + 1] = p end
+        end
+        if #way <= 8 then break end
+        eps = eps * 1.5
+    end
+    if #way == 0 or #way > 8 then return nil end
+    local path = {}
+    for _, p in ipairs(way) do path[#path + 1] = { p.m, r2(p.x), r2(p.y), 0, 20 } end
+    path[#path + 1] = { s.m, s.x, s.y, 0, 0 }
+    return path
+end
+ns.recorderTrailPath = trailPath -- (tests)
+
+-- add a step at the end of the recording; a new zone starts a chapter (not inside a dungeon: chapters stay
+-- with the zones). A step with a place gets the way you walked there and starts a new trail.
+local NO_PATH = { complete = true, xp = true, hearth = true }
 local function recAdd(s, noChapter)
     local R = REC()
     if not R then return end
     local ops, E = recOps()
     local zone = recZone()
-    if not noChapter and zone ~= "" and zone ~= R.zone then
+    local inside = IsInInstance and IsInInstance()
+    if not noChapter and not inside and zone ~= "" and zone ~= R.zone then
         s.chapter = zone .. " " .. (UnitLevel and UnitLevel("player") or "")
         s.chZone = zone
         R.zone = zone
     end
     if R.chapterNext then s.chapter, R.chapterNext = R.chapterNext, nil end
+    if s.m and s.x and not s.path and not s.wp and not s.death and not s.errand and not NO_PATH[s.t] then
+        s.path = trailPath(s, trail)
+    end
+    if (s.m and s.x) or s.t == "hearth" or s.t == "fly" then trail = {} end
     E.n = E.n + 1
     ops[#ops + 1] = { k = "add", id = E.n, after = R.last and ("+" .. R.last) or "^", s = s }
     R.last, R.lastT = E.n, GetTime and GetTime() or 0
@@ -1900,6 +2019,10 @@ local function recOn() return recState() == "on" end
 local function npcName() return (UnitExists and UnitExists("npc") and UnitName("npc")) or lastNpc end
 local function placed(s)
     local p = here()
+    if p then s.m, s.x, s.y, s.z = p.m, p.x, p.y, p.z end
+    return s
+end
+local function at(s, p)
     if p then s.m, s.x, s.y, s.z = p.m, p.x, p.y, p.z end
     return s
 end
@@ -1922,6 +2045,75 @@ local function recQuest(t, q)
     recAdd(placed({ t = t, q = { q }, n = { questName(q) }, npc = npc, targets = npc and { npc } or nil }))
 end
 
+-- bags: what's where, how many
+local function bagSlots(bag)
+    if C_Container and C_Container.GetContainerNumSlots then return C_Container.GetContainerNumSlots(bag) or 0 end
+    return GetContainerNumSlots and GetContainerNumSlots(bag) or 0
+end
+local function bagItem(bag, slot)
+    if C_Container and C_Container.GetContainerItemInfo then
+        local info = C_Container.GetContainerItemInfo(bag, slot)
+        if info then return info.itemID, info.stackCount or 1 end
+        return nil
+    end
+    if C_Container and C_Container.GetContainerItemID then
+        local id = C_Container.GetContainerItemID(bag, slot)
+        return id, id and 1 or nil
+    end
+    if GetContainerItemInfo then
+        local _, count, _, _, _, _, _, _, _, id = GetContainerItemInfo(bag, slot)
+        return id, count
+    end
+end
+local function bagCounts()
+    local out = {}
+    for bag = 0, (NUM_BAG_SLOTS or 4) do
+        for slot = 1, bagSlots(bag) do
+            local id, n = bagItem(bag, slot)
+            if id then out[id] = (out[id] or 0) + (n or 1) end
+        end
+    end
+    return out
+end
+local function itemClass(id)
+    local f = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    if not f then return nil end
+    local _, _, _, _, _, classID, subID = f(id)
+    return classID, subID
+end
+local function itemName(id)
+    return (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)) or (GetItemInfo and GetItemInfo(id)) or ("item " .. id)
+end
+local function spellName(id)
+    return id and ((C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or (GetSpellInfo and GetSpellInfo(id))) or nil
+end
+local function itemSpell(id)
+    local f = (C_Item and C_Item.GetItemSpell) or GetItemSpell
+    if f then return f(id) end
+end
+
+-- quest items you use: the bag item with the spell you just cast, if it's a quest item. It goes on the item
+-- button of the quest whose objectives move within a minute.
+local usedItems = {}
+local function questItemFor(spellID)
+    local want = spellName(spellID)
+    local qinfo = C_Container and C_Container.GetContainerItemQuestInfo or GetContainerItemQuestInfo
+    for bag = 0, (NUM_BAG_SLOTS or 4) do
+        for slot = 1, bagSlots(bag) do
+            local id = bagItem(bag, slot)
+            local quest = id and itemClass(id) == 12
+            if id and not quest and qinfo then
+                local a = qinfo(bag, slot)
+                quest = (type(a) == "table" and a.isQuestItem) or (a == true)
+            end
+            if quest then
+                local sn, sid = itemSpell(id)
+                if (sid and sid == spellID) or (sn and want and sn == want) then return id end
+            end
+        end
+    end
+end
+
 -- quest objectives: where they were done and what you fought; the quest done = a "complete" step there
 local recentMobs = {}
 local function questsInLog()
@@ -1938,6 +2130,17 @@ local function questsInLog()
         end
     end
     return out
+end
+-- the quest's own item (the game's "special item" of a quest), where the client knows it
+local function specialItem(q)
+    if not (GetQuestLogSpecialItemInfo and GetNumQuestLogEntries and GetQuestLogTitle) then return nil end
+    for i = 1, GetNumQuestLogEntries() do
+        local _, _, _, header, _, _, _, id = GetQuestLogTitle(i)
+        if not header and id == q then
+            local link = GetQuestLogSpecialItemInfo(i)
+            return link and tonumber(tostring(link):match("item:(%d+)")) or nil
+        end
+    end
 end
 local function objectives(q)
     local objs = C_QuestLog and C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(q) or {}
@@ -1980,7 +2183,8 @@ local function recScan()
             P.f = done
             if R.state == "on" then
                 local p = here()
-                if p then P.pts[#P.pts + 1] = { p.m, p.x, p.y, p.z } end
+                if p then P.pts[#P.pts + 1] = { p.m, p.x, p.y, p.z }
+                elseif IsInInstance and IsInInstance() then P.inside = true end -- (the game hides where you are in there)
                 for name, t in pairs(recentMobs) do
                     if now - t < 45 then
                         local have = false
@@ -1988,31 +2192,52 @@ local function recScan()
                         if not have and #P.mobs < 5 then P.mobs[#P.mobs + 1] = name end
                     end
                 end
-            end
-        end
-        if R.state == "on" and not P.emitted and #P.pts > 0 and ns.quest and ns.quest.ready(q) then
-            P.emitted = true
-            -- the middle of where you did it (points on the map you finished on)
-            local last = P.pts[#P.pts]
-            local sx, sy, n = 0, 0, 0
-            for _, p in ipairs(P.pts) do if p[1] == last[1] then sx, sy, n = sx + p[2], sy + p[3], n + 1 end end
-            -- the spots where the count went up, as the step's kill area (the arrow walks them as a loop, the
-            -- map shows them): the ones on the map you finished on, thinned so they're at least a bit apart
-            local wp = {}
-            local function r2(v) return math.floor(v * 100 + 0.5) / 100 end
-            for _, p in ipairs(P.pts) do
-                if p[1] == last[1] then
-                    local near = false
-                    for _, w in ipairs(wp) do
-                        if (w[2] - p[2]) ^ 2 + (w[3] - p[3]) ^ 2 < 1.2 ^ 2 then near = true break end
+                -- a quest item you used just before
+                for id, t in pairs(usedItems) do
+                    if now - t < 60 then
+                        P.items = P.items or {}
+                        local have = false
+                        for _, x in ipairs(P.items) do if x == id then have = true end end
+                        if not have and #P.items < 3 then P.items[#P.items + 1] = id end
                     end
-                    if not near then wp[#wp + 1] = { p[1], r2(p[2]), r2(p[3]), 0 } end
                 end
             end
-            while #wp > 10 do table.remove(wp, 2) end -- keep the first and the latest ones
+        end
+        if R.state == "on" and not P.emitted and (#P.pts > 0 or P.inside) and ns.quest and ns.quest.ready(q) then
+            P.emitted = true
             local s = { t = "complete", q = { q }, n = { questName(q) }, obj = #texts > 0 and texts or nil,
-                        mobs = #P.mobs > 0 and P.mobs or nil, m = last[1],
-                        x = r2(sx / n), y = r2(sy / n), z = last[4], wp = #wp >= 2 and wp or nil }
+                        mobs = #P.mobs > 0 and P.mobs or nil }
+            if #P.pts > 0 then
+                -- the middle of where you did it (points on the map you finished on)
+                local last = P.pts[#P.pts]
+                local sx, sy, n = 0, 0, 0
+                for _, p in ipairs(P.pts) do if p[1] == last[1] then sx, sy, n = sx + p[2], sy + p[3], n + 1 end end
+                -- the spots where the count went up, as the step's kill area (the arrow walks them as a loop, the
+                -- map shows them): the ones on the map you finished on, thinned so they're at least a bit apart
+                local wp = {}
+                for _, p in ipairs(P.pts) do
+                    if p[1] == last[1] then
+                        local near = false
+                        for _, w in ipairs(wp) do
+                            if (w[2] - p[2]) ^ 2 + (w[3] - p[3]) ^ 2 < 1.2 ^ 2 then near = true break end
+                        end
+                        if not near then wp[#wp + 1] = { p[1], r2(p[2]), r2(p[3]), 0 } end
+                    end
+                end
+                while #wp > 10 do table.remove(wp, 2) end -- keep the first and the latest ones
+                s.m, s.x, s.y, s.z, s.wp = last[1], r2(sx / n), r2(sy / n), last[4], #wp >= 2 and wp or nil
+            elseif R.dungeonPt then
+                -- done inside a dungeon: the arrow leads to its entrance
+                at(s, R.dungeonPt)
+            end
+            local items = P.items or {}
+            local sp = specialItem(q)
+            if sp then
+                local have = false
+                for _, x in ipairs(items) do if x == sp then have = true end end
+                if not have then table.insert(items, 1, sp) end
+            end
+            if #items > 0 then s.item = items end
             recAdd(s)
         end
     end
@@ -2031,11 +2256,266 @@ if hooksecurefunc and TakeTaxiNode then
 end
 local function bindLoc() return GetBindLocation and GetBindLocation() or nil end
 
+-- weapon masters: one you know (Itinerary_Data, or one you opened before), or one you learned a weapon skill at
+local function weaponMasterNpc(npc)
+    if not npc then return false end
+    if ns.DATA_WEAPON_MASTERS and ns.DATA_WEAPON_MASTERS[npc] then return true end
+    if ItineraryDB.weaponMasters and ItineraryDB.weaponMasters[npc] then return true end
+    local cd = ns.CLASS_DATA and ns.CLASS_DATA.weaponMasters
+    return (cd and cd[npc]) and true or false
+end
+local function weaponsKnownNow()
+    local out = {}
+    local known = IsPlayerSpell or IsSpellKnown
+    if not (known and ns.WPN_NAME) then return out end
+    for id in pairs(ns.WPN_NAME) do if known(id) then out[id] = true end end
+    return out
+end
+local trainer -- the trainer you have open: { npc, spot, trade, wpn = weapon skills you knew }
+local function trainerClosed()
+    local t = trainer
+    trainer = nil
+    if not (t and recOn()) then return end
+    local learned = {}
+    for id in pairs(weaponsKnownNow()) do if not t.wpn[id] then learned[#learned + 1] = id end end
+    table.sort(learned)
+    if #learned > 0 or weaponMasterNpc(t.npc) then
+        if #learned == 0 then return end -- (only had a look)
+        local names = {}
+        for _, id in ipairs(learned) do names[#names + 1] = ns.WPN_NAME[id] or tostring(id) end
+        recAdd(at({ t = "train", npc = t.npc, targets = t.npc and { t.npc } or nil, wpn = learned,
+                    name = "Train " .. table.concat(names, ", ") }, t.spot))
+        return
+    end
+    local op = recLastOp()
+    if op and op.s.t == "train" and op.s.npc == t.npc then return end
+    recAdd(at({ t = "train", npc = t.npc, targets = t.npc and { t.npc } or nil, cls = (not t.trade) or nil,
+                name = t.trade and ("Train at " .. (t.npc or "the trainer")) or nil }, t.spot))
+end
+
+-- vendors: what you sold, bought and repaired while one was open
+local shop
+local TOOL_ITEMS = { [2901] = true, [7005] = true, [5956] = true, [6256] = true } -- (bought for you: Settings > Professions)
+local FOOD_SPELL, DRINK_SPELL = 433, 430
+local function openShop()
+    if shop or not recOn() then return end
+    shop = { npc = npcName(), spot = here(), before = bagCounts(), bought = {} }
+end
+local function shopClosed()
+    local v = shop
+    shop = nil
+    if not (v and recOn()) then return end
+    local now = bagCounts()
+    local food, food2 = spellName(FOOD_SPELL), spellName(DRINK_SPELL)
+    local errands, stock = {}, {}
+    for id, n in pairs(v.bought) do
+        if not TOOL_ITEMS[id] then
+            local got = (now[id] or 0) - (v.before[id] or 0)
+            if got <= 0 then got = n end
+            local cls, sub = itemClass(id)
+            local sn = itemSpell(id)
+            -- food, drink and bags are an errand (an instruction); anything else is a step that's done once you have it
+            if cls == 1 or (cls == 0 and sub == 5) or (sn and (sn == food or sn == food2)) then
+                errands[#errands + 1] = id
+            else
+                stock[#stock + 1] = { id, got }
+            end
+        end
+    end
+    table.sort(errands); table.sort(stock, function(a, b) return a[1] < b[1] end)
+    local npc = v.npc
+    local function names(list, key)
+        local out = {}
+        for _, x in ipairs(list) do out[#out + 1] = itemName(key and x[key] or x) end
+        return table.concat(out, ", ")
+    end
+    if #stock > 0 then
+        recAdd(at({ t = "do", name = "Buy " .. names(stock, 1), npc = npc, targets = npc and { npc } or nil, col = stock }, v.spot))
+    end
+    if #errands > 0 then
+        recAdd(at({ t = "do", name = "Buy " .. names(errands), npc = npc, targets = npc and { npc } or nil, errand = true }, v.spot))
+    elseif #stock == 0 and (v.sold or v.repaired) then
+        local name = v.sold and (v.repaired and "Vendor trash and repair" or "Vendor trash") or "Repair"
+        recAdd(at({ t = "do", name = name, npc = npc, targets = npc and { npc } or nil, errand = true }, v.spot))
+    end
+end
+if hooksecurefunc then
+    if BuyMerchantItem then
+        hooksecurefunc("BuyMerchantItem", function(i, qty)
+            if not shop then return end
+            local link = GetMerchantItemLink and GetMerchantItemLink(i)
+            local id = link and tonumber(tostring(link):match("item:(%d+)"))
+            if id then shop.bought[id] = (shop.bought[id] or 0) + (tonumber(qty) or 1) end
+        end)
+    end
+    if RepairAllItems then hooksecurefunc("RepairAllItems", function() if shop then shop.repaired = true end end) end
+    -- (an item used while a vendor is open is sold)
+    local function used()
+        if not shop and MerchantFrame and MerchantFrame:IsShown() then openShop() end
+        if shop then shop.sold = true end
+    end
+    if UseContainerItem then hooksecurefunc("UseContainerItem", used) end
+    if C_Container and C_Container.UseContainerItem then hooksecurefunc(C_Container, "UseContainerItem", used) end
+end
+
+-- abandoning a quest: an abandon step (several right after each other share one)
+local abandonQ, abandonName
+local function noteAbandon()
+    local q
+    if C_QuestLog and C_QuestLog.GetAbandonQuest then q = C_QuestLog.GetAbandonQuest() end
+    if not (q and q > 0) and GetQuestLogSelection and GetQuestLogTitle then
+        local i = GetQuestLogSelection()
+        if i and i > 0 then
+            local _, _, _, _, _, _, _, id = GetQuestLogTitle(i)
+            q = id
+        end
+    end
+    if q and q > 0 then
+        abandonQ = q
+        abandonName = (GetAbandonQuestName and GetAbandonQuestName()) or questName(q)
+    end
+end
+local function abandoned()
+    local q, n = abandonQ, abandonName
+    abandonQ, abandonName = nil, nil
+    if not (q and recOn()) then return end
+    local R = REC()
+    if R.prog then R.prog[q] = nil end
+    local op = recLastOp()
+    local now = GetTime and GetTime() or 0
+    if op and op.s.abandon and (now - (R.lastT or 0)) < 60 then
+        for _, x in ipairs(op.s.abandon) do if x == q then return end end
+        op.s.abandon[#op.s.abandon + 1] = q
+        op.s.name = op.s.name .. ", " .. (n or questName(q))
+        R.lastT = now
+        if ItineraryCharDB.route == R.id then rebuild() end
+        recUpdate()
+        return
+    end
+    recAdd({ t = "do", abandon = { q }, name = "Abandon " .. (n or questName(q)) }, true)
+end
+if hooksecurefunc then
+    if SetAbandonQuest then hooksecurefunc("SetAbandonQuest", noteAbandon) end
+    if C_QuestLog and C_QuestLog.SetAbandonQuest then hooksecurefunc(C_QuestLog, "SetAbandonQuest", noteAbandon) end
+    if AbandonQuest then hooksecurefunc("AbandonQuest", abandoned) end
+    if C_QuestLog and C_QuestLog.AbandonQuest then hooksecurefunc(C_QuestLog, "AbandonQuest", abandoned) end
+end
+
+-- loading screens: into a dungeon, the Deeprun Tram, a boat or a zeppelin to the other continent
+local TRAM = 369 -- (the Deeprun Tram's own map)
+local ZEP = { [1411] = true, [1420] = true, [1434] = true } -- Durotar, Tirisfal Glades, Stranglethorn Vale
+local HARBOR = { boat = { [1437] = "Menethil Harbor", [1439] = "Auberdine", [1445] = "Theramore Isle", [1413] = "Ratchet", [1434] = "Booty Bay" },
+                 zeppelin = { [1411] = "Orgrimmar", [1420] = "Undercity", [1434] = "Grom'gol" } }
+local function zoneMap(m)
+    local guard = 0
+    while m and guard < 10 do
+        local info = C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(m)
+        if not info then return nil end
+        if info.mapType == 3 then return m end
+        if info.mapType and info.mapType < 3 then return nil end
+        m, guard = info.parentMapID, guard + 1
+    end
+end
+-- the dock: where you last stood still for a few seconds before the loading screen (waiting for the boat, or on
+-- it while it's in), within the last 5 minutes; the trail up to there is the way to it
+local function dockOf(tr, leftAt)
+    for i = #tr, 1, -1 do
+        local p = tr[i]
+        if leftAt - p.t > 300 then break end
+        local nextT = tr[i + 1] and tr[i + 1].t or leftAt
+        if nextT - p.t >= 3 then
+            local way = {}
+            for k = 1, i do way[k] = tr[k] end
+            return p, way
+        end
+    end
+end
+local leaving -- where you were when a loading screen started
+local lastCast = 0
+local function arrived(l)
+    local R = REC()
+    if not (R and recOn()) then return end
+    local now = GetTime and GetTime() or 0
+    local inside, kind = false, nil
+    if IsInInstance then inside, kind = IsInInstance() end
+    local name, inst
+    if GetInstanceInfo then
+        local a, _, _, _, _, _, _, id = GetInstanceInfo()
+        name, inst = a, id
+    end
+    -- the Deeprun Tram: from the entrance in one city to the other
+    if inst == TRAM then
+        if l.inst ~= TRAM then R.tram = { spot = l.spot, zone = l.zone, trail = l.trail } end
+        return
+    end
+    if l.inst == TRAM then
+        local from = R.tram
+        R.tram = nil
+        local zone = GetRealZoneText and GetRealZoneText() or ""
+        if from and from.spot and zone ~= "" and zone ~= from.zone then
+            local s = at({ t = "go", name = "Take the Deeprun Tram to " .. zone, zone = zone }, from.spot)
+            s.path = trailPath(s, from.trail)
+            recAdd(s, true)
+        end
+        return
+    end
+    -- into a dungeon: a dungeon step at its entrance (not again when you're back in after a wipe)
+    if inside and (kind == "party" or kind == "raid") then
+        if l.inside then return end
+        if R.dungeon == name and now - (R.dungeonLeft or 0) < 1800 then return end
+        R.dungeon, R.dungeonPt = name, l.spot
+        local s = at({ t = "dungeon", name = name or "the dungeon" }, l.spot)
+        if l.spot then s.path = trailPath(s, l.trail) end
+        recAdd(s, true)
+        return
+    end
+    if l.inside then R.dungeonLeft = now; return end
+    -- the other continent without a hearth, a teleport, a flight or a death: a boat or a zeppelin
+    if not (l.inst and inst and l.inst ~= inst and (l.inst == 0 or l.inst == 1) and (inst == 0 or inst == 1)) then return end
+    if l.dead or l.taxi or (l.t - (l.cast or 0)) < 6 then return end
+    local dock, way = dockOf(l.trail or {}, l.t)
+    dock = dock or l.spot
+    if not dock then return end
+    local zone = GetRealZoneText and GetRealZoneText() or ""
+    local fromZ = zoneMap(dock.m)
+    local toZ = zoneMap(C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player"))
+    local how = (fromZ and toZ and ZEP[fromZ] and ZEP[toZ]) and "zeppelin" or "boat"
+    local sub = GetSubZoneText and GetSubZoneText() or ""
+    local to = (toZ and HARBOR[how][toZ]) or (sub ~= "" and sub) or zone
+    local s = at({ t = "go", name = "Take the " .. how .. " to " .. to, zone = zone ~= "" and zone or nil }, dock)
+    s.path = trailPath(s, way)
+    recAdd(s, true)
+end
+
+-- dying: resurrected far from where you died (at the spirit healer, not at your corpse) = a death skip there
+local died -- { spot, c, wx, wy }
+local function unghost()
+    local d = died
+    died = nil
+    if not (d and recOn()) then return end
+    local far = d.spiritRes
+    if ns.playerWorld and d.c then
+        local c, wx, wy = ns.playerWorld()
+        if c and wx then far = c ~= d.c or math.sqrt((wx - d.wx) ^ 2 + (wy - d.wy) ^ 2) > 60 end
+    end
+    if not far then return end
+    recAdd(at({ t = "go", death = true, name = "Die and respawn at the spirit healer" }, d.spot), true)
+    ns.print("recorded a death skip where you died (Undo last in the recorder if you didn't mean one)")
+end
+
 local rec = CreateFrame("Frame")
 for _, e in ipairs({ "PLAYER_LOGIN", "QUEST_LOG_UPDATE", "UNIT_QUEST_LOG_CHANGED", "PLAYER_TARGET_CHANGED", "TRAINER_SHOW",
-                     "TAXIMAP_OPENED", "UI_INFO_MESSAGE", "UNIT_SPELLCAST_SUCCEEDED", "CHAT_MSG_SYSTEM", "QUEST_ACCEPTED",
-                     "QUEST_TURNED_IN" }) do pcall(rec.RegisterEvent, rec, e) end
+                     "TRAINER_CLOSED", "TAXIMAP_OPENED", "UI_INFO_MESSAGE", "UNIT_SPELLCAST_SUCCEEDED", "CHAT_MSG_SYSTEM",
+                     "QUEST_ACCEPTED", "QUEST_TURNED_IN", "MERCHANT_SHOW", "MERCHANT_CLOSED", "PLAYER_LEAVING_WORLD",
+                     "PLAYER_ENTERING_WORLD", "PLAYER_DEAD", "PLAYER_UNGHOST", "CONFIRM_XP_LOSS" }) do pcall(rec.RegisterEvent, rec, e) end
 local scanQueued = false
+local tick = 0
+rec:SetScript("OnUpdate", function(_, e)
+    tick = tick + (e or 0)
+    if tick < 1 then return end
+    tick = 0
+    if recOn() then sample() end
+end)
 rec:SetScript("OnEvent", function(_, event, a1, a2, a3)
     local R = REC()
     if event == "PLAYER_LOGIN" then
@@ -2065,12 +2545,13 @@ rec:SetScript("OnEvent", function(_, event, a1, a2, a3)
         recQuest("turnin", a1)
         if R.prog then R.prog[a1] = nil end
     elseif event == "TRAINER_SHOW" then
-        local npc = npcName()
-        local op = recLastOp()
-        if op and op.s.t == "train" and op.s.npc == npc then return end
-        local trade = IsTradeskillTrainer and IsTradeskillTrainer()
-        recAdd(placed({ t = "train", npc = npc, targets = npc and { npc } or nil, cls = (not trade) or nil,
-                        name = trade and ("Train at " .. (npc or "the trainer")) or nil }))
+        trainer = { npc = npcName(), spot = here(), trade = IsTradeskillTrainer and IsTradeskillTrainer() or false, wpn = weaponsKnownNow() }
+    elseif event == "TRAINER_CLOSED" then
+        trainerClosed()
+    elseif event == "MERCHANT_SHOW" then
+        openShop()
+    elseif event == "MERCHANT_CLOSED" then
+        shopClosed()
     elseif event == "TAXIMAP_OPENED" then
         local npc = npcName()
         flightFrom = placed({ npc = npc })
@@ -2082,7 +2563,11 @@ rec:SetScript("OnEvent", function(_, event, a1, a2, a3)
             recAdd(placed({ t = "fp", name = sub ~= "" and sub or GetZoneText(), npc = npc, targets = npc and { npc } or nil }))
         end
     elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
-        if a1 == "player" and a3 == 8690 then recAdd({ t = "hearth", name = bindLoc() or "Hearthstone" }, true) end
+        if a1 ~= "player" then return end
+        lastCast = GetTime and GetTime() or 0
+        if a3 == 8690 then recAdd({ t = "hearth", name = bindLoc() or "Hearthstone" }, true); return end
+        local id = questItemFor(a3)
+        if id then usedItems[id] = lastCast end
     elseif event == "CHAT_MSG_SYSTEM" then
         local b = bindLoc()
         if b and R.bind and b ~= R.bind then
@@ -2090,6 +2575,32 @@ rec:SetScript("OnEvent", function(_, event, a1, a2, a3)
             recAdd(placed({ t = "sethearth", name = b, npc = npc, targets = npc and { npc } or nil }))
         end
         R.bind = b or R.bind
+    elseif event == "PLAYER_LEAVING_WORLD" then
+        local inside = IsInInstance and IsInInstance() or false
+        local inst
+        if GetInstanceInfo then local _, _, _, _, _, _, _, id = GetInstanceInfo(); inst = id end
+        local spot = (not inside or inst == TRAM) and here() or nil
+        leaving = { inst = inst, inside = inside and inst ~= TRAM, spot = spot, zone = GetRealZoneText and GetRealZoneText() or "",
+                    trail = trail, t = GetTime and GetTime() or 0, cast = lastCast,
+                    dead = UnitIsDeadOrGhost and UnitIsDeadOrGhost("player") or false, taxi = UnitOnTaxi and UnitOnTaxi("player") or false }
+        trail = {}
+    elseif event == "PLAYER_ENTERING_WORLD" then
+        local l = leaving
+        leaving = nil
+        if a1 or a2 or not l then return end -- (logging in, a reload)
+        -- (a moment later: the zone names are right by then)
+        C_Timer.After(1, function() arrived(l) end)
+    elseif event == "PLAYER_DEAD" then
+        local inside = IsInInstance and IsInInstance()
+        local p = not inside and here() or nil
+        local c, wx, wy
+        if p and ns.playerWorld then c, wx, wy = ns.playerWorld() end
+        died = p and { spot = p, c = c, wx = wx, wy = wy } or nil
+        trail = {} -- (the run back to your corpse is no way to walk)
+    elseif event == "CONFIRM_XP_LOSS" then
+        if died then died.spiritRes = true end
+    elseif event == "PLAYER_UNGHOST" then
+        unghost()
     end
 end)
 
@@ -2113,7 +2624,7 @@ function ns.recorder(action)
         local id = newRecordingRoute()
         ItineraryCharDB.recorder = { id = id, state = "on", bind = bindLoc(), prog = {} }
         recScan() -- the quests you have now are the starting point
-        ns.print("recording into \"" .. ItineraryDB.customRoutes[id].name .. "\": quests, trainers, flights and hearthstone become steps")
+        ns.print("recording into \"" .. ItineraryDB.customRoutes[id].name .. "\": quests, trainers, vendors, flights, dungeons, boats and the way you walk become steps")
     elseif action == "pause" then
         if R and R.state then R.state = "paused"; ns.print("recording paused") end
     elseif action == "stop" then
@@ -2138,6 +2649,11 @@ function ns.recorderAdd(kind, text)
         local _, texts = objectives(q)
         recAdd({ t = "complete", q = { q }, n = { questName(q) }, obj = texts, along = true, note = text ~= "" and text or nil }, true)
         return true
+    elseif kind == "xp" then
+        -- "grind to here": a level step at your level and XP right now (the place: where you are)
+        local lv = UnitLevel and UnitLevel("player") or 1
+        local xp = UnitXP and UnitXP("player") or 0
+        recAdd(placed({ t = "xp", lvl = lv, xpIn = xp > 0 and xp or nil, note = text ~= "" and text or nil }))
     elseif kind == "waypoint" then
         local sub = GetSubZoneText and GetSubZoneText() or ""
         recAdd(placed({ t = "go", name = text ~= "" and text or (sub ~= "" and sub) or GetZoneText(), r = 15 }))
@@ -2195,7 +2711,7 @@ local rwin
 local function buildRecorder()
     local ui = U()
     local ar, ag, ab = ui.accent()
-    local RW, RH, RP = 380, 566, 14
+    local RW, RH, RP = 380, 590, 14
     rwin = CreateFrame("Frame", "ItineraryRecorderWindow", UIParent)
     rwin:SetSize(RW, RH)
     local pos = ItineraryDB.recorderPos
@@ -2286,7 +2802,7 @@ local function buildRecorder()
     b4:SetPoint("TOPLEFT", b1, "BOTTOMLEFT", 0, -6)
     local b5 = button(rwin, "Waypoint here", bw, addWith("waypoint"), "A travel step to where you stand (the text names it; empty = the area's name).")
     b5:SetPoint("LEFT", b4, "RIGHT", 6, 0)
-    local b6 = button(rwin, "Undo last", bw, function() ns.recorderUndo() end, "Removes the last recorded step.")
+    local b6 = button(rwin, "Level here", bw, addWith("xp"), "LEVEL: grind to here - a step that's done at the level and XP you have right now (11 2300xp), at your position. Press it when you're done grinding.")
     b6:SetPoint("LEFT", b5, "RIGHT", 6, 0)
 
     -- a quest from your log: what an instruction lasts for, and what goes ALONG THE WAY
@@ -2295,17 +2811,19 @@ local function buildRecorder()
     bQ:SetPoint("TOPLEFT", b4, "BOTTOMLEFT", 0, -6)
     local b7 = button(rwin, "Along the way", bw, addWith("along"), "ALONG THE WAY: the picked quest's objectives become a side objective from here on (\"Kill boars while you go\"), with live counts, until they're done. The text box adds a hint to it.")
     b7:SetPoint("LEFT", bQ, "RIGHT", 6, 0)
-    local bOpen = button(rwin, "Follow it / edit it", RW - RP * 2, function()
+    local bUndo = button(rwin, "Undo last", bw, function() ns.recorderUndo() end, "Removes the last recorded step.")
+    bUndo:SetPoint("TOPLEFT", bQ, "BOTTOMLEFT", 0, -12)
+    local bOpen = button(rwin, "Follow it / edit it", RW - RP * 2 - bw - 6, function()
         local R = REC(); if not (R and R.id) then return end
         ns.switchRoute(R.id, true)
         if ns.openEditor then ns.openEditor() end
     end, "Switches this character to the recorded route and opens it in the route editor. Your old route is in the list button of the panel footer.")
-    bOpen:SetPoint("TOPLEFT", bQ, "BOTTOMLEFT", 0, -12)
+    bOpen:SetPoint("LEFT", bUndo, "RIGHT", 6, 0)
 
     local hint = ui.text(rwin, 11, 1, 1, 1, 0.3)
-    hint:SetPoint("TOPLEFT", bOpen, "BOTTOMLEFT", 0, -12); hint:SetWidth(RW - RP * 2); hint:SetWordWrap(true)
+    hint:SetPoint("TOPLEFT", bUndo, "BOTTOMLEFT", 0, -12); hint:SetWidth(RW - RP * 2); hint:SetWordWrap(true)
     hint:SetJustifyH("LEFT")
-    hint:SetText("Recorded: quests you accept, finish and turn in (with where and what you fought), trainers, flight paths, flights, hearthstone and where you set it. A new zone starts a chapter.")
+    hint:SetText("Recorded: quests you accept, finish, turn in and abandon (where, what you fought, the quest items you used), trainers and weapon masters, vendors, flight paths, flights, hearthstone and where you set it, dungeons, boats, zeppelins and the tram, death skips, and the way you walk to each step. A new zone starts a chapter.")
 
     recRefresh = function()
         if not rwin:IsShown() then return end
@@ -2321,7 +2839,7 @@ local function buildRecorder()
         bRec:SetActive(st == "on")
         bPause:SetActive(st == "paused")
         if not bStop.armed then bStop.text:SetText("Stop") end
-        for _, b in ipairs({ bPause, bStop, b1, b2, b3, b4, b5, b6, b7, bQ, bOpen }) do b:SetAlpha(st and 1 or 0.35) end
+        for _, b in ipairs({ bPause, bStop, b1, b2, b3, b4, b5, b6, b7, bQ, bOpen, bUndo }) do b:SetAlpha(st and 1 or 0.35) end
         local pq = R and R.pickQ
         bQ.text:SetText(pq and ("Quest: " .. (questName(pq) or pq)) or "Quest: none")
         nameE:SetShown(def and true or false)
@@ -2338,7 +2856,8 @@ local function buildRecorder()
         end
         for i, l in ipairs(lines) do
             local op = order[i]
-            l.v:SetText(op and (op.s.along and (op.s.t == "complete" and "ALONG" or "INSTR") or VERB[op.s.t] or op.s.t) or "")
+            l.v:SetText(op and (op.s.along and (op.s.t == "complete" and "ALONG" or "INSTR") or (op.s.death and "DEATH") or (op.s.errand and "VENDOR")
+                or VERB[kindOf(op.s)] or VERB[op.s.t] or op.s.t) or "")
             l.t:SetText(op and (label(op.s) .. (op.s.note and ("  |cff999999" .. op.s.note:gsub("\n", " ") .. "|r") or "")) or (i == 1 and st and "nothing yet" or ""))
             l.t:SetAlpha(op and 0.85 or 0.4)
         end

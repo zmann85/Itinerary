@@ -3,6 +3,12 @@
 ## Unreleased
 
 ### New
+- **The recorder records much more**: quest items you use (on the quest step's item button), abandoned quests,
+  weapon masters, vendors (food, drink and bags as an errand, anything else as a step with Collect, or *Vendor
+  trash* / *Repair*), dungeons (at the entrance, and the quests you finish inside), boats and zeppelins to the
+  other continent (at the dock), the Deeprun Tram, death skips (back at the spirit healer far from where you
+  died), and the way you walk to each step as its waypoints when it isn't about straight. New button **Level
+  here**: a step done at your level and XP right now, for "grind to here".
 - **Share quests in a group** (Settings > Quests, off): in a group, every quest you accept is shared with the
   others right away (when it can be shared), so whoever is behind doesn't have to run to the quest giver. Quests
   a group member shared with you aren't shared back.
@@ -132,6 +138,8 @@
   cause small stutters).
 
 ### Fixed
+- Recorder: a weapon master was recorded as a class trainer visit (a step waiting for class skills); now it's a
+  train step for the weapon skill you learned there, and nothing when you only had a look.
 - Settings: a switch with a longer label is wider instead of cut off (Panel > Instructions: "In the panel").
 - Editor: your first change to a route from a pack (which makes your own copy) no longer jumps the editor to
   step 1; it stays on the step you're changing.

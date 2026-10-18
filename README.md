@@ -29,8 +29,8 @@ in the separate `Itinerary_Data` add-on (GPL v3); without it Itinerary learns th
   learning them and their tools and uses the starting-zone book reward for a gathering profession.
 - **Gather mode**: a farming route from one herb or ore spawn spot to the next, with map pins; nodes you
   find are remembered.
-- **Route editor and recorder**: record a route while you play (quests, trainers, flights, hearthstone,
-  hints, instructions, along-the-way objectives), change any step and everything it can do (every step type,
+- **Route editor and recorder**: record a route while you play (quests, trainers, vendors, flights,
+  hearthstone, dungeons, boats, death skips, the way you walk, hints, instructions, along-the-way objectives), change any step and everything it can do (every step type,
   conditions, waypoints, dialogue, macros), drag a step's waypoints into place on the world map, and share
   routes as import strings.
 - **Group play**: share every quest you accept with your group (optional).

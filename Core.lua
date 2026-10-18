@@ -527,6 +527,7 @@ function ns.prepareRoute(r)
     -- weapon, arrows, grimoires) stays a step.
     local function errand(s)
         if s.t ~= "do" or not s.npc or s.col or s.need or s.ah or s.item or s.death or s.untilQ or s.abandon or s.vendor then return false end
+        if s.errand then return true end -- (marked as one: the recorder's food, drink and bags)
         local n = s.name or ""
         if n:find("^Vendor") or n:find("^Sell ") or n:find("^Repair ") then return true end
         if n:find("^Buy ") or n:find("^Stock up") then

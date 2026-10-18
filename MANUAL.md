@@ -530,11 +530,26 @@ next stops again.
 The recorder writes a new route of its own while you play. Open it: Shift + right-click the route button,
 `/iti recorder`, or the *Recorder* button in the editor. Press **Record** and play. From then on, these become
 steps on their own:
-- quests you accept, finish and turn in (with where you were and what you fought)
-- trainers, flight paths, flights
-- your hearthstone and where you set it
+- **Quests** you accept, finish and turn in: where you were, what you fought and the kill-area spots. A quest
+  item you used for it goes on the quest's item button. A quest you **abandon** becomes an abandon step.
+- **Trainers**: your class trainer, profession trainers, and a **weapon master** you learned a weapon skill at
+  (a train step for that skill).
+- **Vendors**: food, drink and bags you buy are an errand at that vendor (an instruction you can click);
+  anything else you buy is a step that's done once you have it (*Buy Rough Arrow*, with Collect). Only sold or
+  repaired: *Vendor trash* / *Repair* there. Gathering tools aren't recorded: Itinerary buys those for you.
+- **Flight paths, flights**, your **hearthstone** and where you set it.
+- **Dungeons**: a dungeon step at the entrance. Quests you finish inside get their step too (the game doesn't
+  tell where you are in there: the arrow leads to the entrance).
+- **Boats and zeppelins** to the other continent: *Take the boat to Menethil Harbor* at the dock you waited at,
+  done once you're there. The **Deeprun Tram** the same way.
+- **Death skips**: coming back at the spirit healer far from where you died is a death skip there (a run back to
+  your corpse isn't). Chat tells you; *Undo last* if you didn't mean one.
+- **The way you walk**: each step gets the corners of the way you walked to it as its waypoints, when the way
+  wasn't about straight (at most 8; a detour out and back to a herb or a mob is left out). Change them on the
+  editor's *More* page.
 
-A new zone starts a new chapter.
+A new zone starts a new chapter (not inside a dungeon). A boat within one continent (Auberdine – Rut'theran
+Village) isn't recorded: press *Waypoint here* at the dock.
 
 While recording, the panel footer shows a red **REC**. *Pause* stops recording for a while. *Stop* (two
 clicks) ends it, and the route stays in your route list. Change it afterwards in the editor.
@@ -548,6 +563,7 @@ Type into the recorder's text box and add your own:
 | **Along the way** | The picked quest's objectives as a side objective from here on, with live counts |
 | **Add step** | A to-do step at your position |
 | **Waypoint here** | A travel step to where you stand |
+| **Level here** | A step that's done at your level and XP right now (*11 2300xp*), at your position: press it when you're done grinding |
 | **New chapter** | The next step starts a chapter with this name |
 | **Undo last** | Removes the last recorded step |
 

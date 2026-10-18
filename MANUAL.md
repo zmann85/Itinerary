@@ -54,7 +54,7 @@ on the ground and NPCs with a quest for you sparkle, without the outlines around
 
 ## 2. The route panel
 
-<p align="center"><img src="manual/route-panel.png" alt="The route panel" width="434"></p>
+<p align="center"><img src="manual/route-panel.png" alt="The route panel" width="469"></p>
 
 From top to bottom:
 
@@ -62,11 +62,12 @@ From top to bottom:
   route's level range. A thin bar along the top shows how far through the chapter you are. Click the
   header to open the **chapter list** and jump to any chapter.
 - **The step**: what to do now, with the NPC, quest names coloured by difficulty, and live objective
-  counts (*Rockjaw Trogg slain 3/10*).
-- **Hint**: a line under the step with extra advice (*Unequip your shirt so you can sell it*). Items and
+  counts (*Filled Tourmaline Phial 0/1*).
+- **Hint**: a line under the step with extra advice (*Fill the Tourmaline Phial from the moonwell ...*). Items and
   spells in the text show their icon. Hover them for the tooltip; Shift-click links them in chat.
 - **ALONG THE WAY**: side objectives you work on while you go, with live counts. These are quest
-  objectives or items to collect (*Chunk of Boar Meat 3/10*), one per line; finished ones stay listed,
+  objectives, side quests (*Camping 101: First Aid*) or items to collect (*Small Spider Leg 0/7*), one per
+  line; items for a later quest say which one (*For Recipe of the Kaldorei*). Finished ones stay listed,
   greyed. Once the route reaches its own step for that quest, that step shows the counts instead.
 - **Next steps**: a preview of what comes after. Steps that are done already are left out (a quest you
   have, an *Abandon* step for a quest you never took or handed in already).
@@ -85,9 +86,9 @@ From top to bottom:
   - **‹ ›**: one step back or forward.
 - **INSTRUCTIONS**, in their own card under the panel (Settings > Panel > *Instructions*: *In the panel* puts
   them inside it): things to keep doing next to your step. Examples: sell junk, use your hearthstone,
-  learn new skills at a trainer close by, a weapon master, a profession trainer, "don't sell the meat".
-  - The guide's errands at a vendor are instructions too, not stops of their own: *Vendor trash at Corina
-    Steele*, *Buy Ice Cold Milk*, food and water, bags, repairs. They're done when you open that vendor
+  learn new skills at a trainer close by, a weapon master, a profession trainer, a place to head for.
+  - The route's errands at a vendor are instructions too, not stops of their own: selling junk and repairs
+    at a named vendor (*... at Brannol Eaglemoon*), food and water, bags. They're done when you open that vendor
     (selling junk: any vendor). Buying something the route needs (a quest item, a weapon, arrows) stays a
     step.
   - **Click** an instruction that has a place (*Click to point the arrow here*), and the arrow points there.
@@ -433,7 +434,7 @@ type and Abandon.
 | Field | What goes in |
 |---|---|
 | **Text** | What the step says (travel and to-do steps; see the table above for the others) |
-| **Hint** | A line under the step (*Unequip your shirt so you can sell it*) |
+| **Hint** | A line under the step (*Fill the phial at the moonwell*) |
 | **Quest IDs** | The quests, comma separated (the ID is in the quest's Wowhead link). For a Quest step, `12:2` means only objective 2 of quest 12 |
 | **NPC** | Who to talk to. Several, comma separated: the first is the one to talk to, the target button looks for all. *Use target* fills it in |
 | **Mobs** | Mobs for the target button, comma separated |

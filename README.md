@@ -5,7 +5,7 @@
 A step-by-step leveling companion for WoW Forever: a route panel, a waypoint arrow and a lot of small
 automation, built around routes you record and edit yourself.
 
-<p align="center"><img src="manual/route-panel.png" alt="The route panel" width="434"></p>
+<p align="center"><img src="manual/route-panel.png" alt="The route panel" width="469"></p>
 
 Itinerary ships **without routes**. Record your own with the recorder, import one somebody shared, or
 install a route pack (a separate addon with its own license). Trainer, vendor and gathering positions come

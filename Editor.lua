@@ -672,7 +672,8 @@ local function build()
         GameTooltip:Show()
     end)
     win.routeTip:SetScript("OnLeave", function() GameTooltip:Hide() end)
-    win.nameEdit = editbox(win, 220, function(t) ns.renameCustomRoute(ItineraryCharDB.route, t) end)
+    win.nameEdit = editbox(win, 360, function(t) ns.renameCustomRoute(ItineraryCharDB.route, t) end)
+    win.nameEdit:HookScript("OnEditFocusLost", function(self) self:SetCursorPosition(0) end) -- a long name shows its start
     win.nameEdit:SetPoint("LEFT", title, "RIGHT", 12, -1)
     -- which route the editor shows: the routes list (switching this character to the one you pick)
     win.routeSel = button(win, "Change route", 104, function(self) if ns.toggleRoutePicker then ns.toggleRoutePicker(self, true) end end,
@@ -1847,7 +1848,7 @@ local function build()
         local custom = r and r.custom
         win.routeName:SetShown(not custom)
         win.nameEdit:SetShown(custom and true or false)
-        if custom and not win.nameEdit:HasFocus() then win.nameEdit:SetText(r.name or "") end
+        if custom and not win.nameEdit:HasFocus() then win.nameEdit:SetText(r.name or ""); win.nameEdit:SetCursorPosition(0) end
         win.routeName:SetText(r and ((r.name or "?") .. (r.custom and "" or ((r.version and ("  " .. r.version) or "") .. "  ·  edits make your own copy"))) or "no route")
         win.routeTip:SetShown(not custom)
         tb.rec:SetActive(recording)

@@ -141,6 +141,8 @@
   train step for the weapon skill you learned there, and nothing when you only had a look.
 - Route editor: your first change to a route from a pack (which makes your own copy) no longer jumps the
   editor to step 1; it stays on the step you're changing.
+- Route editor: the name box of your own route is wider and shows a long name from its start (it showed the
+  end of it).
 - Money conditions worked the wrong way round: a step for when you can afford something showed only while you
   couldn't, and "until you have 10 copper" only once you had it.
 - Riding and lockpicking conditions no longer stop the route with an error; riding counts as known with any

@@ -4,6 +4,7 @@
 ## Author: Ghaan
 ## Version: @project-version@
 ## X-License: All Rights Reserved
+## X-Curse-Project-ID: 1752810
 ## IconTexture: Interface\AddOns\Itinerary\icon
 ## SavedVariables: ItineraryDB
 ## SavedVariablesPerCharacter: ItineraryCharDB

@@ -451,26 +451,31 @@ end
 -- Display IDs are read with a model frame: the model loads a moment after SetUnit (or SetCreature with the NPC ID,
 -- from the game's creature cache), so it waits for that (up to 2 s) and does one creature at a time.
 local probe -- (false: this client can't)
-local PQ = { list = {}, job = false, tried = 0, got = 0, last = "none yet", asked = {} }
+local PQ = { list = {}, job = false, retry = false, tried = 0, got = 0, last = "none yet", asked = {} }
 local function savedDisp(job, d)
     ItineraryDB.portraits = ItineraryDB.portraits or {}
     local e = ItineraryDB.portraits[job.name]
     if e and e.npc ~= job.npc then return end
     ItineraryDB.portraits[job.name] = { npc = job.npc, disp = d }
 end
-local probeStart
+local probeStart, askDisplay
 local function probeDone(d, how)
     local job = PQ.job
     PQ.job = false
     if job then
         if d then PQ.got = PQ.got + 1; savedDisp(job, d) end
         PQ.last = job.name .. ": " .. (d and ("display " .. d .. " (" .. how .. ")") or ("nothing (" .. how .. ")"))
+        -- a sighting that didn't load (gone from view, a mouseover moved on): try the creature cache next
+        if not d and job.how == "seen" then PQ.retry = job end
     end
     if probe then
         if type(probe.ClearModel) == "function" then pcall(probe.ClearModel, probe) end
         probe:Hide()
     end
-    if #PQ.list > 0 then probeStart(table.remove(PQ.list, 1)) end
+    local again = PQ.retry
+    PQ.retry = false
+    if again then askDisplay(again.name, again.npc) end
+    if not PQ.job and #PQ.list > 0 then probeStart(table.remove(PQ.list, 1)) end
 end
 local function probeRead()
     local ok, d = pcall(probe.GetDisplayInfo, probe)
@@ -524,7 +529,7 @@ function probeStart(job)
     if d then probeDone(d, job.how .. ", at once") end
 end
 -- read the display ID of a unit in sight (up to 3 tries a session per NPC) or of an NPC ID (once)
-local function askDisplay(name, npc, unit)
+function askDisplay(name, npc, unit)
     if probe == false then return end
     local k = unit and npc or ("c" .. npc)
     local n = PQ.asked[k] or 0

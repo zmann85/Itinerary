@@ -1171,6 +1171,11 @@ local function glimmerOn()
 end
 ns.objTagsByGlimmer = glimmerOn
 local function tagsActive() return tagMode() ~= "off" and not glimmerOn() and getCV(TAG_CV) ~= nil end
+-- (the game answers UnitExists with no for an object as the soft target: its GUID is what says one is there)
+local function softGUID(u)
+    local ok, g = pcall(UnitGUID, u)
+    return ok and type(g) == "string" and g ~= "" and g or false
+end
 local function isObject(u)
     if type(UnitIsGameObject) == "function" then
         local ok, r = pcall(UnitIsGameObject, u)
@@ -1195,6 +1200,17 @@ local function objectiveLines(u)
     return out
 end
 ns.objTagLines = objectiveLines
+function ns.objTagName(u)
+    local ok, n = pcall(UnitName, u)
+    if ok and type(n) == "string" and n ~= "" then return n end
+    local TI = C_TooltipInfo
+    if type(TI) == "table" and type(TI.GetUnit) == "function" then
+        local ok2, data = pcall(TI.GetUnit, u)
+        local l = ok2 and type(data) == "table" and type(data.lines) == "table" and data.lines[1]
+        if type(l) == "table" and type(l.leftText) == "string" and l.leftText ~= "" then return l.leftText end
+    end
+    return nil
+end
 -- one of your step's names (an object the route names, like a chest or a crate)
 local function stepNames(name)
     if not (name and ns.targetNames) then return false end
@@ -1236,7 +1252,7 @@ local function questObject(u)
         if ok and r then return "quest" end
     end
     if #objectiveLines(u) > 0 then return "objective" end
-    local name = UnitName(u)
+    local name = ns.objTagName(u)
     if inObjectives(name) then return "log" end
     if stepNames(name) then return "step" end
     return false
@@ -1275,7 +1291,7 @@ local function hideLine() if tag.line then tag.line:Hide(); tag.line.unit = fals
 -- the soft target changed: open the nameplate for it or not
 local function tagCheck(force)
     if not tagsActive() or tag.combat then return end
-    local g = UnitExists("softinteract") and UnitGUID("softinteract") or false
+    local g = softGUID("softinteract")
     if g == tag.guid and not force then return end
     tag.guid, tag.open, tag.kind = g, false, "none"
     if g and isObject("softinteract") then
@@ -1295,11 +1311,12 @@ function ns.objTagDebug()
         tagMode(), glimmerOn() and " (left to Glimmer)" or (tagsActive() and "" or " (not active)"),
         tostring(getCV("SoftTargetInteract")), tostring(getCV("SoftTargetIconGameObject")), tostring(getCV(TAG_CV)),
         tag.combat and ", resting in combat" or ""))
-    if not UnitExists(u) then
+    local guid = softGUID(u)
+    if not guid then
         ns.print("soft target: none - the game picks no object here (stand close, face it; it shows an icon over it when picked)")
         return
     end
-    local name, guid = UnitName(u), UnitGUID(u)
+    local name = ns.objTagName(u)
     local apiObj
     if type(UnitIsGameObject) == "function" then local ok, r = pcall(UnitIsGameObject, u); apiObj = ok and yn(r) or "error" else apiObj = "no API" end
     local QL = C_QuestLog
@@ -1308,8 +1325,8 @@ function ns.objTagDebug()
         local ok, r = pcall(QL.UnitIsRelatedToActiveQuest, u); rel = ok and yn(r) or "error"
     end
     local lines = objectiveLines(u)
-    ns.print(string.format("soft target: %s (%s); object: %s; quest related: %s; tooltip objectives: %s; in your quest log: %s; step names it: %s",
-        tostring(name), tostring(guid), apiObj, rel, #lines > 0 and table.concat(lines, " / ") or (type(C_TooltipInfo) == "table" and "none" or "no API"),
+    ns.print(string.format("soft target: %s (%s, UnitExists %s); object: %s; quest related: %s; tooltip objectives: %s; in your quest log: %s; step names it: %s",
+        tostring(name), tostring(guid), yn(UnitExists(u)), apiObj, rel, #lines > 0 and table.concat(lines, " / ") or (type(C_TooltipInfo) == "table" and "none" or "no API"),
         yn(inObjectives(name)), yn(stepNames(name))))
     local CN = C_NamePlate
     local plate = type(CN) == "table" and type(CN.GetNamePlateForUnit) == "function" and CN.GetNamePlateForUnit(u)

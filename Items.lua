@@ -402,7 +402,7 @@ function ns.targetDebug()
         end
     end
     local ok, plate = pcall(nearestPlate, names, friendly, prio, main)
-    ns.print("pick: " .. tostring(ok and plate or ("error: " .. tostring(plate))))
+    ns.print("pick: " .. (ok and tostring(plate or "none in reach") or ("error: " .. tostring(plate))))
     if ns.portraitInfo then ns.print(ns.portraitInfo()) end
     ns.print("button: " .. tostring(target and target:IsShown()) .. ", combat " .. tostring(InCombatLockdown()) .. ", macro:")
     print((target and target:GetAttribute("macrotext") or "none"):gsub("\n", " | "))
@@ -448,18 +448,94 @@ local function npcIdOf(guid)
     local kind, _, _, _, _, id = strsplit("-", guid or "")
     if kind == "Creature" or kind == "Vehicle" then return tonumber(id) end
 end
-local probe -- (a model frame that only reads a unit's display ID)
-local function displayOf(unit)
-    if probe == nil then
-        local ok, m = pcall(CreateFrame, "PlayerModel", nil, UIParent)
-        probe = (ok and m and m.SetUnit and m.GetDisplayInfo) and m or false
-        if probe then probe:SetSize(1, 1); probe:SetPoint("TOPRIGHT", UIParent, "BOTTOMLEFT", -20, -20) end
+-- Display IDs are read with a model frame: the model loads a moment after SetUnit (or SetCreature with the NPC ID,
+-- from the game's creature cache), so it waits for that (up to 2 s) and does one creature at a time.
+local probe -- (false: this client can't)
+local PQ = { list = {}, job = false, tried = 0, got = 0, last = "none yet", asked = {} }
+local function savedDisp(job, d)
+    ItineraryDB.portraits = ItineraryDB.portraits or {}
+    local e = ItineraryDB.portraits[job.name]
+    if e and e.npc ~= job.npc then return end
+    ItineraryDB.portraits[job.name] = { npc = job.npc, disp = d }
+end
+local probeStart
+local function probeDone(d, how)
+    local job = PQ.job
+    PQ.job = false
+    if job then
+        if d then PQ.got = PQ.got + 1; savedDisp(job, d) end
+        PQ.last = job.name .. ": " .. (d and ("display " .. d .. " (" .. how .. ")") or ("nothing (" .. how .. ")"))
     end
-    if not probe then return nil end
-    local ok, d = pcall(function() probe:SetUnit(unit); return probe:GetDisplayInfo() end)
-    if probe.ClearModel then pcall(probe.ClearModel, probe) end
+    if probe then
+        if type(probe.ClearModel) == "function" then pcall(probe.ClearModel, probe) end
+        probe:Hide()
+    end
+    if #PQ.list > 0 then probeStart(table.remove(PQ.list, 1)) end
+end
+local function probeRead()
+    local ok, d = pcall(probe.GetDisplayInfo, probe)
     d = ok and tonumber(d) or nil
     return (d and d > 0) and d or nil
+end
+local function probeFrame()
+    if probe == nil then
+        local ok, m = pcall(CreateFrame, "PlayerModel", nil, UIParent)
+        probe = (ok and type(m) == "table" and type(m.SetUnit) == "function" and type(m.GetDisplayInfo) == "function") and m or false
+        if probe then
+            -- on screen (a model off screen may never load), one pixel in the corner and only while reading
+            probe:SetSize(1, 1); probe:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+            if type(probe.SetFrameStrata) == "function" then probe:SetFrameStrata("BACKGROUND") end
+            probe:Hide()
+            local function check(_, el)
+                local job = PQ.job
+                if not job then return end
+                job.t = job.t + (tonumber(el) or 0)
+                local d = probeRead()
+                if d then probeDone(d, job.how) elseif job.t > 2 then probeDone(nil, job.how .. ", no model after 2 s") end
+            end
+            probe:SetScript("OnUpdate", check)
+            pcall(probe.SetScript, probe, "OnModelLoaded", function() check(nil, 0) end)
+        end
+    end
+    return probe
+end
+function probeStart(job)
+    if not probeFrame() then return end
+    -- (another try of the same creature may have read it meanwhile)
+    while job do
+        local e = ItineraryDB.portraits and ItineraryDB.portraits[job.name]
+        if not (e and e.npc == job.npc and e.disp) then break end
+        job = table.remove(PQ.list, 1)
+    end
+    if not job then return end
+    PQ.job, job.t = job, 0
+    PQ.tried = PQ.tried + 1
+    probe:Show()
+    local ok
+    if job.unit and UnitExists(job.unit) and UnitGUID(job.unit) == job.guid then
+        job.how = "seen"
+        ok = pcall(probe.SetUnit, probe, job.unit)
+    elseif type(probe.SetCreature) == "function" then
+        job.how = "creature cache"
+        ok = pcall(probe.SetCreature, probe, job.npc)
+    end
+    if not ok then probeDone(nil, "can't load it") return end
+    local d = probeRead()
+    if d then probeDone(d, job.how .. ", at once") end
+end
+-- read the display ID of a unit in sight (up to 3 tries a session per NPC) or of an NPC ID (once)
+local function askDisplay(name, npc, unit)
+    if probe == false then return end
+    local k = unit and npc or ("c" .. npc)
+    local n = PQ.asked[k] or 0
+    if n >= (unit and 3 or 1) then return end
+    PQ.asked[k] = n + 1
+    local job = { name = name, npc = npc, unit = unit, guid = unit and UnitGUID(unit) }
+    if PQ.job then
+        if #PQ.list < 30 then table.insert(PQ.list, job) end
+    else
+        probeStart(job)
+    end
 end
 -- Who a creature is, for every NPC and mob you target or hover and your step's ones on nameplates (account-wide):
 -- ItineraryDB.portraits[name] = { npc = NPC ID, disp = display ID }
@@ -470,9 +546,8 @@ local function learn(unit)
     ItineraryDB.portraits = ItineraryDB.portraits or {}
     local e = ItineraryDB.portraits[name]
     if e and e.npc == npc and e.disp then return end
-    local disp = displayOf(unit)
-    if e and e.npc == npc and not disp then return end
-    ItineraryDB.portraits[name] = { npc = npc, disp = disp }
+    if not (e and e.npc == npc) then ItineraryDB.portraits[name] = { npc = npc } end
+    askDisplay(name, npc, unit)
 end
 ns.learnPortrait = learn
 local function wanted(names)
@@ -540,6 +615,7 @@ local function faceFor(name)
     if F.byName[name] and F.key[F.byName[name]] then return F.byName[name], name end
     if F.byName[one] and F.key[F.byName[one]] then return F.byName[one], one end
     local e = known(name)
+    if e and e.npc and not e.disp then askDisplay(name, e.npc) end
     if e and e.disp and SetPortraitTextureFromCreatureDisplayID then
         t = faceTex(name)
         local key = "disp:" .. e.disp
@@ -585,11 +661,12 @@ function ns.portraitInfo()
     local fn = target and firstName()
     local e = fn and known(fn)
     local shown = F.shown and F.key[F.shown]
-    return string.format("portrait: %s; faces known: %d; %s: %s; drawing from display IDs: %s, reading them: %s",
+    return string.format("portrait: %s; faces known: %d; %s: %s; drawing from display IDs: %s, reading them: %s (%d of %d read; last %s)",
         target and type(target.portraitUnit) == "string" and ("live " .. target.portraitUnit)
             or (shown and ((shown:find("^disp:") and "remembered " or "kept ") .. tostring(F.name)) or "icon"),
         n, tostring(fn), e and ("NPC " .. tostring(e.npc) .. ", display " .. tostring(e.disp)) or "not met yet",
-        SetPortraitTextureFromCreatureDisplayID and "yes" or "no", probe and "yes" or (probe == false and "no" or "not tried yet"))
+        SetPortraitTextureFromCreatureDisplayID and "yes" or "no", probe and "yes" or (probe == false and "no" or "not tried yet"),
+        PQ.got, PQ.tried, PQ.last)
 end
 
 -- out of combat the button follows the nearest fitting mob a few times a second (a secure button can't

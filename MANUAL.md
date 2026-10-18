@@ -94,6 +94,8 @@ From top to bottom:
     quest later, potions if they're in stock, and the auction house's "buy these for quicker turn-ins". Those
     are done once you have the items, or when you close that vendor or the auction house. Click one to point
     the arrow there. A buy the route needs (not optional) and a hunter's arrows stay a step.
+  - The small **×** at an instruction's right dismisses it: one from the route is done, a trainer, weapon
+    master or profession one waits for your next level.
   - **Click** an instruction that has a place (*Click to point the arrow here*), and the arrow points there.
     Click it again to go back to the route.
   - A timed quest's time left counts down on the instruction that runs until its turn-in (or on your step).

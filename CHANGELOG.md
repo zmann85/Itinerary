@@ -2,7 +2,15 @@
 
 ## Unreleased
 
+### New
+- A small **×** on each instruction dismisses it: one from the route is done; a trainer, weapon master or
+  profession instruction waits for your next level.
+
 ### Fixed
+- A "Vendor trash" errand the route keeps along the way without an end stayed an instruction long after you'd
+  left (Corina Steele's showed in Dun Morogh): every vendor errand now runs next to the next few steps only.
+- Weapon masters: the shipped list of where they stand counted for nobody (its faction mark wasn't read), and a
+  visit's list replaced what the master was known to teach (a character who knew 2h Swords already hid them).
 - Your own copy of a route version that isn't installed any more (a newer route pack ships only the latest two
   versions) came up empty. It now builds on the newest installed version of that route, with your edits on top.
 

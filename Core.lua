@@ -688,7 +688,10 @@ function ns.prepareRoute(r)
             s.note = "At any vendor you pass - the grey items are sold when you open one"
         elseif errand(s) then
             s.errand = true
-            if not s.along then s.along, s.till, s.rec = true, j + 6, true end
+            -- (a guide's along-the-way errand without an end - "Vendor trash" until you sell - would stay with you
+            -- across the world: next to the next few steps, like the others)
+            if not s.along then s.along, s.till, s.rec = true, j + 6, true
+            elseif not s.till then s.till, s.rec = j + 6, true end
         elseif trainRec and s.t == "train" and not s.along then
             s.along, s.till, s.rec, s.trainRec = true, j + 8, true, true
         elseif not trainRec and s.trainRec then
@@ -1879,9 +1882,11 @@ function ns.weaponPlan()
     end
     local faction = UnitFactionGroup and UnitFactionGroup("player")
     local HBDw = LibStub and LibStub("HereBeDragons-2.0", true)
+    local FACTION_OF = { A = "Alliance", H = "Horde" }
     for npc, r in pairs(ns.DATA_WEAPON_MASTERS or {}) do
-        -- { map, x, y (% of the zone map), { skill ids }, faction }
-        if not (r[5] and faction and r[5] ~= faction) and HBDw then
+        -- { map, x, y (% of the zone map), { skill ids }, faction ("A"/"H") }
+        local fa = r[5] and (FACTION_OF[r[5]] or r[5])
+        if not (fa and faction and fa ~= faction) and HBDw then
             local wx, wy = HBDw:GetWorldCoordinatesFromZone(r[2] / 100, r[3] / 100, r[1])
             if wx then
                 local e = master(npc)
@@ -1897,7 +1902,10 @@ function ns.weaponPlan()
             if not (r[6] and faction and r[6] ~= faction) then
                 local e = master(npc)
                 e.m, e.x, e.y, e.s = r[1], r[2], r[3], nil
-                e.teach, e.cost = {}, r[5]
+                -- (what a visit listed adds to what he's known to teach: a character who knew a skill already
+                -- may not have seen it in his list)
+                e.cost = e.cost or {}
+                for id, c in pairs(r[5] or {}) do e.cost[id] = c end
                 for _, id in ipairs(r[4] or {}) do e.teach[id] = true end
             end
         end

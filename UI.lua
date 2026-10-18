@@ -735,7 +735,37 @@ local function buildPanel()
         -- a trainer instruction: hover for what that trainer has for you and what it costs
         row:SetScript("OnEnter", function(self) if self.spells then ns.trainerTip(self, self.spells) end end)
         row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        -- the small x: dismiss this instruction (a route one is done; a trainer or profession one waits for
+        -- your next level)
+        local x = CreateFrame("Button", nil, row)
+        x:SetSize(14, 14)
+        x:SetPoint("TOPRIGHT", row, "TOPRIGHT", 4, 1)
+        x.fs = text(x, 12, 1, 1, 1, 0.35)
+        x.fs:SetPoint("CENTER"); x.fs:SetText("×")
+        x:SetScript("OnEnter", function(self)
+            self.fs:SetTextColor(1, 0.45, 0.4, 1)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine("Dismiss this instruction", 1, 1, 1)
+            GameTooltip:AddLine(type(row.dismissText) == "string" and row.dismissText or "It won't show again.", 0.7, 0.7, 0.7, true)
+            GameTooltip:Show()
+        end)
+        x:SetScript("OnLeave", function(self) self.fs:SetTextColor(1, 1, 1, 0.35); GameTooltip:Hide() end)
+        x:SetScript("OnClick", function()
+            GameTooltip:Hide()
+            if type(row.dismiss) == "function" then row.dismiss() end
+            if ns.update then ns.update() end
+            if ns.refresh then ns.refresh() end
+        end)
+        x:Hide()
+        row.x = x
     end
+    -- the row's dismiss (x), from its entry
+    local function setDismiss(row, e)
+        row.dismiss = (e and type(e.dismiss) == "function") and e.dismiss or false
+        row.dismissText = e and e.dismissText or false
+        if row.x then if row.dismiss then row.x:Show() else row.x:Hide() end end
+    end
+    ns.setRowDismiss = setDismiss
     linkHandlers(panel)
     panel.rows = {}
     for i = 1, 6 do
@@ -743,7 +773,7 @@ local function buildPanel()
         linkRow(row)
         row:SetWidth(W - PAD * 2)
         row.label = text(row, 11.5, 1, 1, 1, 0.9)
-        row.label:SetPoint("TOPLEFT"); row.label:SetWidth(W - PAD * 2); row.label:SetWordWrap(true)
+        row.label:SetPoint("TOPLEFT"); row.label:SetWidth(W - PAD * 2 - 12); row.label:SetWordWrap(true)
         row.desc = text(row, 10.5, 1, 1, 1, 0.5)
         row.desc:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -2); row.desc:SetWidth(W - PAD * 2); row.desc:SetWordWrap(true)
         row:Hide()
@@ -764,7 +794,7 @@ local function buildPanel()
         linkRow(row)
         row:SetWidth(W - PAD * 2)
         row.label = text(row, 12, 0.5, 0.8, 1, 1) -- the instruction itself in blue, so it stands out
-        row.label:SetPoint("TOPLEFT"); row.label:SetWidth(W - PAD * 2); row.label:SetWordWrap(true)
+        row.label:SetPoint("TOPLEFT"); row.label:SetWidth(W - PAD * 2 - 12); row.label:SetWordWrap(true)
         row.desc = text(row, 10.5, 1, 1, 1, 0.6)
         row.desc:SetPoint("TOPLEFT", row.label, "BOTTOMLEFT", 0, -2); row.desc:SetWidth(W - PAD * 2); row.desc:SetWordWrap(true)
         row:Hide()
@@ -1357,6 +1387,7 @@ function ns.showRecCard(list)
             sig[#sig + 1] = (tostring(e[1]):gsub("%d", ""))
             local label, desc = goText(e)
             row.go, row.spells = e.go, e.spells
+            if ns.setRowDismiss then ns.setRowDismiss(row, e) end
             row.label:SetText(label)
             row.desc:SetText(desc or ""); row.desc:SetShown(desc and desc ~= "" and true or false)
             local h = row.label:GetStringHeight() + (row.desc:IsShown() and (row.desc:GetStringHeight() + 2) or 0)
@@ -1484,15 +1515,29 @@ function ns.refresh()
     -- recommended actions and side objectives (along-the-way steps), with their explanations
     local al = (s and not detour) and ns.alongActive(i) or {}
     local rec, side = {}, {}
+    local C = ItineraryCharDB
+    local lvl = UnitLevel("player") or 1
+    local untilLevel = "Until your next level."
     for _, d in ipairs(recDetours) do
         local what = (d.prof or d.weapon) and (d.name or "Learn your profession") or "Train new skills"
         rec[#rec + 1] = { what .. (d.npc and (" at " .. d.npc) or ""),
                           (d.prof or d.weapon) and d.note or ns.affordText(),
                           go = d.m and d.x and { m = d.m, x = d.x, y = d.y, npc = d.npc } or nil,
-                          spells = d.weapon and { weapon = d.npc } or (d.prof and (d.t == "train" and { prof = d.prof, npc = d.npc } or nil)) or true }
+                          spells = d.weapon and { weapon = d.npc } or (d.prof and (d.t == "train" and { prof = d.prof, npc = d.npc } or nil)) or true,
+                          dismissText = untilLevel,
+                          dismiss = function()
+                              if d.prof and C.prof then C.prof.skip = lvl
+                              elseif d.weapon then C.wpnSkip = lvl
+                              else C.detourSkip = lvl end
+                          end }
     end
+    C.dismissed = type(C.dismissed) == "table" and C.dismissed or {}
     for _, r in ipairs((not gs) and ns.profRecommend and ns.profRecommend() or {}) do
-        rec[#rec + 1] = { r.label, r.desc, go = r.go, spells = r.prof and { prof = r.prof, npc = r.go and r.go.npc } or nil }
+        local key = "prof:" .. tostring(r.label):gsub("%d", "")
+        if C.dismissed[key] ~= lvl then
+            rec[#rec + 1] = { r.label, r.desc, go = r.go, spells = r.prof and { prof = r.prof, npc = r.go and r.go.npc } or nil,
+                              dismissText = untilLevel, dismiss = function() C.dismissed[key] = lvl end }
+        end
     end
     for _, e in ipairs((not gs) and ns.campingSide and ns.campingSide() or {}) do if #side < 2 then side[#side + 1] = e end end
     ns.hearthCheckAt = nil
@@ -1531,7 +1576,10 @@ function ns.refresh()
         if label and #list >= 3 and st.death then
             for x = #list, 1, -1 do if not list[x].death then table.remove(list, x) break end end
         end
-        if label and #list < 3 then list[#list + 1] = { label, desc, go = go, spells = spells, timer = left or nil, death = st.death or nil } end
+        if label and #list < 3 then
+            list[#list + 1] = { label, desc, go = go, spells = spells, timer = left or nil, death = st.death or nil,
+                                dismiss = kind == "rec" and function() C.manual[j] = true end or nil }
+        end
         end
     end
     local used = 0
@@ -1545,6 +1593,7 @@ function ns.refresh()
             local row = panel.rows[used]
             local label, desc = goText(e)
             row.go, row.spells = e.go, e.spells
+            if ns.setRowDismiss then ns.setRowDismiss(row, e) end
             row.label:SetText(label); row.label:SetTextColor(r, g, b, 0.95)
             row.desc:SetText(desc or ""); row.desc:SetShown(desc and desc ~= "" and true or false)
             local h = row.label:GetStringHeight() + (row.desc:IsShown() and (row.desc:GetStringHeight() + 2) or 0)

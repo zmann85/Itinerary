@@ -141,6 +141,8 @@
   cause small stutters).
 
 ### Fixed
+- Credits: *Meow* is "Cat Meow 2" by Cat Stevens (SoundBible.com, CC BY 3.0); LICENSE.txt now names every
+  library with its author and license, and the manual has a Credits and license section.
 - Buying at a trainer with another dialogue option (a quest, unlearning talents): the training window stayed
   closed unless the route had sent you there, so nothing was bought. Now it opens wherever Itinerary would buy
   or learn something: your class trainer with skills to buy, a weapon master with a weapon skill to buy (Buy

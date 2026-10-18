@@ -17,12 +17,14 @@ professions and flights.
 10. [Settings](#10-settings)
 11. [Commands](#11-commands)
 12. [Troubleshooting](#12-troubleshooting)
+13. [Credits and license](#13-credits-and-license)
 
 ---
 
 ## 1. Getting started
 
-1. Put the `Itinerary` folder into `World of Warcraft\_classic_\Interface\AddOns` and start the game.
+1. Put the `Itinerary` folder (and `Itinerary_Data`, see 5.) into the game's `Interface\AddOns` folder and start
+   the game.
 2. Log in. The **route panel** and the **waypoint arrow** appear.
 3. A new character is asked once which **professions** it will take. Pick up to two main professions
    and any secondary ones (Cooking, First Aid, Fishing). You can change this later in the settings.
@@ -349,6 +351,7 @@ the editor, or `/iti import`), pastes it with Ctrl+V, and gets it as a new route
 - A copy of a pack route needs that pack on the other side too; a route made on another version of the pack
   goes onto the version they have (a few steps may not line up).
 - Item-button macros in an imported route are only kept when they're emotes, targeting and use/cast lines.
+- The text carries the steps and chapters, not a route's pace (the level times of its reference run).
 
 ---
 
@@ -457,7 +460,7 @@ to go).
 | **Undo changes** | The step as the route has it |
 | **Go to step** | Makes it the step you're on |
 | **Along the way** | The step runs alongside the following steps until it's done. A Quest step shows its objectives with live counts (a later step of the same quest takes over from there), a Do step with *Collect* its items, a Do step with only text is an instruction |
-| **For everyone / Auction house / Self-found only** | Who gets the step (click to switch). *Auction house* steps are left out when Settings > Quests > *Auction house steps* is on Skip (self-found play); *Self-found only* steps show only then. Steps from the guides come marked already: RestedXP's own auction house steps, and any step at an auctioneer |
+| **For everyone / Auction house / Self-found only** | Who gets the step (click to switch). *Auction house* steps are left out when Settings > Quests > *Auction house steps* is on Skip (self-found play); *Self-found only* steps show only then. Route pack steps can come marked already, and any step at an auctioneer counts as an auction house step |
 | **Optional** | Shown as OPTIONAL, and passed by itself once you're done with a later quest step |
 | **Death skip** | Makes the step "Die and respawn at the spirit healer": an instruction next to the steps after it, done once you're alive again. With a point, the arrow leads there first (the place to die) |
 
@@ -653,3 +656,22 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
   close by.
 - **Something looks broken.** Type `/console scriptErrors 1`, then `/reload`. Send the error message
   together with the `/iti debug` output.
+
+---
+
+## 13. Credits and license
+
+Itinerary is made by **Ghaan**. All rights reserved: you may install it, use it and read its code, but not
+pass it on or reuse its parts elsewhere - see `LICENSE.txt` in the add-on folder.
+
+- **Libraries** (each under its own license, listed in `LICENSE.txt`): LibStub, CallbackHandler-1.0,
+  LibDataBroker-1.1, LibDBIcon-1.0, HereBeDragons, LibDeflate and LibSerialize.
+- **Sounds**: *Bell*, *Blip*, *Drop* and *Meow* are by Mike Koenig, Marianne Gagnon and Cat Stevens from
+  SoundBible.com, under Creative Commons Attribution 3.0 (`sounds/CREDITS.txt`). *Coins*, *Sonar*, *Xylophone*
+  and *Fanfare* were made for Itinerary.
+- **Itinerary_Data** is a separate add-on under the GNU GPL v3; its positions come from the WoW Forever data
+  of QuestieDB and from what Itinerary players found in game.
+- **Routes** come separately (route packs, shared texts, your own recordings), each with its own terms.
+
+World of Warcraft is a trademark of Blizzard Entertainment. Itinerary is not affiliated with or endorsed by
+Blizzard Entertainment.

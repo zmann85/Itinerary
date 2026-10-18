@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.1 (2026-10-19)
 
 ### New
 - A small **×** on each instruction dismisses it: one from the route is done; a trainer, weapon master or

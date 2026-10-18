@@ -456,6 +456,7 @@ local chap = nil -- the chapter the list shows (0 = all steps)
 local page = 1   -- the page of the step details: 1 the step, 2 conditions, 3 more
 local view = {}  -- the steps of that chapter
 local fields = {}
+local query = "" -- the step list's search (lower case; "" = every step of the chapter)
 
 local function U() return ns.ui end
 local VERB = { accept = "ACCEPT", complete = "QUEST", turnin = "TURN IN", go = "GO", ["do"] = "DO", train = "TRAIN", xp = "XP",
@@ -488,6 +489,31 @@ local function label(s)
     if s.t == "complete" and s.obj and s.obj[1] then return s.obj[1] end
     if s.t == "xp" and s.lvl then return "Level " .. s.lvl end
     return s.npc or ""
+end
+-- the search over the step list: a step's text - its Text, and for quest steps the quests' names (and a quest
+-- step's objectives), as the list shows them
+local function matches(s)
+    if query == "" then return true end
+    local function has(t) return t and t ~= "" and tostring(t):lower():find(query, 1, true) ~= nil end
+    if has(s.name) then return true end
+    for _, n in ipairs(s.n or {}) do if has(n) then return true end end
+    for _, q in ipairs(s.q or {}) do if has(routeQuestName(q)) then return true end end
+    for _, o in ipairs(s.obj or {}) do if has(o) then return true end end
+    return false
+end
+ns.editorSearchMatches = matches -- (tests)
+-- the quest name a search found when it isn't the one the list shows (a step with two quests)
+local function otherMatch(s)
+    local names = {}
+    for _, n in ipairs(s.n or {}) do names[#names + 1] = n end
+    for _, q in ipairs(s.q or {}) do names[#names + 1] = routeQuestName(q) end
+    for _, n in ipairs(names) do
+        if n and n ~= "" and n:lower():find(query, 1, true) then return n end
+    end
+end
+local function clearSearch()
+    query = ""
+    if win and win.search then win.search:SetText("") end
 end
 
 local function button(parent, txt, w, onClick, tip)
@@ -563,10 +589,15 @@ local function showSelected()
     local r = ns.route()
     if not (r and r.editList and sel) then return end
     local map = chapterMap(r)
-    for j, s in ipairs(r.editList) do if sid(s) == sel then if chap ~= 0 then chap = map[j] end end end
+    for j, s in ipairs(r.editList) do
+        if sid(s) == sel then
+            if chap ~= 0 then chap = map[j] end
+            if not matches(s) then clearSearch() end
+        end
+    end
     local k = 0
     for j, s in ipairs(r.editList) do
-        if chap == 0 or map[j] == chap then
+        if (chap == 0 or map[j] == chap) and matches(s) then
             k = k + 1
             if sid(s) == sel and (k <= offset or k > offset + ROWS) then offset = math.max(0, k - 4) end
         end
@@ -579,11 +610,16 @@ local function scrollToCurrent()
     local cur = ns.steps()[ItineraryCharDB.step]
     local map = chapterMap(r)
     local c = nil
-    for j, s in ipairs(r.editList) do if s == cur then c = map[j]; sel = sid(s) end end
+    for j, s in ipairs(r.editList) do
+        if s == cur then
+            c = map[j]; sel = sid(s)
+            if not matches(s) then clearSearch() end
+        end
+    end
     chap = c or chap or 1
     local k = 0
     for j, s in ipairs(r.editList) do
-        if chap == 0 or map[j] == chap then
+        if (chap == 0 or map[j] == chap) and matches(s) then
             k = k + 1
             if s == cur then offset = math.max(0, k - 4) end
         end
@@ -778,9 +814,32 @@ local function build()
     menu:Hide()
     win.chMenu = menu
 
+    -- search: the steps of the chapter whose text has it (as you type)
+    local search = editbox(win, LIST_W - 30, function() end)
+    search:SetPoint("TOPLEFT", cb, "BOTTOMLEFT", 0, -6)
+    search:SetScript("OnTextChanged", function(self, user)
+        if not user then return end
+        query = (self:GetText() or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+        offset = 0
+        refresh()
+    end)
+    search:SetScript("OnEditFocusGained", function(self) self.ph:Hide() end)
+    search:SetScript("OnEditFocusLost", function() refresh() end)
+    search:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine("Search the chapter's steps by their text (quest steps: the quest's name). All steps in the chapter list searches the whole route.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    search:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    search.ph = ui.text(search, 12, 1, 1, 1, 0.3); search.ph:SetPoint("LEFT", 8, 0)
+    win.search = search
+    local clearB = button(win, "×", 24, function() clearSearch(); search:ClearFocus(); offset = 0; refresh() end, "Clear the search")
+    clearB:SetPoint("LEFT", search, "RIGHT", 6, 0)
+    win.searchClear = clearB
+
     -- step list
     local list = CreateFrame("Frame", nil, win)
-    list:SetPoint("TOPLEFT", cb, "BOTTOMLEFT", 0, -6)
+    list:SetPoint("TOPLEFT", search, "BOTTOMLEFT", 0, -6)
     list:SetSize(LIST_W, ROWS * ROW_H)
     ui.addEdges(list, 1, 1, 1, 0.08)
     list:EnableMouseWheel(true)
@@ -804,12 +863,13 @@ local function build()
         rows[i] = row
     end
     win.list = list
+    win.rows = rows -- (tests)
     win.listInfo = ui.text(win, 11, 1, 1, 1, 0.35)
     win.listInfo:SetPoint("TOPLEFT", list, "BOTTOMLEFT", 0, -6)
 
     -- details of the selected step
     local d = CreateFrame("Frame", nil, win)
-    d:SetPoint("TOPLEFT", list, "TOPRIGHT", 16, 0)
+    d:SetPoint("TOPLEFT", cb, "BOTTOMRIGHT", 16, -6)
     d:SetPoint("BOTTOMRIGHT", win, "BOTTOMRIGHT", -PAD, 40)
     win.d = d
     -- three pages: the step itself, when it's for you (conditions), and the rest
@@ -1726,8 +1786,18 @@ local function build()
         if not chap then chap = #chs > 0 and 1 or 0 end
         local map = r and chapterMap(r) or {}
         local list = {}
-        for j, s in ipairs(all) do if chap == 0 or map[j] == chap then list[#list + 1] = s end end
+        local inChapter = 0
+        for j, s in ipairs(all) do
+            if chap == 0 or map[j] == chap then
+                inChapter = inChapter + 1
+                if matches(s) then list[#list + 1] = s end
+            end
+        end
         view = list
+        local searching = query ~= ""
+        win.search.ph:SetText(chap == 0 and "Search all steps" or "Search this chapter")
+        win.search.ph:SetShown(not searching and not win.search:HasFocus() and (win.search:GetText() or "") == "")
+        win.searchClear:SetAlpha(searching and 1 or 0.35)
         local cname = chap == 0 and "All steps" or (chs[chap] and chs[chap].name or "")
         win.cb.name.text:SetText(chap == 0 and ("All steps  (" .. #all .. ")") or string.format("%d/%d  %s", chap, #chs, cname))
         win.cb.prev:SetAlpha(#chs > 0 and 1 or 0.35); win.cb.next:SetAlpha(#chs > 0 and 1 or 0.35)
@@ -1753,7 +1823,13 @@ local function build()
                 row.num:SetText(num[s] and tostring(num[s]) or "-")
                 row.verb:SetText(VERB[kindOf(s)] or s.t)
                 row.cur:SetShown(s == cur)
-                row.txt:SetText(label(s))
+                local text = label(s)
+                -- (searching: the quest it found, when the line shows another one)
+                if query ~= "" and not text:lower():find(query, 1, true) then
+                    local other = otherMatch(s)
+                    if other then text = text .. "  |cff999999+ " .. other .. "|r" end
+                end
+                row.txt:SetText(text)
                 local a = s.edHidden and 0.3 or 0.85
                 if s.edAdd then row.txt:SetTextColor(ar, ag, ab, a)
                 elseif s.edChanged then row.txt:SetTextColor(1, 0.85, 0.3, a)
@@ -1762,9 +1838,15 @@ local function build()
                 row.hl:SetShown(row.id == sel)
             end
         end
-        win.listInfo:SetText(#list > 0 and string.format("%d-%d of %d %s (mouse wheel scrolls)", offset + 1, math.min(#list, offset + ROWS), #list,
-            chap == 0 and "steps" or "in this chapter")
-            or (#all > 0 and "No steps in this chapter" or "No steps yet: Record, Add step here, or the Recorder"))
+        if searching then
+            win.listInfo:SetText(#list > 0 and string.format("%d-%d of %d of %d %s with \"%s\"", offset + 1, math.min(#list, offset + ROWS), #list,
+                inChapter, chap == 0 and "steps" or "in this chapter", query)
+                or string.format("None of the %d %s has \"%s\"", inChapter, chap == 0 and "steps" or "steps in this chapter", query))
+        else
+            win.listInfo:SetText(#list > 0 and string.format("%d-%d of %d %s (mouse wheel scrolls)", offset + 1, math.min(#list, offset + ROWS), #list,
+                chap == 0 and "steps" or "in this chapter")
+                or (#all > 0 and "No steps in this chapter" or "No steps yet: Record, Add step here, or the Recorder"))
+        end
         tb.recorder:SetActive(ns.recorderState and ns.recorderState() == "on" or false)
         tb.export:SetAlpha(custom and 1 or 0.35)
 

@@ -14,6 +14,12 @@
   names herbs, ore veins and chests too; NPCs, doors and mailboxes never get one, and it's closed in combat.
   While Glimmer (NaowhForever QoL) is on, it's left to Glimmer.
 
+### Changed
+- **Optional buys are instructions**, like food and vendor trash: a weapon "if you can afford it", items for a
+  quest later, potions if in stock and the auction house's "buy these for quicker turn-ins" no longer stop
+  the route. Click one to point the arrow at the vendor; it's done when you have the items or close that
+  vendor or the auction house. Buys the route needs and a hunter's arrows stay steps.
+
 ### Fixed
 - A quest you had left out (skipped where you'd take it, or abandoned) and take after all: when the route had
   already gone past its steps, it now goes back to them (The Great Outdoors jumped ahead to buying a Wooden

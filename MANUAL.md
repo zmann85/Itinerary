@@ -89,8 +89,10 @@ From top to bottom:
   learn new skills at a trainer close by, a weapon master, a profession trainer, a place to head for.
   - The route's errands at a vendor are instructions too, not stops of their own: selling junk and repairs
     at a named vendor (*... at Brannol Eaglemoon*), food and water, bags. They're done when you open that vendor
-    (selling junk: any vendor). Buying something the route needs (a quest item, a weapon, arrows) stays a
-    step.
+    (selling junk: any vendor). So is every **optional buy**: a weapon "if you can afford it", items for a
+    quest later, potions if they're in stock, and the auction house's "buy these for quicker turn-ins". Those
+    are done once you have the items, or when you close that vendor or the auction house. Click one to point
+    the arrow there. A buy the route needs (not optional) and a hunter's arrows stay a step.
   - **Click** an instruction that has a place (*Click to point the arrow here*), and the arrow points there.
     Click it again to go back to the route.
   - A timed quest's time left counts down on the instruction that runs until its turn-in (or on your step).
@@ -188,8 +190,9 @@ You rarely have to touch anything:
   flight paths whenever the flight map opens.
 - **Abandon steps** tick off when the quest isn't in your log (never taken, or handed in already), and when
   it's finished and the route hands it in later.
-- **Errands at a vendor** (vendor trash, food and water, bags, repairs) are instructions, not steps: they're
-  done when you open that vendor, or left behind after a few steps.
+- **Errands at a vendor** (vendor trash, food and water, bags, repairs, optional buys) are instructions, not
+  steps: they're done when you open that vendor (optional buys: when you have the items or close the vendor or
+  auction house), or left behind after a few steps.
 - **Trainer steps** tick off when you've trained. **Grind steps** tick off at the XP they ask for.
 - Steps that don't apply to you are skipped. This covers another class's quests, quests you already
   did, a quest that isn't offered to you, and a quest you dropped.

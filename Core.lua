@@ -648,16 +648,32 @@ function ns.prepareRoute(r)
     local trainRec = ns.trainerAsRec()
     -- errands at a vendor ("Vendor trash" at Rallic Finn, "Buy Ice Cold Milk" at the Thelsamar inn, food, water,
     -- bags, repairs): an instruction next to the next few steps that you can click to point the arrow at that
-    -- vendor, done when you open them - not a stop of their own. Buying what the route needs (a quest item, a
-    -- weapon, arrows, grimoires) stays a step.
+    -- vendor, done when you open them - not a stop of their own. So is every optional buy ("Buy a Wooden Mallet
+    -- if you can afford it", quest items for later, potions if in stock, the auction house's "buy these for quicker
+    -- turn-ins"): done once you have the items or when you close that vendor / the auction house. Buying what
+    -- the route needs (not optional) and a hunter's arrows stay a step.
+    local function ammo(n)
+        local l = n:lower()
+        return l:find("arrow") or l:find("shot") or l:find("ammo") or l:find("quiver")
+    end
+    local function optionalBuy(s)
+        if s.t ~= "do" or not s.opt or s.item or s.death or s.untilQ or s.abandon or s.vendor then return false end
+        local n = s.name or ""
+        if not (n:find("^Buy ") or n:find("^Stock up")) or ammo(n) then return false end
+        local auction = s.ah or (s.npc and s.npc:find("^Auctioneer")) or false
+        if not (s.npc or auction) then return false end
+        return true, (s.col or s.need or auction) and true or false
+    end
     local function errand(s)
+        local buy, onClose = optionalBuy(s)
+        if buy then s.errandBuy = onClose or nil; return true end
         if s.t ~= "do" or not s.npc or s.col or s.need or s.ah or s.item or s.death or s.untilQ or s.abandon or s.vendor then return false end
         if s.errand then return true end -- (marked as one: the recorder's food, drink and bags)
         local n = s.name or ""
         if n:find("^Vendor") or n:find("^Sell ") or n:find("^Repair ") then return true end
         if n:find("^Buy ") or n:find("^Stock up") then
             local l = n:lower()
-            if l:find("arrow") or l:find("shot") or l:find("ammo") or l:find("quiver") then return false end -- (a hunter's ammo stays a stop)
+            if ammo(n) then return false end -- (a hunter's ammo stays a stop)
             for _, w in ipairs({ "food", "water", "milk", "bread", "dalaran sharp", "mushroom", "pouch", "satchel" }) do
                 if l:find(w, 1, true) then return true end
             end

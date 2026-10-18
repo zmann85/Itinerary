@@ -1197,6 +1197,25 @@ local function vendorStepDone()
     end
     if ns.update then ns.update() end
 end
+-- an optional buy (a weapon, quest items for later, the auction house's "buy these"): done when you close that
+-- vendor - you had your chance to buy - or any auction house for the auction house's
+local lastShop = false
+local function buyErrandsDone(npc, auction)
+    local c = ItineraryCharDB
+    if not (c and ns.steps) then return end
+    local list = { c.step }
+    if ns.alongActive then for _, j in ipairs(ns.alongActive(c.step)) do list[#list + 1] = j end end
+    local hit = false
+    for _, j in ipairs(list) do
+        local s = ns.steps()[j]
+        if s and s.errandBuy then
+            local isAuction = s.ah or (s.npc and s.npc:find("^Auctioneer")) or false
+            if (auction and isAuction) or (not auction and npc and s.npc == npc) then c.manual[j] = true; hit = true end
+        end
+    end
+    if hit and ns.update then ns.update() end
+end
+ns.buyErrandsDone = buyErrandsDone
 
 -- Innkeeper: the "make this inn your home?" question after we picked the option. Answered through the popup's
 -- own button a moment after it shows (calling ConfirmBinder straight from the event does nothing on this client).
@@ -1272,8 +1291,8 @@ ns.shareQuest = shareQuest
 ---------------------------------------------------------------- events
 local f = CreateFrame("Frame")
 for _, e in ipairs({ "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED",
-                     "TRAINER_SHOW", "TRAINER_UPDATE", "TRAINER_CLOSED", "QUEST_ACCEPTED", "MERCHANT_SHOW",
-                     "CONFIRM_BINDER", "CONFIRM_XP_LOSS", "TAXIMAP_OPENED" }) do
+                     "TRAINER_SHOW", "TRAINER_UPDATE", "TRAINER_CLOSED", "QUEST_ACCEPTED", "MERCHANT_SHOW", "MERCHANT_CLOSED",
+                     "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "CONFIRM_BINDER", "CONFIRM_XP_LOSS", "TAXIMAP_OPENED" }) do
     pcall(f.RegisterEvent, f, e)
 end
 local trainQueued = false
@@ -1315,8 +1334,16 @@ f:SetScript("OnEvent", function(_, event, a1, a2)
         if wpnRestore then wpnRestore() end
         trainMoney, lastBuy = nil, nil
     elseif event == "MERCHANT_SHOW" then
+        lastShop = UnitName and UnitName("npc") or false
         C_Timer.After(0.1, sellJunk)
         vendorStepDone()
+    elseif event == "MERCHANT_CLOSED" then
+        if lastShop then buyErrandsDone(lastShop, false) end
+        lastShop = false
+    elseif event == "AUCTION_HOUSE_SHOW" then
+        lastShop = false
+    elseif event == "AUCTION_HOUSE_CLOSED" then
+        buyErrandsDone(nil, true)
     elseif event == "QUEST_ACCEPTED" then
         routeQuestsFor = nil -- cheap: rebuild on next use (the route may have changed)
         -- (QUEST_ACCEPTED: log index, quest id; some clients give just the id)

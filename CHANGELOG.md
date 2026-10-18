@@ -3,8 +3,9 @@
 ## Unreleased
 
 ### New
-- **Editor: search the step list**: a search box over the list shows only the chapter's steps whose text has
-  what you type (quest steps by the quest's name). *All steps* searches the whole route.
+- **Editor: search the step list**: a search box over the list; the chapter's steps whose text has what you
+  type (quest steps by the quest's name) drop down under it, and a click on one takes the list to that step and
+  selects it. *All steps* searches the whole route.
 - **The recorder records much more**: quest items you use (on the quest step's item button), abandoned quests,
   weapon masters, vendors (food, drink and bags as an errand, anything else as a step with Collect, or *Vendor
   trash* / *Repair*), dungeons (at the entrance, and the quests you finish inside), boats and zeppelins to the

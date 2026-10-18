@@ -388,10 +388,11 @@ opens again). Otherwise that happens when you log out, and a game crash before t
   list (*All steps* shows the whole route). Each line has the step number, its type and its text. Green = added
   by you, yellow = changed, dim = hidden, the bar = the step you're on. Scroll with the mouse wheel, click a step
   to select it.
-- **Search** (over the list): type and the list shows only the chapter's steps whose text has it, in any case
-  (quest steps: the quest's name; a step with two quests shows the one it found in grey). It stays when you
-  switch chapters; with *All steps* it searches the whole route. **×** clears it, and so does *Current step* or a
-  new step the search would hide.
+- **Search** (over the list): type and the chapter's steps whose text has it drop down under the box, in any
+  case (quest steps: the quest's name; a step with two quests shows the one it found in grey). **Click one** and
+  the step list goes to that step and selects it, with a few steps above it showing, so you can work around it;
+  **Enter** goes to the first. The list itself stays whole. Click into the box again for the matches; with *All
+  steps* in the chapter list they come from the whole route. Escape closes the matches, **×** clears the search.
 - **Step details** (right), on three pages: **Step**, **Conditions** and **More**. The tabs show how many
   things are set on the other two (*Conditions (2)*). Hover any field or button for what it does.
 

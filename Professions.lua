@@ -1131,7 +1131,11 @@ function ns.applyNodeIcons(say)
     if a.nodeIcons ~= false then -- on unless switched off
         if not a.nodeIconsSaved then
             a.nodeIconsSaved = {}
-            for k in pairs(SOFT) do a.nodeIconsSaved[k] = getCV(k) or false end
+            -- (your own values: the name tags may have changed some of them first)
+            for k in pairs(SOFT) do
+                local tv = a.objTagsSaved and a.objTagsSaved[k]
+                if tv ~= nil then a.nodeIconsSaved[k] = tv else a.nodeIconsSaved[k] = getCV(k) or false end
+            end
         end
         for k, v in pairs(SOFT) do if getCV(k) ~= nil then setCV(k, v) end end
         -- the game may cap the range: say what it took
@@ -1139,7 +1143,193 @@ function ns.applyNodeIcons(say)
     elseif a.nodeIconsSaved then
         for k, v in pairs(a.nodeIconsSaved) do if v then setCV(k, v) end end
         a.nodeIconsSaved = nil
+        if ns.applyObjTags then ns.applyObjTags() end -- (name tags need two of them)
     end
+end
+
+---------------------------------------------------------------- object name tags
+-- The game can give the one object you'd interact with (the "softinteract" unit) a nameplate with its name
+-- (SoftTargetNameplateInteract). Itinerary opens that nameplate only for the objects you want named - quest
+-- objects, or every object - so NPCs, doors and mailboxes don't get one, and puts the quest objective under a
+-- quest object's name. In combat it's closed: the game won't change these settings there, and an open one sits
+-- on every lootable corpse. Settings > Quests > Object name tags (ItineraryDB.auto.objTags: quest/all/off).
+local TAG_CV = "SoftTargetNameplateInteract"
+local TAG_BASE = { SoftTargetInteract = "3", SoftTargetIconGameObject = "1" } -- (no nameplate without the icon)
+local tag = { guid = false, open = false, combat = false, line = false, kind = "none" }
+ns.objTagState = tag
+local function tagMode()
+    local a = ItineraryDB and ItineraryDB.auto
+    local m = a and a.objTags
+    if m == "all" or m == "off" then return m end
+    return "quest"
+end
+-- NaowhForever QoL's Glimmer opens the same nameplate for what it lights up: while it's on, it's left to Glimmer
+local function glimmerOn()
+    local nf = rawget(_G, "NaowhForever")
+    local gs = type(nf) == "table" and rawget(nf, "GlimmerSettings")
+    return type(gs) == "table" and gs.enabled == true
+end
+ns.objTagsByGlimmer = glimmerOn
+local function tagsActive() return tagMode() ~= "off" and not glimmerOn() and getCV(TAG_CV) ~= nil end
+local function isObject(u)
+    if type(UnitIsGameObject) == "function" then
+        local ok, r = pcall(UnitIsGameObject, u)
+        if ok then return r and true or false end
+    end
+    local g = UnitGUID(u)
+    return type(g) == "string" and g:find("^GameObject%-") ~= nil
+end
+-- the quest objective lines of the object's tooltip ("Gold Dust: 3/10")
+local function objectiveLines(u)
+    local out, TI = {}, C_TooltipInfo
+    if not (type(TI) == "table" and type(TI.GetUnit) == "function") then return out end
+    local ok, data = pcall(TI.GetUnit, u)
+    if not (ok and type(data) == "table" and type(data.lines) == "table") then return out end
+    local QO = type(Enum) == "table" and type(Enum.TooltipDataLineType) == "table" and Enum.TooltipDataLineType.QuestObjective
+    for i, l in ipairs(data.lines) do
+        local t = type(l) == "table" and l.leftText
+        if i > 1 and type(t) == "string" and t ~= "" and ((QO and l.type == QO) or t:find("%d+/%d+")) then
+            out[#out + 1] = (t:gsub("^%s*%-%s*", ""))
+        end
+    end
+    return out
+end
+ns.objTagLines = objectiveLines
+-- one of your step's names (an object the route names, like a chest or a crate)
+local function stepNames(name)
+    if not (name and ns.targetNames) then return false end
+    local ok, names = pcall(ns.targetNames)
+    if not (ok and type(names) == "table") then return false end
+    for _, n in ipairs(names) do if n == name or n:gsub("s$", "") == name then return true end end
+    return false
+end
+local function questObject(u)
+    local QL = C_QuestLog
+    if type(QL) == "table" and type(QL.UnitIsRelatedToActiveQuest) == "function" then
+        local ok, r = pcall(QL.UnitIsRelatedToActiveQuest, u)
+        if ok and r then return "quest" end
+    end
+    if #objectiveLines(u) > 0 then return "objective" end
+    if stepNames(UnitName(u)) then return "step" end
+    return false
+end
+local function writeTag(open)
+    local v = open and "1" or "0"
+    if getCV(TAG_CV) ~= v then setCV(TAG_CV, v) end
+end
+-- the objective line under the quest object's name, on its nameplate
+local function tagLine(unit)
+    local L = tag.line
+    if not (tag.open and tag.kind ~= "other" and unit and UnitIsUnit(unit, "softinteract")) then return end
+    local CN = C_NamePlate
+    local plate = type(CN) == "table" and type(CN.GetNamePlateForUnit) == "function" and CN.GetNamePlateForUnit(unit)
+    local lines = plate and objectiveLines("softinteract") or {}
+    if #lines == 0 then
+        if L then L:Hide() end
+        return
+    end
+    if not L then
+        L = CreateFrame("Frame", nil, UIParent)
+        L:SetSize(200, 14)
+        L.text = L:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+        L.text:SetPoint("TOP")
+        L.text:SetTextColor(1, 0.82, 0)
+        tag.line = L
+    end
+    L:SetParent(plate)
+    L:ClearAllPoints()
+    L:SetPoint("TOP", plate, "BOTTOM", 0, -1)
+    L.text:SetText(table.concat(lines, "\n"))
+    L.unit = unit
+    L:Show()
+end
+local function hideLine() if tag.line then tag.line:Hide(); tag.line.unit = false end end
+-- the soft target changed: open the nameplate for it or not
+local function tagCheck(force)
+    if not tagsActive() or tag.combat then return end
+    local g = UnitExists("softinteract") and UnitGUID("softinteract") or false
+    if g == tag.guid and not force then return end
+    tag.guid, tag.open, tag.kind = g, false, "none"
+    if g and isObject("softinteract") then
+        local q = questObject("softinteract")
+        tag.kind = q or "other"
+        tag.open = q and true or (tagMode() == "all")
+    end
+    writeTag(tag.open)
+    if not tag.open then hideLine() end
+end
+ns.objTagCheck = tagCheck
+function ns.applyObjTags(say)
+    local a = ItineraryDB and ItineraryDB.auto
+    if not a then return end
+    if getCV(TAG_CV) == nil then
+        if say and tagMode() ~= "off" then ns.print("object name tags: this game client has no nameplates for objects (" .. TAG_CV .. ")") end
+        return
+    end
+    if tagsActive() then
+        if not a.objTagsSaved then
+            -- your own values (the ones node icons kept, when it changed them first)
+            local s = { [TAG_CV] = getCV(TAG_CV) or false }
+            for k in pairs(TAG_BASE) do
+                local nv = a.nodeIconsSaved and a.nodeIconsSaved[k]
+                if nv ~= nil then s[k] = nv else s[k] = getCV(k) or false end
+            end
+            a.objTagsSaved = s
+        end
+        if not (InCombatLockdown and InCombatLockdown()) then
+            for k, v in pairs(TAG_BASE) do if getCV(k) ~= nil then setCV(k, v) end end
+            tagCheck(true)
+        end
+        if say then ns.print(tagMode() == "all" and "object name tags: every object you can click, close by"
+            or "object name tags: quest objects you can click, close by, with their objective") end
+    else
+        hideLine()
+        tag.guid, tag.open = false, false
+        local s = a.objTagsSaved
+        -- (while Glimmer does it, Itinerary only rests: your values stay kept for when it's switched off)
+        if s and tagMode() == "off" then
+            if not glimmerOn() and s[TAG_CV] then setCV(TAG_CV, s[TAG_CV]) end
+            -- the interact settings only when node icons doesn't keep them on
+            if a.nodeIcons == false then for k in pairs(TAG_BASE) do if s[k] then setCV(k, s[k]) end end end
+            a.objTagsSaved = nil
+        end
+        if say and glimmerOn() and tagMode() ~= "off" then ns.print("object name tags: Glimmer (NaowhForever QoL) is on and does this, so Itinerary leaves it to Glimmer") end
+    end
+end
+do
+    local tf = CreateFrame("Frame")
+    for _, e in ipairs({ "PLAYER_SOFT_INTERACT_CHANGED", "NAME_PLATE_UNIT_ADDED", "NAME_PLATE_UNIT_REMOVED",
+                         "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED", "QUEST_LOG_UPDATE" }) do
+        pcall(tf.RegisterEvent, tf, e)
+    end
+    tf:SetScript("OnEvent", function(_, event, unit)
+        if not ItineraryDB then return end
+        if event == "PLAYER_REGEN_DISABLED" then
+            -- (just before the lockdown: close it, rest until combat ends)
+            if tagsActive() then tag.combat = true; tag.guid = false; writeTag(false); hideLine() end
+            return
+        end
+        if event == "PLAYER_REGEN_ENABLED" then
+            if tag.combat then tag.combat = false; ns.applyObjTags() end
+            return
+        end
+        if not tagsActive() then return end
+        if event == "PLAYER_SOFT_INTERACT_CHANGED" then tagCheck() return end
+        if event == "NAME_PLATE_UNIT_ADDED" then pcall(tagLine, unit) return end
+        if event == "NAME_PLATE_UNIT_REMOVED" then
+            if tag.line and tag.line.unit == unit then hideLine() end
+            return
+        end
+        if event == "QUEST_LOG_UPDATE" and tag.line and tag.line.unit then pcall(tagLine, tag.line.unit) end
+    end)
+    -- (in case the client has no PLAYER_SOFT_INTERACT_CHANGED: a look four times a second)
+    local acc = 0
+    tf:SetScript("OnUpdate", function(_, el)
+        acc = acc + (tonumber(el) or 0)
+        if acc < 0.25 then return end
+        acc = 0
+        if ItineraryDB and tagsActive() then tagCheck() end
+    end)
 end
 
 local TRACK = { mining = "Find Minerals", herbalism = "Find Herbs" }
@@ -1248,7 +1438,7 @@ do
     local pending
     tf:SetScript("OnEvent", function(_, event)
         if not (ItineraryDB and ItineraryCharDB) then return end
-        if event == "PLAYER_LOGIN" then ns.applyNodeIcons() end
+        if event == "PLAYER_LOGIN" then ns.applyNodeIcons(); ns.applyObjTags() end
         if event ~= "SPELLS_CHANGED" then trackLog("event " .. event) end
         if event == "PLAYER_DEAD" then ns.trackAfterDeath = true return end
         -- back alive: a chain still waiting from when you released (as a ghost) mustn't swallow this one

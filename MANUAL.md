@@ -326,6 +326,13 @@ to do things by hand that time.
 | Learn your professions at their trainer | on | Professions |
 | Buy gathering tools | on | Professions |
 
+**Object name tags**: Settings > Quests > *Object name tags* names the object in front of you that you can
+click (the game picks one, a few yards away) with a nameplate of its own. **Quest** (the default): only
+objects for your quests, with the quest objective under the name ("Gold Dust: 3/10"). **All**: herbs, ore
+veins, chests and the rest too. NPCs, doors and mailboxes never get one, and in combat it's closed. It uses
+the game's interact settings like *Node icons*; **Off** puts your own values back. While Glimmer
+(NaowhForever QoL) is on, it does this itself and Itinerary leaves it to Glimmer.
+
 **Self-found play**: Settings > Quests > *Auction house steps* > **Skip** leaves out every step that sends you
 to the auction house (steps marked *Auction house* in the editor, and any step at an auctioneer), and shows
 the steps marked *Self-found only* instead.
@@ -614,7 +621,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | Tab | What's there |
 |---|---|
 | General | Route panel and minimap button, hide them in dungeons, the game's quest tracker, quest sparkles, the sound when a step is done, route pack order and the packs' own choices, factory reset, forget this character |
-| Quests | Accept and hand in, which quests (route or all), share quests in a group, quest dialogue, pick gear rewards, best-selling reward coin, sell junk, auction house steps |
+| Quests | Accept and hand in, which quests (route or all), share quests in a group, quest dialogue, object name tags, pick gear rewards, best-selling reward coin, sell junk, auction house steps |
 | Travel | Take flights, set hearthstone, spirit healer, map pins (on the world map, on the minimap, the line between them) |
 | Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills, buy weapon skills, your class's skill list (worth a visit / auto-buy) |
 | Professions | Learn at the trainer, main professions, first profession, secondary professions, gather mode, gather data (shipped, own, both), gathering tracking, node icons, gathering tools |

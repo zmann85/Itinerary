@@ -9,6 +9,10 @@
   nameplate range or you clear your target.
   Faces of the NPCs and mobs you target, hover or meet on your step are remembered for all your characters,
   so the button can show them before they're in sight; someone you've never met keeps the usual icon.
+- **Object name tags** (Settings > Quests): the quest object in front of you that you can click gets a
+  nameplate with its name and the quest objective under it, using the game's interact nameplate. *All*
+  names herbs, ore veins and chests too; NPCs, doors and mailboxes never get one, and it's closed in combat.
+  While Glimmer (NaowhForever QoL) is on, it's left to Glimmer.
 
 ## v2.0.0 (2026-10-18)
 

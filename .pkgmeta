@@ -18,4 +18,5 @@ ignore:
   - docs
   - manual
   - README.md
+  - MANUAL.md
   - .gitignore

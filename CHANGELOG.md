@@ -125,7 +125,7 @@
 - Gathering tracking no longer mistakes the map filters (flight masters, mailboxes, trainers ...) for tracking you
   switched on yourself: it was never switched on with them active.
 - A turn-in the route only does "if it's done by now" isn't listed as one to go back for when you passed it.
-- Steps for an item you need to have (RestedXP `.itemcount`) only show while you have it (or, for "fewer
+- Steps for an item you need to have only show while you have it (or, for "fewer
   than", while you don't). "Eat the Herb Baked Eggs" instructions get the eggs on an item button and stay
   hidden while their buff is up, until a minute before it runs out (the buff is learned the first time you eat).
 - "Die and respawn at the spirit healer" instructions and steps are done once you're alive again.

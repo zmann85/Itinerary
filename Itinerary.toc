@@ -3,6 +3,7 @@
 ## Notes: Step-by-step leveling route with a waypoint arrow and your pace against a reference run.
 ## Author: Ghaan
 ## Version: 1.2.0
+## X-License: All Rights Reserved
 ## IconTexture: Interface\AddOns\Itinerary\icon
 ## SavedVariables: ItineraryDB
 ## SavedVariablesPerCharacter: ItineraryCharDB

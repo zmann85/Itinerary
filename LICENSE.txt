@@ -9,15 +9,68 @@ Without written permission from the author you may not:
 
 Everything not explicitly allowed here is reserved by the author.
 
-Third-party parts keep their own licenses:
-- The libraries in the libs folder belong to their authors and are under their own licenses
-  (see the libraries' folders and project pages).
-- sounds/Bell.ogg, Blip.ogg, Drop.ogg and Meow.ogg are by their credited authors under
-  Creative Commons Attribution 3.0 - see sounds/CREDITS.txt.
-
 Routes are not part of Itinerary. A route pack you install separately comes with its own license.
 The Itinerary_Data add-on (trainer, vendor and gathering positions) is separate from Itinerary and comes
 with its own license (GNU GPL v3).
 
 World of Warcraft is a trademark of Blizzard Entertainment, Inc. Itinerary is not affiliated with
 or endorsed by Blizzard Entertainment.
+
+
+Third-party parts
+=================
+These parts are not covered by the license above. They belong to their authors and keep their own
+licenses.
+
+Libraries (libs folder)
+-----------------------
+- LibStub - Kaelten, Cladhaire, ckknight, Mikk, Ammo, Nevcairiel, joshborke. Public domain.
+- CallbackHandler-1.0 - Ace3 Development Team. BSD license (Ace3), full text below and in
+  libs/CallbackHandler-1.0/LICENSE.txt.
+- LibDataBroker-1.1 - tekkub. https://github.com/tekkub/libdatabroker-1-1
+- LibDBIcon-1.0 - funkydude. Ace3-style BSD license (as stated on its WowAce project page).
+- HereBeDragons-2.0, HereBeDragons-Pins-2.0 - Nevcairiel. BSD license (as stated in its TOC).
+  https://github.com/Nevcairiel/HereBeDragons
+- LibDeflate - Haoqian He (SafeteeWoW). zlib license, see libs/LibDeflate/LICENSE.txt.
+  https://github.com/SafeteeWoW/LibDeflate
+- LibSerialize - Ross Nichols. MIT license, see libs/LibSerialize/LICENSE.
+  https://github.com/rossnichols/LibSerialize
+
+Sounds (sounds folder)
+----------------------
+Bell.ogg, Blip.ogg, Drop.ogg and Meow.ogg are by their credited authors under Creative Commons
+Attribution 3.0 (https://creativecommons.org/licenses/by/3.0/) - see sounds/CREDITS.txt.
+Coins.ogg, Sonar.ogg, Xylophone.ogg and Fanfare.ogg were made for Itinerary and are covered by the
+license above.
+
+Ace3 BSD license (CallbackHandler-1.0)
+--------------------------------------
+Copyright (c) 2007, Ace3 Development Team
+
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+    * Redistributions of source code must retain the above copyright notice,
+      this list of conditions and the following disclaimer.
+    * Redistributions in binary form must reproduce the above copyright notice,
+      this list of conditions and the following disclaimer in the documentation
+      and/or other materials provided with the distribution.
+    * Redistribution of a stand alone version is strictly prohibited without
+      prior written authorization from the Lead of the Ace3 Development Team.
+    * Neither the name of the Ace3 Development Team nor the names of its contributors
+      may be used to endorse or promote products derived from this software without
+      specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

@@ -2400,6 +2400,6 @@ SlashCmdList.ITINERARY = function(input)
     elseif cmd == "import" then if ns.openShare then ns.openShare("import") end
     elseif cmd == "professions" or cmd == "prof" then if ns.showProfPicker then ns.showProfPicker() end
     else
-        ns.print("/iti = show/hide the route, /iti next, /iti back, /iti goto <step>, /iti find, /iti arrow, /iti lock, /iti unlock, /iti chapters, /iti chapter <n>, /iti pins, /iti minimap, /iti settings, /iti professions, /iti reset, /iti wipe, /iti debug")
+        ns.print("/iti = show/hide the route, /iti next, /iti back, /iti goto <step>, /iti find, /iti routes, /iti arrow, /iti lock, /iti unlock, /iti chapters, /iti chapter <n>, /iti pins, /iti minimap, /iti settings, /iti professions, /iti gather, /iti edit, /iti recorder, /iti record, /iti export, /iti import, /iti reset, /iti wipe, /iti debug")
     end
 end

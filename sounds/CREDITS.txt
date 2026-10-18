@@ -1,9 +1,12 @@
 Itinerary sounds
 ================
-Bell.ogg  - "Temple Bell Huge" by Mike Koenig, CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/)
-Blip.ogg  - "Robot Blip" by Marianne Gagnon, CC BY 3.0
-Drop.ogg  - "Water Drop" by Mike Koenig, CC BY 3.0
-Meow.ogg  - "Cat Meow" by Mr Smith, CC BY 3.0
-These four come from soundbible.com (as bundled with WeakAuras) and are unchanged.
 
-Coins.ogg, Sonar.ogg, Xylophone.ogg, Fanfare.ogg - made for Itinerary.
+Under Creative Commons Attribution 3.0 (https://creativecommons.org/licenses/by/3.0/), from SoundBible.com,
+unchanged (the same files several UI add-ons bundle):
+Bell.ogg  - "Temple Bell Huge" by Mike Koenig    https://soundbible.com/1506-Temple-Bell-Huge.html
+Blip.ogg  - "Robot Blip" by Marianne Gagnon       https://soundbible.com/1682-Robot-Blip.html
+Drop.ogg  - "Water Drop" by Mike Koenig           https://soundbible.com/1126-Water-Drop.html
+Meow.ogg  - "Cat Meow 2" by Cat Stevens           https://soundbible.com/1954-Cat-Meow-2.html
+
+Made for Itinerary (synthesized tones), (c) Ghaan, under Itinerary's license (LICENSE.txt):
+Coins.ogg, Sonar.ogg, Xylophone.ogg, Fanfare.ogg

@@ -42,7 +42,9 @@
   its point) and kill-area spots as lists - type coordinates, set a waypoint's radius, move one to where you
   stand, change the order, remove one, add at your position or by clicking the world map. While the editor is
   open, the world map draws the selected step instead of your next stops: its point, numbered waypoints with a
-  line, and its spots; drag a pin to move it, right-click to remove it.
+  line, and its spots; drag a pin to move it, right-click to remove it. Each one's zone can be changed too
+  (type a zone's name, the start of it or its map ID), coordinates can come with a zone (`Westfall 56.3, 47.5`)
+  or as a pasted `/way` line, and a step without a point gets one by typing it in.
 - **Editor: everything a route step can do**: besides accept, quest, turn in, go, do, train and xp there are now
   fly, flight path, hearth, home (make an inn your home), dungeon, abandon and sell junk; hover a type for what it
   does. Switches for **Optional** and **Death skip**. A **Conditions** page (quests in your log, level, zone,

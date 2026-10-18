@@ -462,9 +462,15 @@ many each has).
   a mountain). The last line, **P**, is the step's point itself.
 - **Kill area**: the spots of the area where the step's mobs are. From two spots on, the arrow goes from one to the
   next.
-- Each line: its coordinates on the zone map (type new ones: `42.1, 65.3`), the zone, for a waypoint how close
-  counts as reached (yards; 15 when empty), **Here** (moves it to where you stand), **Up** / **Down** (the order)
-  and **×** (removes it). Scroll with the mouse wheel when there are more.
+- Each line: its coordinates on the zone map, its zone, for a waypoint how close counts as reached (yards; 15
+  when empty), **Here** (moves it to where you stand), **Up** / **Down** (the order) and **×** (removes it).
+  Scroll with the mouse wheel when there are more.
+- **Coordinates**: type new ones (`42.1, 65.3`), with a zone if it's on another map (`Westfall 56.3, 47.5`), or
+  paste a `/way` line (`/way Westfall 56.3 47.5 Sentinel Hill`).
+- **Zone**: type another one and the coordinates go on that map: its name in any case (`Westfall`), the start of
+  it (`elwynn`, `stormwind`) or its map ID (`map 1436`). When more than one zone fits, the chat lists them.
+- A step **without a point** shows "no point yet" on the P line: type its coordinates there (in the zone you're
+  in unless you type one), press **Here**, or click it in with **Add on map**.
 - **Add here**: where you stand, at the end of the list (a step without a point gets its point first).
 - **Add on map**: opens the world map; every click on it adds one there. Right-click on the map (or the button
   again) stops.

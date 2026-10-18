@@ -1366,6 +1366,92 @@ local function build()
         end
         return { m = p[1], x = p[2], y = p[3], r = p[5] }
     end
+    -- zones by name, for typing one in: every map HereBeDragons knows, else the world map's tree. Zones and cities
+    -- (map type 3) and dungeons (4); not continents, caves or buildings.
+    local zoneIndex
+    local function zones()
+        if zoneIndex then return zoneIndex end
+        local idx, seen, n = {}, {}, 0
+        local function add(id)
+            if not id or seen[id] then return end
+            seen[id] = true
+            local info = C_Map and C_Map.GetMapInfo and C_Map.GetMapInfo(id)
+            if type(info) == "table" and type(info.name) == "string" and info.name ~= "" and (info.mapType == 3 or info.mapType == 4) then
+                local k = info.name:lower()
+                idx[k] = idx[k] or {}
+                table.insert(idx[k], { id = id, type = info.mapType, name = info.name })
+                n = n + 1
+            end
+        end
+        if HBDl and HBDl.GetAllMapIDs then for _, id in ipairs(HBDl:GetAllMapIDs() or {}) do add(id) end end
+        local kids = C_Map and C_Map.GetMapChildrenInfo and C_Map.GetMapChildrenInfo(947, nil, true)
+        if type(kids) == "table" then for _, info in ipairs(kids) do add(type(info) == "table" and info.mapID) end end
+        for _, l in pairs(idx) do
+            table.sort(l, function(a, b) if a.type ~= b.type then return a.type < b.type end return a.id < b.id end)
+        end
+        if n > 0 then zoneIndex = idx end
+        return idx
+    end
+    -- a zone from what you typed: its name (any case; the start or a part of it when only one zone fits),
+    -- or its map ID (1436, #1436, map 1436). Not found: nil and the names that fit
+    local function findZone(text)
+        local t = trim(text)
+        if t == "" then return nil end
+        local n = tonumber(t:match("^#?(%d+)$") or t:lower():match("^map%s*#?(%d+)$"))
+        if n then return mapName(n) and n or nil end
+        local low, idx = t:lower(), zones()
+        if idx[low] then return idx[low][1].id end
+        local hits = {}
+        for k in pairs(idx) do if k:sub(1, #low) == low then hits[#hits + 1] = k end end
+        if #hits == 0 then for k in pairs(idx) do if k:find(low, 1, true) then hits[#hits + 1] = k end end end
+        if #hits == 1 then return idx[hits[1]][1].id end
+        table.sort(hits)
+        for i, k in ipairs(hits) do hits[i] = idx[k][1].name end
+        return nil, hits
+    end
+    ns.editorFindZone = findZone
+    local function noZone(t, hits)
+        if hits and #hits > 0 then
+            ns.print("which zone? " .. table.concat(hits, ", ", 1, math.min(6, #hits)) .. (#hits > 6 and ", ..." or ""))
+        else
+            ns.print("no zone called \"" .. t .. "\" (a zone's name, or its map ID: map 1436)")
+        end
+    end
+    -- the zone you're in (a cave or building: the zone around it), for a new point typed in without a zone
+    local function playerZone()
+        local id = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+        local guard = 0
+        while id and guard < 10 do
+            local info = C_Map.GetMapInfo and C_Map.GetMapInfo(id)
+            if type(info) ~= "table" then break end
+            if info.mapType == 3 or info.mapType == 4 then return id end
+            if info.mapType and info.mapType < 3 then break end
+            id, guard = info.parentMapID, guard + 1
+        end
+        return nil
+    end
+    -- what you typed into a coordinates box: "45.2, 61.8", with a zone before or after it if you like
+    -- ("Westfall 56.3, 47.5", "56.3 47.5 Westfall", "/way Westfall 56.3 47.5 Sentinel Hill", "/way #1436 56 47").
+    -- Returns x, y, the zone's map (nil: none typed), and when a typed zone isn't found: its text and the names that fit
+    local function parseSpot(text)
+        local t = tostring(text or ""):gsub("^%s*/way%s*", "")
+        local m = tonumber(t:match("#(%d+)"))
+        if m then t = t:gsub("#%d+", " ") end
+        local before, x, yy, after = t:match("^(.-)(%d+%.?%d*)%s*[,%s]%s*(%d+%.?%d*)(.*)$")
+        x, yy = tonumber(x), tonumber(yy)
+        if not (x and yy) or x > 100 or yy > 100 then return nil end
+        local function clean(s) return trim((s or ""):gsub("^[%s,;:%-]+", ""):gsub("[%s,;:%-]+$", "")) end
+        -- (a zone before the numbers, else after them: TomTom puts a description after)
+        local zt = clean(before)
+        if zt == "" then zt = clean(after) end
+        if not m and zt ~= "" then
+            local hits
+            m, hits = findZone(zt)
+            if not m then return x, yy, nil, zt, hits end
+        end
+        return x, yy, m
+    end
+    ns.editorParseSpot = parseSpot
     -- { point, way = the waypoints before the point, area = the kill-area spots }
     local function geometry(s)
         local g = { way = {}, area = {} }
@@ -1441,14 +1527,40 @@ local function build()
         r.n = ui.text(r, 11, 1, 1, 1, 0.5); r.n:SetPoint("LEFT", 0, 0); r.n:SetWidth(22)
         local key = function() return isPoint and "point" or (wOff + i) end
         r.coord = editbox(r, 96, function(text)
-            local x, yy = (text or ""):match("(%d+%.?%d*)%s*[,%s]%s*(%d+%.?%d*)")
+            local x, yy, m, bad, hits = parseSpot(text)
             if not x then refresh() return end
-            editGeo(key(), function(_, _, p) if not p then return false end; p.x, p.y = tonumber(x), tonumber(yy) end)
+            if bad then noZone(bad, hits); refresh() return end
+            editGeo(key(), function(g, _, p)
+                if not p and isPoint then
+                    -- (a step without a point: this is it, in the zone typed with it or the one you're in)
+                    m = m or playerZone()
+                    if not m then return false end
+                    g.point = { m = m, x = x, y = yy }
+                    return
+                end
+                if not p then return false end
+                p.x, p.y = x, yy
+                if m then p.m = m end
+            end)
+            refresh()
         end)
         r.coord:SetPoint("LEFT", 24, 0)
-        r.coord:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("x, y on the zone's map (as /way or a map addon shows them)", 1, 1, 1, true); GameTooltip:Show() end)
+        r.coord:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("x, y on the zone's map (as /way or a map addon shows them). A zone may come with it: Westfall 56.3, 47.5 - or paste a /way line.", 1, 1, 1, true); GameTooltip:Show() end)
         r.coord:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        r.zone = ui.text(r, 10, 1, 1, 1, 0.4); r.zone:SetPoint("LEFT", r.coord, "RIGHT", 6, 0); r.zone:SetWidth(108); r.zone:SetWordWrap(false)
+        r.zone = editbox(r, 108, function(text)
+            local t = trim(text)
+            local m, hits = findZone(t)
+            if not m then if t ~= "" then noZone(t, hits) end; refresh() return end
+            editGeo(key(), function(_, _, p)
+                if not p then ns.print("type the coordinates first (with the zone if you like: Westfall 56.3, 47.5)") return false end
+                p.m = m
+            end)
+            refresh()
+        end)
+        r.zone:SetPoint("LEFT", r.coord, "RIGHT", 4, 0)
+        r.zone:SetScript("OnEnter", function(self) GameTooltip:SetOwner(self, "ANCHOR_RIGHT"); GameTooltip:AddLine("The zone these coordinates are on. Type its name (Westfall, elwynn, stormwind) or its map ID (map 1436); the coordinates stay as they are.", 1, 1, 1, true); GameTooltip:Show() end)
+        r.zone:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        r.ph = ui.text(r, 10, 1, 1, 1, 0.4); r.ph:SetPoint("LEFT", r.zone, "LEFT", 6, 0); r.ph:Hide()
         r.here = button(r, "Here", 48, function()
             local h = here()
             if not h then return end
@@ -1577,7 +1689,7 @@ local function build()
             if p then
                 r.n:SetText(tostring(wOff + i))
                 if not r.coord:HasFocus() then r.coord:SetText(string.format("%.1f, %.1f", p.x, p.y)) end
-                r.zone:SetText(mapName(p.m) or ("map " .. tostring(p.m)))
+                if not r.zone:HasFocus() then r.zone:SetText(mapName(p.m) or ("map " .. tostring(p.m))) end
                 r.rad:SetShown(listMode == "way")
                 if listMode == "way" and not r.rad:HasFocus() then r.rad:SetText(p.r and p.r > 0 and tostring(p.r) or "") end
                 r.up:SetAlpha(wOff + i > 1 and 1 or 0.35)
@@ -1591,7 +1703,9 @@ local function build()
         d.wpoint:SetShown(listMode == "way")
         d.wpoint.n:SetText("P")
         if not d.wpoint.coord:HasFocus() then d.wpoint.coord:SetText(g.point and string.format("%.1f, %.1f", g.point.x, g.point.y) or "") end
-        d.wpoint.zone:SetText(g.point and (mapName(g.point.m) or ("map " .. tostring(g.point.m))) or "no point yet")
+        if not d.wpoint.zone:HasFocus() then d.wpoint.zone:SetText(g.point and (mapName(g.point.m) or ("map " .. tostring(g.point.m))) or "") end
+        d.wpoint.ph:SetText("no point yet")
+        d.wpoint.ph:SetShown(not g.point and not d.wpoint.zone:HasFocus())
         local placing = ns.editorMapIsPlacing and ns.editorMapIsPlacing()
         d.addMap:SetActive(placing and true or false)
         d.addMap.text:SetText(placing and "Click the map..." or "Add on map")

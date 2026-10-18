@@ -356,6 +356,9 @@ A route pack can offer choices of its own, for example which dungeons your route
 it means). What a choice does is up to the pack: Itinerary only shows the list, keeps your choices for each
 character and lets the pack leave steps of its routes out by them.
 - A change rebuilds the route you follow with a quick reload; you stay at your place in the route.
+- A switch your route doesn't use is dimmed ("Not used by your route" when you hover it), and changing it needs
+  no reload: an older version of a pack route that came before its choices, a route from another pack or your
+  own, or a switch your other choices make pointless. It's still kept, for a route that does use it.
 - A copy you made of one of the pack's routes follows the same choices. Your own and imported routes don't.
 - Without a pack that offers choices, there's nothing to see there.
 

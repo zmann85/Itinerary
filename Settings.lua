@@ -531,15 +531,25 @@ local function buildRow(opt, i)
         -- a route pack's own on/off choices (registered by the pack; Itinerary only shows and keeps them)
         local g = opt.group
         row.lbl:SetText(g.title .. "  |cff8a8a8a" .. (opt.packTitle or g.pack) .. "|r")
+        -- (a choice your route doesn't depend on - an older version of the route, another pack's route, or
+        -- one the other choices make moot - is dimmed; changing it needs no reload)
+        local function usedSet() return ns.packKeysOfRoute and ns.packKeysOfRoute(g.pack) end
         chipRow(row, 4, function()
+            local used = usedSet()
             local out = {}
             for _, it in ipairs(g.items) do
                 local on = ns.packOption(g.pack, it.key)
-                out[#out + 1] = { it.label, on, false, function() ns.setPackOption(g.pack, it.key, not on) end, it.tip }
+                local idle = used and not used[tostring(it.key)]
+                local tip = idle and ((it.tip and (it.tip .. "\n") or "") .. "|cff9a9a9aNot used by your route|r") or it.tip
+                out[#out + 1] = { it.label, on, idle and true or false, function() ns.setPackOption(g.pack, it.key, not on) end, tip }
             end
             return out
         end, function(self)
-            self.sub:SetText((g.text and (g.text .. " ") or "") .. "Lit = on. For this character; a change rebuilds your route with a quick reload.")
+            local used, any = usedSet(), false
+            for _, it in ipairs(g.items) do if not used or used[tostring(it.key)] then any = true end end
+            self.sub:SetText((g.text and (g.text .. " ") or "") .. (any
+                and "Lit = on. For this character; a change rebuilds your route with a quick reload."
+                or "Lit = on. Your route doesn't use these switches; they're kept for a route that does."))
         end)
     elseif opt.kind == "anchor" then
         row.lbl:SetText(opt.label)

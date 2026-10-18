@@ -195,12 +195,24 @@ function ns.setPackOption(pack, key, on)
     ItineraryCharDB.packOptions[pack] = mine
     local it = packItem(pack, key)
     if it and it.default == on then mine[key] = nil else mine[key] = on end -- (the pack's default isn't stored)
-    -- the route you follow was built with the old choice: building it again takes a reload
+    -- the route you follow was built with the old choice: building it again takes a reload (only for a choice
+    -- the pack's filter asked about while building it - any other one leaves your route as it is)
     local r = ItineraryCharDB.route and ns.routes[ItineraryCharDB.route]
     local src = r and r.from and ns.routes[r.from] or r
-    if src and src.pack == pack and src.base and ns.stepFilters[pack] and ns.askReload then
+    if src and src.pack == pack and src.base and ns.stepFilters[pack] and ns.askReload
+       and (not src.packKeysUsed or src.packKeysUsed[tostring(key)]) then
         ns.askReload("Your route changes with that choice.")
     end
+end
+-- The choices of a pack your route depends on: the keys its filter asked about when your route was built (a
+-- route of another pack, or your own, depends on none). nil: not known yet (the route isn't built).
+function ns.packKeysOfRoute(pack)
+    local c = ItineraryCharDB
+    local r = c and c.route and ns.routes[c.route]
+    if not r then return nil end
+    local src = r.from and ns.routes[r.from] or r
+    if src.pack ~= pack then return {} end
+    return src.base and src.packKeysUsed or nil
 end
 -- the groups of the installed packs, in your pack order
 function ns.packOptionGroups()
@@ -218,7 +230,10 @@ function ns.filterPackSteps(r, steps)
     local f = r and r.pack and ns.stepFilters[r.pack]
     if not f or not steps or #steps == 0 then return steps end
     local pack = r.pack
-    local function on(key) return ns.packOption(pack, tostring(key)) end
+    -- (which choices the filter asks about: the ones this route depends on, given the others)
+    local used = {}
+    r.packKeysUsed = used
+    local function on(key) key = tostring(key); used[key] = true; return ns.packOption(pack, key) end
     local keep, at = {}, {}
     for i, s in ipairs(steps) do
         at[i] = #keep + 1

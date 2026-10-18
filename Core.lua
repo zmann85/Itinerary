@@ -633,8 +633,8 @@ function ns.pickRoute()
     end
 end
 
--- Routes made from RestedXP guides store some positions as world coordinates; turn them into zone
--- coordinates once the map data is there.
+-- Some routes store positions as world coordinates (wx/wy); turn them into zone coordinates once the map
+-- data is there.
 function ns.trainerAsRec()
     return not (ItineraryDB and ItineraryDB.auto and ItineraryDB.auto.trainerSteps == "step")
 end
@@ -680,11 +680,11 @@ function ns.prepareRoute(r)
         end
     end
     -- death skips ("die and respawn at the spirit healer") are always an instruction next to the steps after
-    -- them, never a stop of their own: after the respawn the arrow leads on to the next step anyway. RestedXP
-    -- writes most of them that way ("complete with next"), some as a step of their own (Frostmane Hold, the
-    -- Baradin Bay jump, Everlook...). It lasts until the next step that is always there - a conditional one
-    -- may not be (the walking alternative "Fight your way out of Thunder Ridge" is only below level 10) -
-    -- at most 8 steps past the next stop. With a place to die at, it still leads the arrow there first.
+    -- them, never a stop of their own: after the respawn the arrow leads on to the next step anyway. Routes
+    -- write most of them that way (along the way until the next step), some as a step of their own. It lasts
+    -- until the next step that is always there - a conditional one may not be (a walking alternative that is
+    -- only for low levels) - at most 8 steps past the next stop. With a place to die at, it still leads the
+    -- arrow there first.
     local steps = r.steps
     -- (what can leave a step out for you; "skip while in Ironforge" and optional steps still show)
     local COND = { "cond", "lvskip", "gateL", "need", "needProf", "skill", "skill2", "money", "dps", "ah", "ssf", "buffItem" }
@@ -1011,7 +1011,7 @@ function ns.objectiveLines(s)
     return out
 end
 
--- A step that doesn't apply to you right now (RestedXP conditions): treated as done.
+-- A step that doesn't apply to you right now (its conditions): treated as done.
 ---------------------------------------------------------------- dropped quests and their chains
 -- A quest you skipped at its accept step (or abandoned) is dropped: its later steps leave the route, and so
 -- do the quests that need it first (ns.QUEST_PRE from QuestieDB), all the way down the chain. Taking the
@@ -1131,7 +1131,7 @@ function ns.weaponsKnown(ids, any)
     return n == #ids
 end
 
--- Steps for when you have an item ("Eat the Herb Baked Eggs": RestedXP .itemcount), and food buffs: which buff
+-- Steps for when you have an item ("Eat the Herb Baked Eggs": need), and food buffs: which buff
 -- eating an item gives is learned the first time you eat it (ItineraryDB.itemBuffs[item] = aura spell ID)
 local function itemCount(id)
     local f = (C_Item and C_Item.GetItemCount) or GetItemCount
@@ -1288,8 +1288,8 @@ local function notApplicable(s)
     -- ".skill cooking,50,1": only while you're below 50 in a profession you picked (or not learned yet);
     -- without "lt": only from that skill on. Two of them (skill2) make a range
     if skillOff(s.skill) or skillOff(s.skill2) then return true end
-    -- RestedXP's ".money <0.02": skipped while you have less than that (the step is for when you can afford
-    -- it); ".money >0.75": skipped once you have that much (grind / sell until you have it)
+    -- money {"<", c}: skipped while you have less than that (the step is for when you can afford it);
+    -- {">", c}: skipped once you have that much (grind / sell until you have it)
     if s.money then
         local m = GetMoney and GetMoney() or 0
         if s.money[1] == "<" and m < s.money[2] then return true end
@@ -1566,7 +1566,7 @@ function ns.advance()
         if next(open) then
             for j = c.step - 1, math.max(1, c.step - 8), -1 do
                 local sj = steps[j]
-                -- (its RestedXP variant condition doesn't matter here: the quest itself is open and not done)
+                -- (its variant condition doesn't matter here: the quest itself is open and not done)
                 if sj.t == "complete" and not sj.along and sj.q and not ns.stepDone(j) then
                     for _, q in ipairs(sj.q) do if open[q] then c.step, moved = j, true break end end
                 end
@@ -1604,7 +1604,7 @@ local function takenOver(s, cur)
     return false
 end
 ns.alongTakenOver = takenOver
--- A "while you're there" turn-in or accept (RestedXP's #completewith next) that the route does as a step of
+-- A "while you're there" turn-in or accept (along the way until the next step) that the route does as a step of
 -- its own right after: that step is in the upcoming list already, so it isn't an instruction as well.
 local function comingUp(s, steps, i)
     if not ((s.t == "accept" or s.t == "turnin") and s.q) then return false end
@@ -1793,7 +1793,7 @@ end
 -- Weapon skills you're missing, like the class trainer: while a weapon master within 400 yards teaches one
 -- you can pay for, it's an instruction ("Train Staves and Polearms at Woo Ping") or, with Trainer visits:
 -- Step, a detour step. Settings > Trainer > Weapon skills: every one your class can use, only the ones the
--- route trains (RestedXP's weapon master stops), or none.
+-- route trains (its weapon master stops), or none.
 local WPN_NAME = { [201] = "1h Swords", [202] = "2h Swords", [198] = "1h Maces", [199] = "2h Maces",
     [196] = "1h Axes", [197] = "2h Axes", [227] = "Staves", [1180] = "Daggers", [264] = "Bows", [266] = "Guns",
     [5011] = "Crossbows", [2567] = "Thrown", [200] = "Polearms", [15590] = "Fist Weapons" }
@@ -1831,7 +1831,7 @@ function ns.weaponPlan()
         if not e then e = { name = npc, teach = {} }; masters[npc] = e end
         return e
     end
-    -- the route's weapon skills first (RestedXP picked them), then the rest your class can use
+    -- the route's weapon skills first (the route picked them), then the rest your class can use
     for _, s in ipairs(steps) do
         if s.t == "train" and s.wpn then
             -- a choice ("2h Maces with a group, otherwise Thrown; if unsure, Thrown"): the safe pick, named last
@@ -2043,7 +2043,7 @@ function ns.arrived(j)
 end
 
 -- Back from the dead (spirit healer or your corpse): the "die and respawn" steps that were up are done -
--- the current step and the along-the-way ones (RestedXP's death skips)
+-- the current step and the along-the-way ones (death skips)
 do
     local f = CreateFrame("Frame")
     f:RegisterEvent("PLAYER_UNGHOST")

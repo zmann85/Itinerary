@@ -250,8 +250,8 @@ local function registerCustom()
             ns.routes[id] = { custom = true, from = src and def.from or nil, faction = def.faction,
                               chapters = src and (src.baseChapters or src.chapters) or {}, staticSteps = {} }
         end
-        -- older copies were named after the long route names ("... 1-60 (RestedXP Forever + dungeons) (my copy)")
-        if def.name then def.name = def.name:gsub(" %(RestedXP Forever %+ dungeons%)", "") end
+        -- older copies were named after the long route names ("... 1-60 (<source> Forever + dungeons) (my copy)")
+        if def.name then def.name = def.name:gsub(" %([^()]- Forever %+ dungeons%)", "") end
         local r = ns.routes[id]
         -- a copy whose original comes in a route pack loaded after Itinerary: link it up now
         if src and not r.from and not r.built then

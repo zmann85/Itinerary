@@ -405,7 +405,7 @@ local function onGossip()
             return
         end
     end
-    -- the route says "just talk to them" (RestedXP .skipgossip) and there is only one thing to say
+    -- the route says "just talk to them" (gossip = true) and there is only one thing to say
     if #options == 1 then
         for _, s in ipairs(stepsForNpc(UnitName("npc"))) do
             if s.gossip == true then

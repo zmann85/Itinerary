@@ -175,7 +175,7 @@ local function distTo(m, x, y, world)
     if not pc then return nil end
     local c, wx, wy
     if world then
-        -- RestedXP world coordinates (HBD order): a = world y, b = world x
+        -- world coordinates (HBD order): a = world y, b = world x
         local HBD = LibStub and LibStub("HereBeDragons-2.0", true)
         if not HBD then return nil end
         local zx, zy = HBD:GetZoneCoordinatesFromWorld(x, y, m, true)
@@ -482,7 +482,7 @@ function ns.profStepDone(s)
     return ns.profKnown(k) or not ns.canAfford("learn", k)
 end
 
--- RestedXP profession steps (train at a profession trainer, buy a mining pick) only for professions you picked
+-- a route's profession steps (train at a profession trainer, buy a mining pick) only for professions you picked
 local TRAINER_PROF = {}
 TRAINER_PROF_OF = function(npc) return TRAINER_PROF[npc] end
 TRAINER_PROF_SET = function(npc, k) TRAINER_PROF[npc] = k end

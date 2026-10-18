@@ -429,7 +429,7 @@ local function oneLine(s)
     return verb:sub(1, 1) .. verb:sub(2):lower() .. "  " .. t
 end
 -- an "along the way" line: what you're collecting with its live count, or a short instruction;
--- the full RestedXP text goes in the tooltip
+-- the step's full text goes in the tooltip
 -- (same form as the hearthstone's: text height in the panel, big and centred above the arrow)
 local DEATH = "|TInterface\\Icons\\Spell_Holy_Resurrection:0:0:0:1:64:64:5:59:5:59|t "
 local function shortObj(o) return (o:gsub("^Kill ", ""):gsub("^Collect ", ""):gsub("%s*%(x%d+%)$", "")) end
@@ -1481,7 +1481,7 @@ function ns.refresh()
         panel.titleHover:SetShown(spec ~= nil)
     end
     local y = -(34 + math.max(18, panel.title:GetStringHeight()) + 4 + ((panel.detail:GetText() or "") ~= "" and panel.detail:GetStringHeight() or 0) + 10)
-    -- recommended actions and side objectives (RestedXP "complete with" steps), with their explanations
+    -- recommended actions and side objectives (along-the-way steps), with their explanations
     local al = (s and not detour) and ns.alongActive(i) or {}
     local rec, side = {}, {}
     for _, d in ipairs(recDetours) do

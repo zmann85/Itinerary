@@ -499,32 +499,83 @@ local function known(name)
     if not (P and name) then return nil end
     return P[name] or P[(name:gsub("s$", ""))]
 end
+-- Faces are kept for the session like the target frame's: one texture per name, drawn when that one is in sight
+-- and shown again while the step still goes for that name (the latest 24 names).
+local F = { byName = {}, order = {}, spare = {}, key = {}, shown = false, name = false, mask = false }
+ns.targetFaces = F
+local function faceTex(name)
+    local t = F.byName[name]
+    if t then return t end
+    if #F.order >= 24 then
+        local old = table.remove(F.order, (F.order[1] == F.name) and 2 or 1)
+        local ot = F.byName[old]
+        F.byName[old] = nil
+        if ot then ot:Hide(); F.key[ot] = nil; table.insert(F.spare, ot) end
+    end
+    t = table.remove(F.spare)
+    if not t then
+        t = target:CreateTexture(nil, "ARTWORK", nil, 1)
+        t:SetPoint("TOPLEFT", 1, -1); t:SetPoint("BOTTOMRIGHT", -1, 1)
+        if F.mask and type(t.AddMaskTexture) == "function" then t:AddMaskTexture(F.mask) end
+        t:Hide()
+    end
+    F.byName[name] = t
+    table.insert(F.order, name)
+    return t
+end
+local function showFace(t, name)
+    if F.shown and F.shown ~= t then F.shown:Hide() end
+    F.shown, F.name = t, name
+    t:Show(); target.icon:Hide()
+end
+local function showIcon()
+    if F.shown then F.shown:Hide() end
+    F.shown, F.name = false, false
+    target.icon:Show()
+end
+-- a face for one of the step's names without seeing them: drawn this session, else remembered (display ID)
+local function faceFor(name)
+    if type(name) ~= "string" then return nil end
+    local one = name:gsub("s$", "")
+    if F.byName[name] and F.key[F.byName[name]] then return F.byName[name], name end
+    if F.byName[one] and F.key[F.byName[one]] then return F.byName[one], one end
+    local e = known(name)
+    if e and e.disp and SetPortraitTextureFromCreatureDisplayID then
+        t = faceTex(name)
+        local key = "disp:" .. e.disp
+        if F.key[t] ~= key and pcall(SetPortraitTextureFromCreatureDisplayID, t, e.disp) then F.key[t] = key end
+        if F.key[t] then return t, name end
+    end
+end
 local function setPortrait(unit)
-    if not (target and target.portrait) then return end
+    if not (target and target.icon) then return end
     local guid = unit and SetPortraitTexture and UnitExists(unit) and UnitGUID(unit)
     if guid then
-        if guid ~= target.portraitKey then
-            SetPortraitTexture(target.portrait, unit)
-            target.portraitKey = guid
-        end
-        target.portraitUnit, target.pickName = unit, UnitName(unit)
+        local name = UnitName(unit)
+        local t = faceTex(name)
+        if F.key[t] ~= guid then SetPortraitTexture(t, unit); F.key[t] = guid end
+        target.portraitUnit, target.pickName = unit, name
         learn(unit)
-        target.portrait:Show(); target.icon:Hide()
+        showFace(t, name)
         return
     end
-    target.portraitUnit, target.pickName = nil, nil
-    local e = known(firstName())
-    if e and e.disp and SetPortraitTextureFromCreatureDisplayID then
-        local key = "disp:" .. e.disp
-        local ok = true
-        if key ~= target.portraitKey then
-            ok = pcall(SetPortraitTextureFromCreatureDisplayID, target.portrait, e.disp)
-            target.portraitKey = ok and key or nil
-        end
-        if ok then target.portrait:Show(); target.icon:Hide() return end
+    target.portraitUnit, target.pickName = false, false
+    -- not in sight: the face it showed last while the step still goes for that one, else the first of the
+    -- step's names with a face (the one particular mob first)
+    local names = type(target.names) == "table" and target.names or {}
+    if F.shown and F.key[F.shown] and wanted(names)[F.name] then
+        showFace(F.shown, F.name)
+        return
     end
-    target.portraitKey = nil
-    target.portrait:Hide(); target.icon:Show()
+    local order, seen = {}, {}
+    local fn = firstName()
+    if fn then order[1] = fn; seen[fn] = true end
+    for _, n in ipairs(names) do if not seen[n] then order[#order + 1] = n; seen[n] = true end end
+    for _, n in ipairs(order) do
+        local t, as = faceFor(n)
+        if t then showFace(t, as) return end
+    end
+    showIcon()
 end
 ns.targetPortrait = setPortrait
 -- (/iti target: what the face is and what the game lets it do)
@@ -533,9 +584,10 @@ function ns.portraitInfo()
     for _ in pairs(P) do n = n + 1 end
     local fn = target and firstName()
     local e = fn and known(fn)
+    local shown = F.shown and F.key[F.shown]
     return string.format("portrait: %s; faces known: %d; %s: %s; drawing from display IDs: %s, reading them: %s",
         target and type(target.portraitUnit) == "string" and ("live " .. target.portraitUnit)
-            or (target and type(target.portraitKey) == "string" and "remembered" or "icon"),
+            or (shown and ((shown:find("^disp:") and "remembered " or "kept ") .. tostring(F.name)) or "icon"),
         n, tostring(fn), e and ("NPC " .. tostring(e.npc) .. ", display " .. tostring(e.disp)) or "not met yet",
         SetPortraitTextureFromCreatureDisplayID and "yes" or "no", probe and "yes" or (probe == false and "no" or "not tried yet"))
 end
@@ -570,10 +622,8 @@ do
             if unit and target and type(target.names) == "table" and wanted(target.names)[UnitName(unit) or ""] then pcall(learn, unit) end
             return
         end
-        if target and target.portraitUnit and unit == target.portraitUnit and target.portrait and target.portrait:IsShown()
-           and UnitGUID(unit) == target.portraitKey and SetPortraitTexture then
-            SetPortraitTexture(target.portrait, unit)
-        end
+        local t = target and unit == target.portraitUnit and F.shown
+        if t and F.key[t] == UnitGUID(unit) and SetPortraitTexture then SetPortraitTexture(t, unit) end
     end)
 end
 
@@ -716,14 +766,12 @@ function ns.buildItems(panel)
         return b
     end
     target = make("ItineraryTarget")
-    target.portrait = target:CreateTexture(nil, "ARTWORK", nil, 1)
-    target.portrait:SetPoint("TOPLEFT", 1, -1); target.portrait:SetPoint("BOTTOMRIGHT", -1, 1)
-    target.portrait:Hide()
+    -- (the round mask every face shares)
     local mask = target.CreateMaskTexture and target:CreateMaskTexture()
-    if mask and mask.SetTexture and target.portrait.AddMaskTexture then
+    if mask and mask.SetTexture then
         mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
-        mask:SetAllPoints(target.portrait)
-        target.portrait:AddMaskTexture(mask)
+        mask:SetPoint("TOPLEFT", 1, -1); mask:SetPoint("BOTTOMRIGHT", -1, 1)
+        F.mask = mask
     end
     target:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")

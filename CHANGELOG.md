@@ -5,7 +5,8 @@
 ### New
 - **Portrait on the target button**: the button shows the face of the mob or NPC it would target now
   (the one on a nameplate it picked, or your target when that's one of them), round like the game's unit
-  frames, and its tooltip names it. The face stays when they leave nameplate range or you clear your target.
+  frames, and its tooltip names it. Hovering one of them picks up the face too, and it stays when they leave
+  nameplate range or you clear your target.
   Faces of the NPCs and mobs you target, hover or meet on your step are remembered for all your characters,
   so the button can show them before they're in sight; someone you've never met keeps the usual icon.
 

@@ -659,6 +659,18 @@ local function setPortrait(unit)
     showIcon()
 end
 ns.targetPortrait = setPortrait
+-- one of the step's mobs or NPCs you hover, target or see on a nameplate (dead ones too): its face is drawn and
+-- kept, and shown unless the button already shows one it's going for right now
+local function captureFace(unit)
+    if not (target and target.icon and SetPortraitTexture and type(target.names) == "table" and UnitExists(unit))
+       or UnitIsPlayer(unit) then return end
+    local name = UnitName(unit)
+    if not (name and wanted(target.names)[name]) then return end
+    local guid, t = UnitGUID(unit), faceTex(name)
+    if F.key[t] ~= guid then SetPortraitTexture(t, unit); F.key[t] = guid end
+    if type(target.portraitUnit) ~= "string" then showFace(t, name) end
+end
+ns.targetCaptureFace = captureFace
 -- (/iti target: what the face is and what the game lets it do)
 function ns.portraitInfo()
     local P, n = ItineraryDB.portraits or {}, 0
@@ -698,13 +710,15 @@ do
         pcall(tf.RegisterEvent, tf, e)
     end
     tf:SetScript("OnEvent", function(_, event, unit)
-        if event == "PLAYER_TARGET_CHANGED" then pcall(learn, "target") return end
-        if event == "UPDATE_MOUSEOVER_UNIT" then pcall(learn, "mouseover") return end
+        if event == "PLAYER_TARGET_CHANGED" then pcall(learn, "target"); pcall(captureFace, "target") return end
+        if event == "UPDATE_MOUSEOVER_UNIT" then pcall(learn, "mouseover"); pcall(captureFace, "mouseover") return end
         if event == "NAME_PLATE_UNIT_ADDED" then
-            if unit and target and type(target.names) == "table" and wanted(target.names)[UnitName(unit) or ""] then pcall(learn, unit) end
+            if unit and target and type(target.names) == "table" and wanted(target.names)[UnitName(unit) or ""] then
+                pcall(learn, unit); pcall(captureFace, unit)
+            end
             return
         end
-        local t = target and unit == target.portraitUnit and F.shown
+        local t = unit and UnitExists(unit) and F.byName[UnitName(unit) or ""]
         if t and F.key[t] == UnitGUID(unit) and SetPortraitTexture then SetPortraitTexture(t, unit) end
     end)
 end

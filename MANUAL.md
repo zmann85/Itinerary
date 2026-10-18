@@ -164,8 +164,9 @@ Settings > Keys, or in the game's key bindings under *Itinerary*.
   - **NPCs**: it targets the NPC you need to talk to and marks them with an orange circle. Press the key
     again to talk to them. That's handy for taking a contested escort quest first.
   - **Its face**: the button shows the **portrait** of the one it would target now: the mob or NPC on a
-    nameplate it picked, or your target when that's one of them (the tooltip names it). The face stays when
-    they walk out of range or you clear your target, and comes back on a later step for them. Itinerary also
+    nameplate it picked, or your target when that's one of them (the tooltip names it). Hovering one of them
+    with the mouse picks up their face too. The face stays when they walk out of range or you clear your
+    target, and comes back on a later step for them. Itinerary also
     remembers the faces of the NPCs and mobs you target, hover or meet on your step (for all your
     characters), so the button can show them before they're in sight. Someone you've never met: the usual
     icon (crosshair for mobs, owl eye for NPCs).

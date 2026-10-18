@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.0.0
+## v2.0.0 (2026-10-18)
 
 ### New
 - **Route editor: everything a route step can do**: besides accept, quest, turn in, go, do, train and xp there
@@ -181,7 +181,7 @@
 - Credits: *Meow* is "Cat Meow 2" by Cat Stevens (SoundBible.com, CC BY 3.0); LICENSE.txt names every library
   with its author and license, and the manual has a Credits and license section.
 
-## 1.2.0 (2026-10-15)
+## v1.2.0 (2026-10-15)
 First version in this repository.
 - Route panel with hints, INSTRUCTIONS and ALONG THE WAY cards, upcoming steps and your pace against a
   reference run; waypoint arrow in several styles; colour schemes (Itinerary, Amethyst, Frost, Ember,

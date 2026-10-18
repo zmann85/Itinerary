@@ -140,6 +140,11 @@
   cause small stutters).
 
 ### Fixed
+- Buying at a trainer with another dialogue option (a quest, unlearning talents): the training window stayed
+  closed unless the route had sent you there, so nothing was bought. Now it opens wherever Itinerary would buy
+  or learn something: your class trainer with skills to buy, a weapon master with a weapon skill to buy (Buy
+  weapon skills on), the trainer of a profession you picked with something to learn. The training option is
+  found by its icon first, never the one for unlearning talents.
 - Recorder: a weapon master was recorded as a class trainer visit (a step waiting for class skills); now it's a
   train step for the weapon skill you learned there, and nothing when you only had a look.
 - Settings: a switch with a longer label is wider instead of cut off (Panel > Instructions: "In the panel").

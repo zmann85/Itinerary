@@ -168,7 +168,7 @@ local OPTIONS = {
     { tab = 4, label = "...only worthwhile ones", desc = "Part of Buy class skills: only the skills marked worthwhile (green, see the list below). Off: the others too, once the worthwhile ones and your gathering tools are paid for (from level 10).",
       choices = ON_OFF, get = function() return A().buyWorthOnly ~= false end, set = function(v) A().buyWorthOnly = v end,
       enabled = function() return A().train end },
-    { tab = 4, label = "Open the training window", desc = "At a trainer you came to train at (the route's trainer stop or a trainer instruction), the training window opens when you talk to them: one click. Hold Shift to see the dialogue.",
+    { tab = 4, label = "Open the training window", desc = "At a trainer you came to train at (the route's trainer stop or a trainer instruction), or one where Itinerary buys or learns something for you, the training window opens when you talk to them - also when the trainer has other dialogue first. Hold Shift to see the dialogue.",
       choices = ON_OFF, get = function() return A().trainGossip ~= false end, set = function(v) A().trainGossip = v end },
     { tab = 4, label = "Trainer visits", desc = "Instruction: a trainer visit (with new skills you can afford) shows in the instructions next to your step, and the arrow stays on the route. Step: it becomes the step you're on and the arrow leads there.",
       choices = { { "Instruction", "rec" }, { "Step", "step" } }, get = function() return A().trainerSteps or "rec" end,

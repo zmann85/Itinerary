@@ -306,7 +306,7 @@ to do things by hand that time.
 | Resurrect at the spirit healer (death skips) | on | Travel |
 | Buy class skills at your trainer | off | Trainer |
 | ...only the worthwhile ones (part of the setting above) | on | Trainer |
-| Open the training window at a trainer you came to train at (Shift: dialogue) | on | Trainer |
+| Open the training window at a trainer you came to train at, or where something gets bought or learned, also past other dialogue (Shift: dialogue) | on | Trainer |
 | Buy weapon skills at a weapon master | off | Trainer |
 | Learn your professions at their trainer | on | Professions |
 | Buy gathering tools | on | Professions |

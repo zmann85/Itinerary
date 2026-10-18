@@ -272,6 +272,61 @@ local function trainWanted(npc)
     return false
 end
 
+-- Itinerary would buy or learn something at this trainer: your class trainer with skills to buy (Buy class
+-- skills), a weapon master with a weapon skill to buy (Buy weapon skills), a trainer of a profession you picked
+-- with it or its next rank to learn (Learn at the trainer). A trainer with nothing else to say opens its
+-- training window by itself; one with another dialogue option (a quest, unlearning talents) waits in the
+-- dialogue - this opens the training window there too, so the buying happens the same way.
+local function buysHere(npc)
+    local a = A()
+    if not (a and npc) or (IsShiftKeyDown and IsShiftKeyDown()) then return false end
+    if a.train and ns.classTrainers then
+        for _, t in ipairs(ns.classTrainers()) do
+            if t.name == npc then
+                if ns.spellsWaiting and ns.spellsWaiting() then return true end
+                -- (with "only worthwhile ones" off, the rest is bought too from level 10)
+                local lvl = UnitLevel("player") or 1
+                if a.buyWorthOnly == false and lvl >= 10 and ns.learnableSpells then
+                    local money = (GetMoney() or 0) - (ns.trainReserve and ns.trainReserve() or 0)
+                    for _, e in ipairs(ns.learnableSpells()) do
+                        if not e.skip and (e.level or 99) <= lvl and (e.cost or 0) <= money then return true end
+                    end
+                end
+                break
+            end
+        end
+    end
+    if a.buyWeapons and ns.weaponMasterList then
+        local ok, list = pcall(ns.weaponMasterList, npc)
+        if ok and list and #list > 0 then return true end
+    end
+    local k = a.profLearn ~= false and ns.profOfNpc and ns.profOfNpc(npc)
+    if k and ns.profIsChosen and ns.profIsChosen(k) and ns.profLearnable then
+        local known = ns.profKnown and ns.profKnown(k)
+        for _, e in ipairs((ns.profLearnable(k, npc))) do
+            if e.tier then
+                if not known and ns.canAfford and ns.canAfford("learn", k) then return true end
+                if known and (e.cost or 0) <= (GetMoney() or 0) then return true end
+            end
+        end
+    end
+    return false
+end
+ns.trainerBuysHere = buysHere -- (tests, /iti debug)
+
+-- the dialogue option that opens the training window: the trainer icon first, else its words (never the one
+-- for unlearning talents)
+local function trainerOption(options)
+    local function notTalents(t) return not t:find("unlearn") and not t:find("talent") end
+    for _, o in ipairs(options) do
+        if o.icon == 132058 and notTalents(optionText(o)) then return o end
+    end
+    for _, o in ipairs(options) do
+        local t = optionText(o)
+        if (t:find("train") or t:find("teach") or t:find("skills")) and notTalents(t) then return o end
+    end
+end
+
 local function onGossip()
     local a = A()
     if not a or paused() or not C_GossipInfo then return end
@@ -325,16 +380,15 @@ local function onGossip()
             end
         end
     end
-    -- a trainer you came to train at (the route's trainer stop, or a trainer instruction for this NPC):
-    -- open the training window, buying runs from there (hold Shift to talk instead)
-    if a.trainGossip ~= false and trainWanted(UnitName("npc")) then
-        for _, o in ipairs(options) do
-            local t = optionText(o)
-            if (o.icon == 132058 or t:find("train") or t:find("teach") or t:find("skills"))
-               and not t:find("unlearn") and not t:find("talent") then
-                C_GossipInfo.SelectOption(o.gossipOptionID or o.optionID)
-                return
-            end
+    -- a trainer you came to train at (the route's trainer stop, or a trainer instruction for this NPC), or
+    -- one where Itinerary buys or learns something: open the training window, buying runs from there (hold
+    -- Shift to talk instead)
+    if a.trainGossip ~= false then
+        local npc = UnitName("npc")
+        local o = trainerOption(options)
+        if o and (trainWanted(npc) or buysHere(npc)) then
+            C_GossipInfo.SelectOption(o.gossipOptionID or o.optionID)
+            return
         end
     end
     if not a.gossip then return end

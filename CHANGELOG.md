@@ -10,7 +10,8 @@
   after you learned it; the old name is also dropped from the list at your next trainer visit.
 - The trainer instruction sent an Undead paladin in Undercity to Mary Edras, the first aid trainer, for class
   skills: a route's trainer stop at someone known as a profession trainer no longer counts as a class trainer
-  (unless you opened them as yours).
+  (unless you opened them as yours). The same goes for pet, demon and portal trainers, weapon masters and riding
+  instructors (the route still visits them for what they teach). Itinerary_Data 1.4 lists who they are.
 
 ## v2.1.1 (2026-10-19)
 

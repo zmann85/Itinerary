@@ -1769,10 +1769,17 @@ end
 -- Class trainers you could visit: the route's class trainer steps plus the ones you have opened before
 function ns.classTrainers()
     local out, seen = {}, {}
+    local _, myClass = UnitClass("player")
+    local mine = ItineraryDB.trainers and ItineraryDB.trainers[myClass] or {}
+    local dataMine = ns.DATA_CLASS_TRAINERS and ns.DATA_CLASS_TRAINERS[myClass] or {}
+    -- (a route's trainer stop at someone the data knows as another kind of trainer - a profession, pet, demon
+    -- or portal trainer, a weapon master - isn't where your class skills are, unless you opened them as yours)
+    local function other(npc)
+        if mine[npc] or dataMine[npc] then return false end
+        return (ns.profOfNpc and ns.profOfNpc(npc)) or (ns.DATA_OTHER_TRAINERS and ns.DATA_OTHER_TRAINERS[npc]) or false
+    end
     for _, s in ipairs(ns.steps()) do
-        if s.t == "train" and s.cls and s.npc and s.m and s.x and not seen[s.npc]
-           and not (ns.profOfNpc and ns.profOfNpc(s.npc) and not (ItineraryDB.trainers and ItineraryDB.trainers[select(2, UnitClass("player"))]
-                    and ItineraryDB.trainers[select(2, UnitClass("player"))][s.npc])) then
+        if s.t == "train" and s.cls and s.npc and s.m and s.x and not seen[s.npc] and not other(s.npc) then
             seen[s.npc] = true
             out[#out + 1] = { name = s.npc, m = s.m, x = s.x, y = s.y }
         end

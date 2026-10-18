@@ -330,8 +330,8 @@ to do things by hand that time.
 | Learn your professions at their trainer | on | Professions |
 | Buy gathering tools | on | Professions |
 
-**Object name tags**: Settings > Quests > *Object name tags* names the object in front of you that you can
-click (the game picks one, a few yards away) with a nameplate of its own. **Quest** (the default): only
+**Object name tags**: Settings > Quests > *Object name tags* names an object you can click close by (the game
+picks one at a time, within about 15 yards, in any direction) with a nameplate of its own. **Quest** (the default): only
 objects for your quests, with the quest objective under the name ("Gold Dust: 3/10"): ones your quest log
 names, and ones that give an item a quest asks for (a Fishing Trap for Half-Eaten Fish; known from the data
 add-on, and learned when you loot one). **All**: herbs, ore veins, chests and the rest too. NPCs, doors and mailboxes never get one, and in combat it's closed. It uses

@@ -126,7 +126,7 @@ local OPTIONS = {
       choices = ON_OFF, get = function() return A().share == true end, set = function(v) A().share = v end },
     { tab = 2, label = "Quest dialogue", desc = "Chooses dialogue options the game marks as part of a quest, and the ones the route asks for.",
       choices = ON_OFF, get = function() return A().gossip end, set = function(v) A().gossip = v end },
-    { tab = 2, label = "Object name tags", desc = "Names the object in front of you that you can click (a few yards away, the game picks one) with a nameplate of its own. Quest: only objects for your quests, with the objective under the name. All: herbs, ore veins, chests and the rest too. Uses the game's interact settings like Node icons; Off puts your own values back. While Glimmer (NaowhForever QoL) is on, it does this and Itinerary leaves it to Glimmer.",
+    { tab = 2, label = "Object name tags", desc = "Names an object you can click close by (the game picks one, within about 15 yards, in any direction) with a nameplate of its own. Quest: only objects for your quests, with the objective under the name. All: herbs, ore veins, chests and the rest too. Uses the game's interact settings like Node icons; Off puts your own values back. While Glimmer (NaowhForever QoL) is on, it does this and Itinerary leaves it to Glimmer.",
       choices = { { "Quest", "quest" }, { "All", "all" }, { "Off", "off" } },
       get = function() local m = A().objTags; return (m == "all" or m == "off") and m or "quest" end,
       set = function(v) A().objTags = v; if ns.applyObjTags then ns.applyObjTags(true) end end },

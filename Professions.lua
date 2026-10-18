@@ -1154,7 +1154,10 @@ end
 -- quest object's name. In combat it's closed: the game won't change these settings there, and an open one sits
 -- on every lootable corpse. Settings > Quests > Object name tags (ItineraryDB.auto.objTags: quest/all/off).
 local TAG_CV = "SoftTargetNameplateInteract"
-local TAG_BASE = { SoftTargetInteract = "3", SoftTargetIconGameObject = "1" } -- (no nameplate without the icon)
+-- (no nameplate without the icon; all around you, not only ahead; and objects beyond reach too - the game still
+-- picks only within about 15-20 yards, whatever the range says)
+local TAG_BASE = { SoftTargetInteract = "3", SoftTargetIconGameObject = "1", SoftTargetInteractArc = "2",
+                   SoftTargetInteractRange = "45", SoftTargetInteractOnlyInRange = "0" }
 local tag = { guid = false, open = false, combat = false, line = false, kind = "none" }
 ns.objTagState = tag
 local function tagMode()
@@ -1460,21 +1463,22 @@ function ns.applyObjTags(say)
         return
     end
     if tagsActive() then
-        if not a.objTagsSaved then
-            -- your own values (the ones node icons kept, when it changed them first)
-            local s = { [TAG_CV] = getCV(TAG_CV) or false }
-            for k in pairs(TAG_BASE) do
+        -- your own values (the ones node icons kept, when it changed them first); a setting added later is
+        -- kept the first time it's changed
+        local s = a.objTagsSaved
+        if not s then s = { [TAG_CV] = getCV(TAG_CV) or false }; a.objTagsSaved = s end
+        for k in pairs(TAG_BASE) do
+            if s[k] == nil then
                 local nv = a.nodeIconsSaved and a.nodeIconsSaved[k]
                 if nv ~= nil then s[k] = nv else s[k] = getCV(k) or false end
             end
-            a.objTagsSaved = s
         end
         if not (InCombatLockdown and InCombatLockdown()) then
             for k, v in pairs(TAG_BASE) do if getCV(k) ~= nil then setCV(k, v) end end
             tagCheck(true)
         end
-        if say then ns.print(tagMode() == "all" and "object name tags: every object you can click, close by"
-            or "object name tags: quest objects you can click, close by, with their objective") end
+        if say then ns.print(tagMode() == "all" and "object name tags: every object you can click, within about 15 yards around you"
+            or "object name tags: quest objects you can click, within about 15 yards around you, with their objective") end
     else
         hideLine()
         tag.guid, tag.open = false, false
@@ -1482,8 +1486,10 @@ function ns.applyObjTags(say)
         -- (while Glimmer does it, Itinerary only rests: your values stay kept for when it's switched off)
         if s and tagMode() == "off" then
             if not glimmerOn() and s[TAG_CV] then setCV(TAG_CV, s[TAG_CV]) end
-            -- the interact settings only when node icons doesn't keep them on
-            if a.nodeIcons == false then for k in pairs(TAG_BASE) do if s[k] then setCV(k, s[k]) end end end
+            -- the interact settings node icons uses only when it doesn't keep them on
+            for k in pairs(TAG_BASE) do
+                if s[k] and (a.nodeIcons == false or not SOFT[k]) then setCV(k, s[k]) end
+            end
             a.objTagsSaved = nil
         end
         if say and glimmerOn() and tagMode() ~= "off" then ns.print("object name tags: Glimmer (NaowhForever QoL) is on and does this, so Itinerary leaves it to Glimmer") end

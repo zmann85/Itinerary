@@ -243,11 +243,24 @@ function ns.editReset()
 end
 
 ---------------------------------------------------------------- your own routes
+-- the route a copy is built on: the version it was made from, else the newest installed version of that route
+-- (a build that no longer ships the old version; your edits go on top of the new one)
+local function originOf(from)
+    if not from then return nil end
+    if ns.routes[from] then return from end
+    local base, best = (from:gsub("@.*$", "")), nil
+    for oid, o in pairs(ns.routes) do
+        if not o.custom and (oid:gsub("@.*$", "")) == base and (not best or ns.versionCompare(o, ns.routes[best]) > 0) then best = oid end
+    end
+    return best
+end
+ns.copyOriginOf = originOf
 local function registerCustom()
     for id, def in pairs(ItineraryDB.customRoutes or {}) do
-        local src = def.from and ns.routes[def.from]
+        local fid = originOf(def.from)
+        local src = fid and ns.routes[fid]
         if not ns.routes[id] then
-            ns.routes[id] = { custom = true, from = src and def.from or nil, faction = def.faction,
+            ns.routes[id] = { custom = true, from = src and fid or nil, faction = def.faction,
                               chapters = src and (src.baseChapters or src.chapters) or {}, staticSteps = {} }
         end
         -- older copies were named after the long route names ("... 1-60 (<source> Forever + dungeons) (my copy)")
@@ -255,7 +268,7 @@ local function registerCustom()
         local r = ns.routes[id]
         -- a copy whose original comes in a route pack loaded after Itinerary: link it up now
         if src and not r.from and not r.built then
-            r.from, r.chapters = def.from, src.baseChapters or src.chapters or {}
+            r.from, r.chapters = fid, src.baseChapters or src.chapters or {}
         end
         r.name, r.match = def.name, def.match
         r.ref = def.ref -- a reference run's level times (pace), when the route has them

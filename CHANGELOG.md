@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Your own copy of a route version that isn't installed any more (a newer route pack ships only the latest two
+  versions) came up empty. It now builds on the newest installed version of that route, with your edits on top.
+
 ## v2.1.0 (2026-10-18)
 
 ### New

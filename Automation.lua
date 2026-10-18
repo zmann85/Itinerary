@@ -790,6 +790,19 @@ local function recordServices(class)
         end
     end
     if #dump > 0 then ItineraryDB.trainerDump[class] = dump end
+    -- a skill the trainer lists under a new name (Blessing of Salvation -> Salvation): the old name's entry goes
+    local listed, twin = {}, {}
+    for i = 1, GetNumTrainerServices() or 0 do
+        local name, _, rank = serviceInfo(i)
+        if name then listed[name .. ":" .. (rank or "")] = true end
+    end
+    for key, e in pairs(cs) do
+        if listed[key] and e[6] then twin[table.concat({ tostring(e[2]), tostring(e[3]), tostring(e[4] or ""), tostring(e[6]) }, ":")] = e[1] end
+    end
+    for key, e in pairs(cs) do
+        local g = e[6] and table.concat({ tostring(e[2]), tostring(e[3]), tostring(e[4] or ""), tostring(e[6]) }, ":")
+        if not listed[key] and g and twin[g] and twin[g] ~= e[1] then cs[key] = nil end
+    end
     return new, cs
 end
 local function sayRecorded(new, cs)
@@ -991,17 +1004,29 @@ function ns.learnableSpells()
     end
     -- the highest rank you know of each spell (a client may only keep the top rank in the spellbook, so
     -- knowing Rank 2 must also count for Rank 1)
-    local top = {}
+    -- a skill the game renamed (Blessing of Salvation is Salvation now): the old name's entry has the same
+    -- level, price, rank and icon as the new one, and knowing the new one is knowing it
+    local function sig(e) return e[6] and table.concat({ tostring(e[2]), tostring(e[3]), tostring(e[4] or ""), tostring(e[6]) }, ":") end
+    local top, low, knownSig = {}, {}, {}
     for _, e in pairs(cs) do
         local name, rank = e[1], e[4]
         local n = rank and tonumber(rank:match("(%d+)")) or 0
-        if name and (top[name] or -1) < n and known(name, rank) then top[name] = n end
+        if name and known(name, rank) then
+            if (top[name] or -1) < n then top[name] = n end
+            local g = sig(e)
+            if g then knownSig[g] = true end
+        end
+        if name and (not low[name] or n < low[name]) then low[name] = n end
     end
     local out = {}
     for _, e in pairs(cs) do
         local name, req, cost, rank = e[1], e[2], e[3], e[4]
         local n = rank and tonumber(rank:match("(%d+)")) or 0
-        if name and req and req <= lvl and not (top[name] and top[name] >= n) then
+        -- a spell whose first rank no trainer teaches comes from a talent (Seal of Command, Holy Shock, Mortal
+        -- Strike) or a quest: its higher ranks only once you have it
+        local gated = name and low[name] and low[name] > 1 and not top[name] and not known(name)
+        local renamed = sig(e) and knownSig[sig(e)]
+        if name and req and req <= lvl and not gated and not renamed and not (top[name] and top[name] >= n) then
             local icon = e[6]
             if not icon and C_Spell and C_Spell.GetSpellTexture then icon = C_Spell.GetSpellTexture(name) end -- a rank you know
             if not icon and GetSpellTexture then icon = GetSpellTexture(name) end

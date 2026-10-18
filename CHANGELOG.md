@@ -3,6 +3,11 @@
 ## Unreleased
 
 ### Fixed
+- "Ready to learn" listed higher ranks of talent spells you haven't taken (Seal of Command Rank 2 without the
+  talent): a spell whose first rank no trainer teaches (a talent or a quest) shows its next ranks only once you
+  have it.
+- A skill WoW Forever renamed (Blessing of Salvation is Salvation now) stayed "ready to learn" under its old name
+  after you learned it; the old name is also dropped from the list at your next trainer visit.
 - The trainer instruction sent an Undead paladin in Undercity to Mary Edras, the first aid trainer, for class
   skills: a route's trainer stop at someone known as a profession trainer no longer counts as a class trainer
   (unless you opened them as yours).

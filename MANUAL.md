@@ -163,7 +163,11 @@ Settings > Keys, or in the game's key bindings under *Itinerary*.
     comes first, ahead of anything closer, until you have what you need from it.
   - **NPCs**: it targets the NPC you need to talk to and marks them with an orange circle. Press the key
     again to talk to them. That's handy for taking a contested escort quest first.
+  - **Its face**: while one of the step's mobs or NPCs has a nameplate in view, the button shows the
+    **portrait** of the one it would target now (the tooltip names it). Without one it shows its usual icon
+    (crosshair for mobs, owl eye for NPCs). For NPCs, friendly nameplates need to be on.
   - Settings > Keys (all on by default): *Show target button* (off hides the button; its key still works),
+    *Portrait on the target button*,
     *Talk on second press* (outside combat, for 8 seconds or until you talk), *Tag with a spell* (auto
     attack until you know one), *Mark the target* (the skull and the orange circle).
 
@@ -613,7 +617,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | Professions | Learn at the trainer, main professions, first profession, secondary professions, gather mode, gather data (shipped, own, both), gathering tracking, node icons, gathering tools |
 | Panel | Color scheme (Itinerary, Amethyst, Frost, Ember, Slate), instructions (own card or in the panel), item and spell links, panel style (card or minimal), opacity, size, text on a see-through panel (shadow or outline), grow direction, item & target button corner, lock |
 | Arrow | Arrow on/off, arrow look, instructions at the arrow, death skips at the arrow, their size, tooltip, lock |
-| Keys | Key bindings for the target and item buttons; show the target button, talk on second press, tag with a spell, mark the target |
+| Keys | Key bindings for the target and item buttons; show the target button, its portrait, talk on second press, tag with a spell, mark the target |
 
 <details>
 <summary><b>Screenshots of every settings tab</b> (click to open)</summary>

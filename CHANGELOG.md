@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### New
+- **Portrait on the target button**: while one of your step's mobs or NPCs has a nameplate in view, the
+  button shows the face of the one it would target now, round like the game's unit frames, and its tooltip
+  names it. Otherwise the usual icon. Settings > Keys > *Portrait on the target button* (on).
+
 ## v2.0.0 (2026-10-18)
 
 ### New

@@ -437,8 +437,29 @@ local function targetMacro(names, friendly, plate, prio)
     return text .. tail
 end
 
+-- The button's face: the portrait of the mob or NPC it would target now (its nameplate unit), round like the
+-- game's unit frames; without a pick (no nameplate in view) the usual icon. Drawn again only when the pick is
+-- another mob (a portrait is a small render of the model).
+local function portraitOn() return not (ItineraryDB and ItineraryDB.auto and ItineraryDB.auto.targetPortrait == false) end
+local function setPortrait(unit)
+    if not (target and target.portrait) then return end
+    local guid = unit and portraitOn() and SetPortraitTexture and UnitExists(unit) and UnitGUID(unit)
+    if guid then
+        if guid ~= target.portraitGUID then
+            SetPortraitTexture(target.portrait, unit)
+            target.portraitGUID = guid
+        end
+        target.portraitUnit, target.pickName = unit, UnitName(unit)
+        target.portrait:Show(); target.icon:Hide()
+    else
+        target.portraitGUID, target.portraitUnit, target.pickName = nil, nil, nil
+        target.portrait:Hide(); target.icon:Show()
+    end
+end
+ns.targetPortrait = setPortrait
+
 -- out of combat the button follows the nearest fitting mob a few times a second (a secure button can't
--- change in combat: there the last pick and the names stay)
+-- change in combat: there the last pick, its face and the names stay)
 do
     local acc = 0
     local tf = CreateFrame("Frame")
@@ -452,6 +473,16 @@ do
         if text ~= target.lastMacro then
             target.lastMacro = text
             target:SetAttribute("macrotext", text)
+        end
+        setPortrait(ok and plate or nil)
+    end)
+    -- (a model that wasn't loaded yet when its portrait was drawn: draw it again once the game has it)
+    tf:RegisterEvent("UNIT_PORTRAIT_UPDATE")
+    tf:RegisterEvent("UNIT_MODEL_CHANGED")
+    tf:SetScript("OnEvent", function(_, _, unit)
+        if target and target.portraitUnit and unit == target.portraitUnit and target.portrait and target.portrait:IsShown()
+           and UnitGUID(unit) == target.portraitGUID and SetPortraitTexture then
+            SetPortraitTexture(target.portrait, unit)
         end
     end)
 end
@@ -516,6 +547,8 @@ local function update()
         target.lastMacro = targetMacro(names, friendly, nil, prio)
         target:SetAttribute("macrotext", target.lastMacro)
         target.icon:SetTexture(friendly and "Interface\\Icons\\Ability_EyeOfTheOwl" or "Interface\\Icons\\Ability_Hunter_SniperShot")
+        local sig = table.concat(names, "|") .. (friendly and "+" or "-")
+        if sig ~= target.sig or not portraitOn() then target.sig = sig; setPortrait(nil) end
         target.hotkey:SetText(hotkey(target))
         target:Show()
         -- hidden by setting: invisible and not clickable, but its key binding keeps working
@@ -528,7 +561,8 @@ local function update()
             y = 1
         end
     else
-        target.names = nil
+        target.names, target.sig = nil, nil
+        setPortrait(nil)
         target:SetAttribute("macrotext", nil)
         target:Hide()
     end
@@ -592,9 +626,19 @@ function ns.buildItems(panel)
         return b
     end
     target = make("ItineraryTarget")
+    target.portrait = target:CreateTexture(nil, "ARTWORK", nil, 1)
+    target.portrait:SetPoint("TOPLEFT", 1, -1); target.portrait:SetPoint("BOTTOMRIGHT", -1, 1)
+    target.portrait:Hide()
+    local mask = target.CreateMaskTexture and target:CreateMaskTexture()
+    if mask and mask.SetTexture and target.portrait.AddMaskTexture then
+        mask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+        mask:SetAllPoints(target.portrait)
+        target.portrait:AddMaskTexture(mask)
+    end
     target:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:AddLine(self.friendly and "Target the NPC" or "Target quest mobs", 1, 1, 1)
+        if self.pickName then GameTooltip:AddLine("Now: " .. self.pickName, 1, 0.82, 0) end
         for _, n in ipairs(self.names or {}) do GameTooltip:AddLine(n, 0.75, 0.75, 0.75) end
         GameTooltip:AddLine("Bind a key: Options > Keybindings > AddOns > Itinerary", 0.5, 0.5, 0.5, true)
         GameTooltip:Show()

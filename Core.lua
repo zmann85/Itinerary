@@ -2165,6 +2165,17 @@ end
 
 -- A quest marked "not offered to you" that is in your log after all: its steps count again, and the route
 -- goes back to the first of them that isn't done yet
+-- back to the first step of quest q behind you that isn't done yet (its objectives, its hand-in)
+local function backToQuest(q)
+    local c = ItineraryCharDB
+    for j, st in ipairs(ns.steps()) do
+        if j >= c.step then break end
+        local has = false
+        if st.q and st.t ~= "accept" then for _, x in ipairs(st.q) do if x == q then has = true end end end
+        if has and not st.along and not ns.stepDone(j) then c.step = j return true end
+    end
+    return false
+end
 function ns.restoreQuest(q)
     local c = ItineraryCharDB
     if not (c and c.unavailQ and c.unavailQ[q]) then return false end
@@ -2173,10 +2184,22 @@ function ns.restoreQuest(q)
     for j, st in ipairs(steps) do
         if c.unavail[j] and st.q then for _, x in ipairs(st.q) do if x == q then c.unavail[j] = nil end end end
     end
-    for j, st in ipairs(steps) do
-        local has = false
-        if st.q and st.t ~= "accept" then for _, x in ipairs(st.q) do if x == q then has = true end end end
-        if has and j < c.step and not st.along and not ns.stepDone(j) then c.step = j break end
+    backToQuest(q)
+    return true
+end
+-- A quest left out (skipped where you'd take it, or abandoned) that you take after all: its steps count again,
+-- and when the route went past them meanwhile it goes back to the first one that isn't done
+function ns.retakeQuest(q, again)
+    local c = ItineraryCharDB
+    local was = again or (c and c.droppedQ and c.droppedQ[q])
+    ns.undropQuests({ q })
+    if not was then return false end
+    -- (not in the log yet this very moment: look again once it is)
+    if not again and not onQuest(q) then C_Timer.After(0.5, function() ns.retakeQuest(q, true); ns.update() end) return true end
+    local from = c.step
+    if backToQuest(q) then
+        c.lastJump = { from = from, to = c.step, at = date and date("%H:%M:%S") or "", why = { "took " .. tostring(q) .. " after all" } }
+        ns.print("you took a quest you had left out: back to its steps")
     end
     return true
 end
@@ -2412,7 +2435,10 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
         -- a quest we took for "not offered to you" (too low then, or a pre-quest) that you got after all:
         -- its steps count again (kill, loot, turn in)
         local q = (type(a2) == "number" and a2 > 0) and a2 or a1
-        if q then ns.restoreQuest(q); ns.undropQuests({ q }) end
+        if q then
+            ns.restoreQuest(q)
+            ns.retakeQuest(q)
+        end
         ns.update()
     elseif event == "QUEST_REMOVED" then
         -- abandoned (not handed in): a route quest you gave up is dropped, with its follow-ups

@@ -14,6 +14,11 @@
   names herbs, ore veins and chests too; NPCs, doors and mailboxes never get one, and it's closed in combat.
   While Glimmer (NaowhForever QoL) is on, it's left to Glimmer.
 
+### Fixed
+- A quest you had left out (skipped where you'd take it, or abandoned) and take after all: when the route had
+  already gone past its steps, it now goes back to them (The Great Outdoors jumped ahead to buying a Wooden
+  Mallet).
+
 ## v2.0.0 (2026-10-18)
 
 ### New

@@ -680,9 +680,20 @@ function ns.prepareRoute(r)
         end
         return false
     end
+    -- a "class trainer" stop at someone known as a profession trainer is a profession stop: the guides train
+    -- a first aid recipe on a class-only step (Mary Edras in Undercity, for paladins), and the trainer
+    -- instruction then sent you there for your class skills
+    local _, myClass = UnitClass("player")
+    local function profNotClass(s)
+        if not (s.t == "train" and s.cls and s.npc and ns.profOfNpc and ns.profOfNpc(s.npc)) then return false end
+        local rec = ItineraryDB and ItineraryDB.trainers and ItineraryDB.trainers[myClass]
+        local data = ns.DATA_CLASS_TRAINERS and ns.DATA_CLASS_TRAINERS[myClass]
+        return not ((rec and rec[s.npc]) or (data and data[s.npc]))
+    end
     for j, s in ipairs(r.steps) do
         -- (a quest step made in the editor before its quest IDs are in: an empty list, not none)
         if (s.t == "accept" or s.t == "complete" or s.t == "turnin") and not s.q then s.q = {} end
+        if profNotClass(s) then s.cls = nil end
         if s.vendor then
             s.along, s.till, s.rec = true, j + 6, true
             s.note = "At any vendor you pass - the grey items are sold when you open one"
@@ -1759,7 +1770,9 @@ end
 function ns.classTrainers()
     local out, seen = {}, {}
     for _, s in ipairs(ns.steps()) do
-        if s.t == "train" and s.cls and s.npc and s.m and s.x and not seen[s.npc] then
+        if s.t == "train" and s.cls and s.npc and s.m and s.x and not seen[s.npc]
+           and not (ns.profOfNpc and ns.profOfNpc(s.npc) and not (ItineraryDB.trainers and ItineraryDB.trainers[select(2, UnitClass("player"))]
+                    and ItineraryDB.trainers[select(2, UnitClass("player"))][s.npc])) then
             seen[s.npc] = true
             out[#out + 1] = { name = s.npc, m = s.m, x = s.x, y = s.y }
         end

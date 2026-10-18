@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- The trainer instruction sent an Undead paladin in Undercity to Mary Edras, the first aid trainer, for class
+  skills: a route's trainer stop at someone known as a profession trainer no longer counts as a class trainer
+  (unless you opened them as yours).
+
 ## v2.1.1 (2026-10-19)
 
 ### New

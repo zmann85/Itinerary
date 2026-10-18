@@ -2,7 +2,7 @@
 ## Title: Itinerary
 ## Notes: Step-by-step leveling route with a waypoint arrow and your pace against a reference run.
 ## Author: Ghaan
-## Version: 2.0.0
+## Version: @project-version@
 ## X-License: All Rights Reserved
 ## IconTexture: Interface\AddOns\Itinerary\icon
 ## SavedVariables: ItineraryDB

@@ -1,5 +1,3 @@
-# libraries come in through .pkgmeta externals when a release is packaged
-libs/
 # tools stay out of the repo (converters, data scrapes, beta packaging)
 tools/
 # old local files

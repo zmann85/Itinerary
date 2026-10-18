@@ -10,8 +10,9 @@ Without written permission from the author you may not:
 Everything not explicitly allowed here is reserved by the author.
 
 Routes are not part of Itinerary. A route pack you install separately comes with its own license.
-The Itinerary_Data add-on (trainer, vendor and gathering positions) is separate from Itinerary and comes
-with its own license (GNU GPL v3).
+The Itinerary_Data add-on (trainer, vendor and gathering positions) comes in the same download, in a folder
+of its own. It is separate from Itinerary and has its own license (GNU GPL v3, Itinerary_Data/LICENSE.txt
+and COPYING.txt); this license doesn't cover it.
 
 World of Warcraft is a trademark of Blizzard Entertainment, Inc. Itinerary is not affiliated with
 or endorsed by Blizzard Entertainment.

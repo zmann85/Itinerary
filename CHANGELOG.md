@@ -74,9 +74,9 @@
   off) from the nodes you gather and the ones that come within about 20 yards.
 - **Gathering tracking** (Settings > Professions): Find Herbs / Find Minerals is switched on when no minimap
   tracking is on. **Node icons**: the game's interact icons over herbs, ore veins and chests close by.
-- **Itinerary_Data** add-on (GPL v3, separate): where every class trainer, profession trainer, weapon master
-  and tool vendor stands, which ranks a profession trainer teaches, and the herb and ore spawn spots for
-  gather mode (shipped spots and finds from the beta). Itinerary works without it.
+- **Itinerary_Data** add-on (GPL v3, a folder of its own in the same download): where every class trainer,
+  profession trainer, weapon master and tool vendor stands, which ranks a profession trainer teaches, and the
+  herb and ore spawn spots for gather mode (shipped spots and finds from the beta). Itinerary works without it.
 - **Own icon**: a brass compass in the AddOns list and on the minimap button.
 
 ### Changed

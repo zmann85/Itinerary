@@ -23,8 +23,8 @@ professions and flights.
 
 ## 1. Getting started
 
-1. Put the `Itinerary` folder (and `Itinerary_Data`, see 5.) into the game's `Interface\AddOns` folder and start
-   the game.
+1. Put the `Itinerary` and `Itinerary_Data` folders (both come in the download) into the game's
+   `Interface\AddOns` folder and start the game.
 2. Log in. The **route panel** and the **waypoint arrow** appear.
 3. A new character is asked once which **professions** it will take. Pick up to two main professions
    and any secondary ones (Cooking, First Aid, Fishing). You can change this later in the settings.
@@ -33,10 +33,10 @@ professions and flights.
    - **record your own** while you play (see [Recording](#recording-a-route)),
    - **import** a route someone shared with you (`/iti import`), or
    - install a **route pack**, a separate add-on folder next to Itinerary.
-5. Optional but recommended: the **`Itinerary_Data`** folder next to Itinerary. It tells Itinerary where
-   every class trainer, profession trainer, weapon master and tool vendor stands, so trainer
-   instructions work from the start, and it holds the herb and ore spots for gather mode. Without it,
-   Itinerary learns trainers and vendors as you meet them.
+5. The **`Itinerary_Data`** folder that comes with Itinerary tells it where every class trainer,
+   profession trainer, weapon master and tool vendor stands, so trainer instructions work from the start,
+   and it holds the herb and ore spots for gather mode. It's optional: without it, Itinerary learns
+   trainers and vendors as you meet them.
 
 The **minimap button** (the brass compass):
 
@@ -689,8 +689,8 @@ pass it on or reuse its parts elsewhere - see `LICENSE.txt` in the add-on folder
 - **Sounds**: *Bell*, *Blip*, *Drop* and *Meow* are by Mike Koenig, Marianne Gagnon and Cat Stevens from
   SoundBible.com, under Creative Commons Attribution 3.0 (`sounds/CREDITS.txt`). *Coins*, *Sonar*, *Xylophone*
   and *Fanfare* were made for Itinerary.
-- **Itinerary_Data** is a separate add-on under the GNU GPL v3; its positions come from the WoW Forever data
-  of QuestieDB and from what Itinerary players found in game.
+- **Itinerary_Data** comes in the same download but is a separate add-on under the GNU GPL v3; its positions
+  come from the WoW Forever data of QuestieDB and from what Itinerary players found in game.
 - **Routes** come separately (route packs, shared texts, your own recordings), each with its own terms.
 
 World of Warcraft is a trademark of Blizzard Entertainment. Itinerary is not affiliated with or endorsed by

@@ -9,7 +9,8 @@ automation, built around routes you record and edit yourself.
 
 Itinerary ships **without routes**. Record your own with the recorder, import one somebody shared, or
 install a route pack (a separate addon with its own license). Trainer, vendor and gathering positions come
-in the separate `Itinerary_Data` add-on (GPL v3); without it Itinerary learns them as you meet them.
+in the `Itinerary_Data` add-on (GPL v3, in the `Itinerary_Data` folder of this repo); a release zip has both
+folders. Without it Itinerary learns them as you meet them.
 
 ## What it does
 - **Route panel**: the current step (accept, complete, turn in, travel, fly, hearth, train, grind, ...) with

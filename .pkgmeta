@@ -4,14 +4,9 @@ manual-changelog:
   filename: CHANGELOG.md
   markup-type: markdown
 
-externals:
-  libs/LibStub: https://repos.wowace.com/wow/libstub/trunk
-  libs/CallbackHandler-1.0: https://repos.wowace.com/wow/callbackhandler/trunk/CallbackHandler-1.0
-  libs/LibDataBroker-1.1: https://github.com/tekkub/libdatabroker-1-1
-  libs/LibDBIcon-1.0: https://repos.wowace.com/wow/libdbicon-1-0/trunk/LibDBIcon-1.0
-  libs/HereBeDragons: https://repos.wowace.com/wow/herebedragons/trunk
-  libs/LibDeflate: https://github.com/SafeteeWoW/LibDeflate
-  libs/LibSerialize: https://github.com/rossnichols/LibSerialize
+# Itinerary_Data (GPL v3, its own add-on) comes in the same zip, as a folder of its own next to Itinerary
+move-folders:
+  Itinerary/Itinerary_Data: Itinerary_Data
 
 ignore:
   - tools
@@ -19,4 +14,11 @@ ignore:
   - manual
   - README.md
   - MANUAL.md
+  - CURSEFORGE.html
   - .gitignore
+
+embedded-libraries:
+  - libstub
+  - callbackhandler
+  - libdatabroker-1-1
+  - libdbicon-1-0

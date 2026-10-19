@@ -3,6 +3,10 @@
 ## Unreleased
 
 ### Fixed
+- An escort quest step (Therylune's Escape, The Defias Traitor) stayed open after the escort made it: the game
+  sets the quest complete but can leave its escort objective unfinished. A complete quest now counts as every
+  objective done, in the step and in the panel's lines. `/iti debug` lists the objectives of the step's quests
+  as the game gives them.
 - The arrow skipped someone to talk to on the way when you already stood at the step's own place: on "Talk to
   The Threshwackonator 4100 to start the escort" after taking the quest from Gelkak, it pointed at Gelkak (where
   you lead the robot) instead of the robot. The arrow still joins a path at its closest point, but no longer

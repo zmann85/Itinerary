@@ -956,10 +956,13 @@ local function at(dest)
 end
 
 local function objectiveDone(q, idx)
+    -- a quest that's complete has every objective done: an escort ("Escort Therylune away from the Master's
+    -- Glaive", The Defias Traitor) leaves its objective unfinished in WoW Forever when it succeeds
+    if readyToTurnIn(q) then return true end
     local objs = C_QuestLog and C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(q)
     local o = objs and objs[idx]
     if o then return o.finished and true or false end
-    return readyToTurnIn(q)
+    return false
 end
 
 -- Worthwhile class spells (damage; see ns.trainWorth) you can learn at your level and haven't yet:
@@ -1043,10 +1046,11 @@ function ns.objectiveLines(s)
     for k, q in ipairs(s.q) do
         local oi = s.qo and s.qo[k] or 0
         local objs = onQuest(q) and C_QuestLog.GetQuestObjectives(q) or nil
+        local all = objs and readyToTurnIn(q) -- (a complete quest: every line done, an escort's too)
         for i, o in ipairs(objs or {}) do
             if (oi == 0 or oi == i) and o.text and o.text ~= "" and not seen[o.text] then
                 seen[o.text] = true
-                out[#out + 1] = { o.text, o.finished and true or false }
+                out[#out + 1] = { o.text, (all or o.finished) and true or false }
             end
         end
     end
@@ -2784,6 +2788,11 @@ SlashCmdList.ITINERARY = function(input)
             local b = C_QuestLog and C_QuestLog.GetLogIndexForQuestID and tostring(C_QuestLog.GetLogIndexForQuestID(q)) or "n/a"
             ns.print(string.format("  quest %d: IsOnQuest %s, log index %s, turned in %s, ready %s",
                 q, a, b, tostring(flaggedDone(q)), tostring(readyToTurnIn(q))))
+            -- (each objective as the game gives it: an escort's says whether the game marks it finished)
+            local objs = C_QuestLog and C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(q) or {}
+            for k, o in ipairs(objs) do
+                ns.print(string.format("    objective %d: %s (%s) finished %s", k, tostring(o.text), tostring(o.type), tostring(o.finished)))
+            end
         end
     elseif cmd == "chapters" then if ns.toggleChapters then ns.toggleChapters() end
     elseif cmd == "chapter" and tonumber(arg) then ns.gotoChapter(tonumber(arg))

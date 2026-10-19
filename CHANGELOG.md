@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+### Fixed
+- Lua errors on every mouseover of an enemy (dead ones too) in a dungeon fight. WoW Forever's engine keeps the
+  names, GUIDs and tooltip lines of creatures secret from add-ons there, and Itinerary's look for profession
+  trainers searched them. Every place that reads a creature's name, GUID or tooltip (trainers, the target
+  button and its faces, name tags, gather spots, the recorder, NPC dialogue) now skips a secret value instead.
+
 ### Changed
 - The target button always goes for your step's own mobs before the ones of an along-the-way objective,
   however close those are (it used to prefer them only by a little, so one right next to you won). An

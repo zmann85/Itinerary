@@ -50,6 +50,18 @@ end
 function ns.themeBg(a) local c = ns.theme().bg; return c[1], c[2], c[3], a end
 function ns.themeCard(a) local c = ns.theme().card; return c[1], c[2], c[3], a end
 function ns.themeBtn(a) local c = ns.theme().btn; return c[1], c[2], c[3], a end
+
+-- WoW Forever's engine keeps some values from add-ons ("secret values"): the names and GUIDs of creatures in
+-- combat, in dungeons, and tooltip lines about them. An add-on may show one, but comparing it, using it as a
+-- table key or searching it raises a Lua error. plain(v): the value, or nil when it's secret - read every
+-- creature's name, GUID or tooltip text through it.
+local isSecret = type(issecretvalue) == "function" and issecretvalue or nil
+function ns.plain(v)
+    if v ~= nil and isSecret and isSecret(v) then return nil end
+    return v
+end
+function ns.unitName(u) local ok, n = pcall(UnitName, u); return ok and ns.plain(n) or nil end
+function ns.unitGUID(u) local ok, g = pcall(UnitGUID, u); return ok and ns.plain(g) or nil end
 function ns.hintHex() return "|cff" .. ns.theme().hint end
 -- the warm colour as a table that always reads the current scheme: WARM[1], WARM[2], WARM[3]
 ns.WARM = setmetatable({}, { __index = function(_, k) return ns.theme().warm[k] end })
@@ -2415,7 +2427,7 @@ local function checkOffered(event)
     local i = c.step
     local s = ns.steps()[i]
     if not (s and s.t == "accept" and s.npc) then return end
-    if UnitName("npc") ~= s.npc then return end
+    if ns.unitName("npc") ~= s.npc then return end
     local missing = {}
     for k, q in ipairs(s.q) do
         if not (onQuest(q) or flaggedDone(q)) then missing[#missing + 1] = { q = q, n = s.n and s.n[k] } end
@@ -2680,7 +2692,7 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
     elseif event == "GOSSIP_SHOW" or event == "QUEST_GREETING" then
         -- talking to the flight master of a "get the flight path" step: you have it now
         local cur = ns.steps()[ItineraryCharDB.step]
-        if cur and cur.t == "fp" and cur.npc and UnitName("npc") == cur.npc then eventDone("fp") end
+        if cur and cur.t == "fp" and cur.npc and ns.unitName("npc") == cur.npc then eventDone("fp") end
         checkOffered(event) -- right away, before the automation picks a quest and the list changes
     elseif event == "ZONE_CHANGED_NEW_AREA" or event == "PLAYER_ENTERING_WORLD" then
         local inInstance = IsInInstance and IsInInstance()

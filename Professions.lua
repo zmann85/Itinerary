@@ -537,7 +537,7 @@ local function recordProfServices(k)
     c.prof.used = c.prof.used or {}
     local used = c.prof.used[k] or {}
     c.prof.used[k] = used
-    local npc = UnitName("npc")
+    local npc = ns.unitName("npc")
     local teach
     if npc then
         g.profTeach = g.profTeach or {}
@@ -728,7 +728,7 @@ local function playerPos()
     return map, x * 100, y * 100
 end
 local function profOfTrainer()
-    local npc = UnitName("npc")
+    local npc = ns.unitName("npc")
     if npc and TRAINER_PROF[npc] then return TRAINER_PROF[npc] end
     for i = 1, (GetNumTrainerServices and GetNumTrainerServices() or 0) do
         local line = GetTrainerServiceSkillLine and GetTrainerServiceSkillLine(i)
@@ -748,8 +748,8 @@ local function unitTitle(unit)
     if C_TooltipInfo and C_TooltipInfo.GetUnit then
         local data = C_TooltipInfo.GetUnit(unit)
         for n = 2, math.min(3, data and data.lines and #data.lines or 0) do
-            local t = data.lines[n].leftText
-            if t and t:find("Trainer") then return t end
+            local t = ns.plain(data.lines[n].leftText)
+            if type(t) == "string" and t:find("Trainer") then return t end
         end
         return nil
     end
@@ -763,10 +763,12 @@ local function unitTitle(unit)
     end
 end
 local function noteTrainerUnit(unit)
-    if not (UnitExists(unit) and not UnitIsPlayer(unit)) then return end
+    -- (a trainer is never someone you can attack, and nobody trains you in a fight: in combat a creature's name
+    -- and tooltip are secret anyway)
+    if InCombatLockdown() or not (UnitExists(unit) and not UnitIsPlayer(unit)) or UnitCanAttack("player", unit) then return end
     local title = unitTitle(unit)
     if not title then return end
-    local npc = UnitName(unit)
+    local npc = ns.unitName(unit)
     for k, p in pairs(PROF) do
         if title:find(p.name, 1, true) then
             ItineraryDB.profTrainers = ItineraryDB.profTrainers or {}
@@ -827,7 +829,7 @@ for id, n in pairs(TOOLNAME) do TOOL_BY_NAME[n] = id end
 scanMerchant = function()
     if not (MerchantFrame and MerchantFrame:IsShown()) and not ns.testMerchant then return end
     local m, x, y = playerPos()
-    local npc = UnitName("npc")
+    local npc = ns.unitName("npc")
     local here = {} -- tool id -> { slot, price }
     for i = 1, (GetMerchantNumItems and GetMerchantNumItems() or 0) do
         local id = GetMerchantItemID and GetMerchantItemID(i)
@@ -905,7 +907,7 @@ f:SetScript("OnEvent", function(_, event)
             if m then
                 ItineraryDB.profTrainers = ItineraryDB.profTrainers or {}
                 ItineraryDB.profTrainers[k] = ItineraryDB.profTrainers[k] or {}
-                ItineraryDB.profTrainers[k][UnitName("npc") or "?"] = { m, x, y }
+                ItineraryDB.profTrainers[k][ns.unitName("npc") or "?"] = { m, x, y }
             end
             c.prof = c.prof or {}
             c.prof.seen = c.prof.seen or {}
@@ -969,9 +971,9 @@ f:SetScript("OnEvent", function(_, event)
         -- after junk has been sold (Automation.lua), so the money from it counts
         C_Timer.After(0.5, scanMerchant)
     elseif event == "PLAYER_TARGET_CHANGED" then
-        noteTrainerUnit("target")
+        pcall(noteTrainerUnit, "target")
     elseif event == "UPDATE_MOUSEOVER_UNIT" then
-        noteTrainerUnit("mouseover")
+        pcall(noteTrainerUnit, "mouseover")
     elseif event == "MERCHANT_CLOSED" then
         -- the bags know about the purchases by now
         C_Timer.After(1, function() if not (MerchantFrame and MerchantFrame:IsShown()) then wipe(boughtHere) end end)
@@ -1263,15 +1265,15 @@ ns.objTagsByGlimmer = glimmerOn
 local function tagsActive() return tagMode() ~= "off" and not glimmerOn() and getCV(TAG_CV) ~= nil end
 -- (the game answers UnitExists with no for an object as the soft target: its GUID is what says one is there)
 local function softGUID(u)
-    local ok, g = pcall(UnitGUID, u)
-    return ok and type(g) == "string" and g ~= "" and g or false
+    local g = ns.unitGUID(u)
+    return type(g) == "string" and g ~= "" and g or false
 end
 local function isObject(u)
     if type(UnitIsGameObject) == "function" then
         local ok, r = pcall(UnitIsGameObject, u)
         if ok then return r and true or false end
     end
-    local g = UnitGUID(u)
+    local g = ns.unitGUID(u)
     return type(g) == "string" and g:find("^GameObject%-") ~= nil
 end
 -- the quest objective lines of the object's tooltip ("Gold Dust: 3/10")
@@ -1282,7 +1284,7 @@ local function objectiveLines(u)
     if not (ok and type(data) == "table" and type(data.lines) == "table") then return out end
     local QO = type(Enum) == "table" and type(Enum.TooltipDataLineType) == "table" and Enum.TooltipDataLineType.QuestObjective
     for i, l in ipairs(data.lines) do
-        local t = type(l) == "table" and l.leftText
+        local t = type(l) == "table" and ns.plain(l.leftText)
         if i > 1 and type(t) == "string" and t ~= "" and ((QO and l.type == QO) or t:find("%d+/%d+")) then
             out[#out + 1] = (t:gsub("^%s*%-%s*", ""))
         end
@@ -1291,13 +1293,14 @@ local function objectiveLines(u)
 end
 ns.objTagLines = objectiveLines
 function ns.objTagName(u)
-    local ok, n = pcall(UnitName, u)
-    if ok and type(n) == "string" and n ~= "" then return n end
+    local n = ns.unitName(u)
+    if type(n) == "string" and n ~= "" then return n end
     local TI = C_TooltipInfo
     if type(TI) == "table" and type(TI.GetUnit) == "function" then
         local ok2, data = pcall(TI.GetUnit, u)
         local l = ok2 and type(data) == "table" and type(data.lines) == "table" and data.lines[1]
-        if type(l) == "table" and type(l.leftText) == "string" and l.leftText ~= "" then return l.leftText end
+        local t = type(l) == "table" and ns.plain(l.leftText)
+        if type(t) == "string" and t ~= "" then return t end
     end
     return nil
 end

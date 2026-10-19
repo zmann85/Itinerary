@@ -2050,7 +2050,7 @@ mtEv:SetScript("OnEvent", function(_, event)
     local mt = ns.manualTarget
     if not mt then return end
     -- talked to them (or any trainer, when that's what you went for): done
-    if UnitName("npc") == mt.npc or event == "TRAINER_SHOW" then ns.setManualTarget(nil) end
+    if ns.unitName("npc") == mt.npc or event == "TRAINER_SHOW" then ns.setManualTarget(nil) end
 end)
 function ns.refreshArrow()
     if not arrow then return end

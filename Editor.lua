@@ -456,7 +456,7 @@ ev:SetScript("OnEvent", function(_, event, a1, a2)
     elseif event == "QUEST_TURNED_IN" then
         record("turnin", a1)
     else
-        lastNpc = UnitName("npc") or lastNpc
+        lastNpc = ns.unitName("npc") or lastNpc
     end
 end)
 
@@ -1164,7 +1164,7 @@ local function build()
     end, "Moves the step's point to where you stand.")
     d.useTarget = act("Use target", 2, 1, function()
         local s = selected()
-        local n = UnitName("target")
+        local n = ns.unitName("target")
         if not (s and n) then return end
         if s.t == "complete" or UnitCanAttack("player", "target") then
             local m = s.mobs and copy(s.mobs) or {}
@@ -2171,7 +2171,7 @@ local function recAdd(s, noChapter)
 end
 local function recOn() return recState() == "on" end
 
-local function npcName() return (UnitExists and UnitExists("npc") and UnitName("npc")) or lastNpc end
+local function npcName() return (UnitExists and UnitExists("npc") and ns.unitName("npc")) or lastNpc end
 local function placed(s)
     local p = here()
     if p then s.m, s.x, s.y, s.z = p.m, p.x, p.y, p.z end
@@ -2258,7 +2258,7 @@ if hooksecurefunc and DoEmote then
         local R = REC and REC()
         if not (R and R.state == "on") or type(token) ~= "string" then return end
         local who = target
-        if not who or who == "" or who == "none" then who = UnitName and UnitName("target") or nil end
+        if not who or who == "" or who == "none" then who = ns.unitName("target") or nil end
         lastEmote = { t = GetTime(), token = token:lower(), who = who }
     end)
 end
@@ -2703,9 +2703,8 @@ rec:SetScript("OnEvent", function(_, event, a1, a2, a3)
     if event == "QUEST_LOG_UPDATE" or event == "UNIT_QUEST_LOG_CHANGED" then
         if not scanQueued then scanQueued = true; C_Timer.After(0.4, function() scanQueued = false; recScan() end) end
     elseif event == "PLAYER_TARGET_CHANGED" then
-        if UnitExists("target") and UnitCanAttack("player", "target") and not UnitIsPlayer("target") then
-            recentMobs[UnitName("target")] = GetTime()
-        end
+        local n = UnitExists("target") and UnitCanAttack("player", "target") and not UnitIsPlayer("target") and ns.unitName("target")
+        if n then recentMobs[n] = GetTime() end
     elseif not recOn() then
         return
     elseif event == "QUEST_ACCEPTED" then

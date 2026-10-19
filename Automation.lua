@@ -176,7 +176,7 @@ local function bindWanted()
     local list = { i }
     if ns.alongActive then for _, j in ipairs(ns.alongActive(i)) do list[#list + 1] = j end end
     for k = i + 1, math.min(#steps, i + 3) do list[#list + 1] = k end -- a step or two early is fine
-    local npc = UnitName("npc")
+    local npc = ns.unitName("npc")
     for _, k in ipairs(list) do
         local s = steps[k]
         if s and s.t == "sethearth" and not ns.stepDone(k) and (not s.npc or s.npc == npc) then return true end
@@ -394,7 +394,7 @@ local function onGossip()
     -- one where Itinerary buys or learns something: open the training window, buying runs from there (hold
     -- Shift to talk instead)
     if a.trainGossip ~= false then
-        local npc = UnitName("npc")
+        local npc = ns.unitName("npc")
         local o = trainerOption(options)
         if o and (trainWanted(npc) or buysHere(npc)) then
             C_GossipInfo.SelectOption(o.gossipOptionID or o.optionID)
@@ -404,7 +404,7 @@ local function onGossip()
     if not a.gossip then return end
     -- a dialogue choice the route asks for at this NPC, or one the game marks as part of a quest
     local want = {}
-    for _, s in ipairs(stepsForNpc(UnitName("npc"))) do
+    for _, s in ipairs(stepsForNpc(ns.unitName("npc"))) do
         if type(s.gossip) == "table" then for _, id in ipairs(s.gossip) do want[id] = true end end
     end
     for _, o in ipairs(options) do
@@ -417,7 +417,7 @@ local function onGossip()
     end
     -- the route says "just talk to them" (gossip = true) and there is only one thing to say
     if #options == 1 then
-        for _, s in ipairs(stepsForNpc(UnitName("npc"))) do
+        for _, s in ipairs(stepsForNpc(ns.unitName("npc"))) do
             if s.gossip == true then
                 local id = options[1].gossipOptionID or options[1].optionID
                 if id then C_GossipInfo.SelectOption(id) end
@@ -874,7 +874,7 @@ local function recordWeaponMaster()
     C_Timer.After(#was > 0 and 0.5 or 0, function()
         if not wpnRestore then return end
         if not isWeaponMaster() then wpnRestore(); return end
-        local npc = UnitName("npc")
+        local npc = ns.unitName("npc")
         local map = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
         local pos = map and C_Map.GetPlayerMapPosition(map, "player")
         local _, class = UnitClass("player")
@@ -937,7 +937,7 @@ local function noteTrainer()
     -- a known class trainer (route step or opened before) with nothing worthwhile left still counts:
     -- that's exactly the "all bought" case, and it must clear what we thought was owed
     if not any then
-        local npc = UnitName("npc")
+        local npc = ns.unitName("npc")
         for _, t in ipairs(ns.classTrainers and ns.classTrainers() or {}) do
             if npc and t.name == npc then any = true; break end
         end
@@ -971,7 +971,7 @@ local function noteTrainer()
     c.trainOwed = owed -- cheapest worthwhile spell you could learn now but didn't (money)
     c.trainOwedAll = owed and owedAll or nil -- all of them together
     -- remember where this trainer stands, for the "trainer nearby" hint
-    local npc = UnitName("npc")
+    local npc = ns.unitName("npc")
     local map = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
     local pos = map and C_Map.GetPlayerMapPosition(map, "player")
     if npc and pos then
@@ -1217,7 +1217,7 @@ local function vendorStepDone()
     -- the current step, or a "Sell junk" recommendation running next to it
     local list = { c.step }
     if ns.alongActive then for _, j in ipairs(ns.alongActive(c.step)) do list[#list + 1] = j end end
-    local npc = UnitName and UnitName("npc")
+    local npc = ns.unitName("npc")
     for _, j in ipairs(list) do
         local s = ns.steps()[j]
         if s and s.vendor then c.manual[j] = true end
@@ -1369,7 +1369,7 @@ f:SetScript("OnEvent", function(_, event, a1, a2)
         if wpnRestore then wpnRestore() end
         trainMoney, lastBuy = nil, nil
     elseif event == "MERCHANT_SHOW" then
-        lastShop = UnitName and UnitName("npc") or false
+        lastShop = ns.unitName("npc") or false
         C_Timer.After(0.1, sellJunk)
         vendorStepDone()
     elseif event == "MERCHANT_CLOSED" then

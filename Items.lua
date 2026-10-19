@@ -377,7 +377,7 @@ local function nearestPlate(names, friendly, prio, main)
     local good, tapped = {}, {}
     for _, p in ipairs(plates()) do
         local u = p.u
-        local name = UnitName(u) or ""
+        local name = ns.unitName(u) or ""
         if want[name] and not UnitIsDead(u) and not UnitIsPlayer(u) then
             local ok = friendly or (UnitCanAttack("player", u) and not (UnitIsTapDenied and UnitIsTapDenied(u)))
             if ok then
@@ -433,7 +433,7 @@ local function targetMacro(names, friendly, plate, prio, main, blocked)
     -- your step is after (Anaya Dawnrunner) - so a mob of your step always beats an along-the-way one. The game
     -- won't target a nameplate by its unit in a macro, so the closest fitting mob's NAME goes last in its tier;
     -- the game then takes the nearest of that name.
-    local first = plate and UnitName(plate)
+    local first = plate and ns.unitName(plate)
     local function add(n) lines[#lines + 1] = "/targetexact " .. n end
     for k = #names, 1, -1 do
         if blocked and blocked[names[k]] and names[k] ~= first then add(names[k]) end
@@ -537,7 +537,7 @@ function probeStart(job)
     PQ.tried = PQ.tried + 1
     probe:Show()
     local ok
-    if job.unit and UnitExists(job.unit) and UnitGUID(job.unit) == job.guid then
+    if job.unit and UnitExists(job.unit) and job.guid and ns.unitGUID(job.unit) == job.guid then
         job.how = "seen"
         ok = pcall(probe.SetUnit, probe, job.unit)
     elseif type(probe.SetCreature) == "function" then
@@ -555,7 +555,7 @@ function askDisplay(name, npc, unit)
     local n = PQ.asked[k] or 0
     if n >= (unit and 3 or 1) then return end
     PQ.asked[k] = n + 1
-    local job = { name = name, npc = npc, unit = unit, guid = unit and UnitGUID(unit) }
+    local job = { name = name, npc = npc, unit = unit, guid = unit and ns.unitGUID(unit) }
     if PQ.job then
         if #PQ.list < 30 then table.insert(PQ.list, job) end
     else
@@ -566,7 +566,7 @@ end
 -- ItineraryDB.portraits[name] = { npc = NPC ID, disp = display ID }
 local function learn(unit)
     if not (ItineraryDB and unit and UnitExists(unit)) or UnitIsPlayer(unit) then return end
-    local npc, name = npcIdOf(UnitGUID(unit)), UnitName(unit)
+    local npc, name = npcIdOf(ns.unitGUID(unit)), ns.unitName(unit)
     if not (npc and name and name ~= "" and name ~= (UNKNOWNOBJECT or "Unknown")) then return end
     ItineraryDB.portraits = ItineraryDB.portraits or {}
     local e = ItineraryDB.portraits[name]
@@ -583,7 +583,7 @@ end
 -- your target, when it's one of the step's mobs (alive, attackable) or its NPC
 local function targetFits()
     if not (target and type(target.names) == "table" and UnitExists("target")) or UnitIsPlayer("target") or UnitIsDead("target") then return false end
-    if not wanted(target.names)[UnitName("target") or ""] then return false end
+    if not wanted(target.names)[ns.unitName("target") or ""] then return false end
     if target.friendly then return not UnitCanAttack("player", "target") end
     return UnitCanAttack("player", "target") and true or false
 end
@@ -650,9 +650,9 @@ local function faceFor(name)
 end
 local function setPortrait(unit)
     if not (target and target.icon) then return end
-    local guid = unit and SetPortraitTexture and UnitExists(unit) and UnitGUID(unit)
-    if guid then
-        local name = UnitName(unit)
+    local guid = unit and SetPortraitTexture and UnitExists(unit) and ns.unitGUID(unit)
+    local name = guid and ns.unitName(unit)
+    if guid and name then
         local t = faceTex(name)
         if F.key[t] ~= guid then SetPortraitTexture(t, unit); F.key[t] = guid end
         target.portraitUnit, target.pickName = unit, name
@@ -684,9 +684,11 @@ ns.targetPortrait = setPortrait
 local function captureFace(unit)
     if not (target and target.icon and SetPortraitTexture and type(target.names) == "table" and UnitExists(unit))
        or UnitIsPlayer(unit) then return end
-    local name = UnitName(unit)
+    local name = ns.unitName(unit)
     if not (name and wanted(target.names)[name]) then return end
-    local guid, t = UnitGUID(unit), faceTex(name)
+    local guid = ns.unitGUID(unit)
+    if not guid then return end
+    local t = faceTex(name)
     if F.key[t] ~= guid then SetPortraitTexture(t, unit); F.key[t] = guid end
     if type(target.portraitUnit) ~= "string" then showFace(t, name) end
 end
@@ -729,18 +731,22 @@ do
     for _, e in ipairs({ "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "NAME_PLATE_UNIT_ADDED" }) do
         pcall(tf.RegisterEvent, tf, e)
     end
-    tf:SetScript("OnEvent", function(_, event, unit)
+    -- (every creature read goes through ns.unitName / ns.unitGUID: in a dungeon fight the game keeps names and
+    -- GUIDs secret, and one used as a key or compared would raise an error on every mouseover)
+    local function onEvent(event, unit)
         if event == "PLAYER_TARGET_CHANGED" then pcall(learn, "target"); pcall(captureFace, "target") return end
         if event == "UPDATE_MOUSEOVER_UNIT" then pcall(learn, "mouseover"); pcall(captureFace, "mouseover") return end
         if event == "NAME_PLATE_UNIT_ADDED" then
-            if unit and target and type(target.names) == "table" and wanted(target.names)[UnitName(unit) or ""] then
+            if unit and target and type(target.names) == "table" and wanted(target.names)[ns.unitName(unit) or ""] then
                 pcall(learn, unit); pcall(captureFace, unit)
             end
             return
         end
-        local t = unit and UnitExists(unit) and F.byName[UnitName(unit) or ""]
-        if t and F.key[t] == UnitGUID(unit) and SetPortraitTexture then SetPortraitTexture(t, unit) end
-    end)
+        local t = unit and UnitExists(unit) and F.byName[ns.unitName(unit) or ""]
+        local g = t and ns.unitGUID(unit)
+        if g and F.key[t] == g and SetPortraitTexture then SetPortraitTexture(t, unit) end
+    end
+    tf:SetScript("OnEvent", function(_, event, unit) pcall(onEvent, event, unit) end)
 end
 
 -- the tooltip's key line: the key, and where to change it (Itinerary's settings, Keys)

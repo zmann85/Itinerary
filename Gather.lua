@@ -418,7 +418,7 @@ do
         if kind ~= "GameObject" then return nil end
         local name = D.ids and D.ids[tonumber(id)]
         if not name and UnitName then
-            local n = UnitName("softinteract")
+            local n = ns.unitName("softinteract")
             if n and D.kinds[n] then name = n end
         end
         return name
@@ -448,7 +448,7 @@ do
     end
     local function look()
         if not (ItineraryDB and UnitGUID) then return end
-        local guid = UnitGUID("softinteract")
+        local guid = ns.unitGUID("softinteract")
         if cur and cur.guid ~= guid then commit() end
         if not guid or done[guid] then return end
         if not cur then

@@ -1896,11 +1896,12 @@ function ns.arrowRoute(i)
         local d = ns.detourStep
         return { { d.m, d.x, d.y, 0, final = true, last = true } }
     end
-    local function add(j, s, final)
+    local function add(j, s, final, stop)
         local way = s.way or (s.x and { { s.m, s.x, s.y, s.r or 0 } }) or nil
         if not way then return end
         for k, p in ipairs(way) do
-            seq[#seq + 1] = { p[1], p[2], p[3], p[4] or 0, step = j, last = (k == #way), final = final and k == #way }
+            seq[#seq + 1] = { p[1], p[2], p[3], p[4] or 0, step = j, last = (k == #way), final = final and k == #way,
+                              stop = stop and k == #way or nil }
         end
     end
     for _, j in ipairs(ns.alongActive(i)) do
@@ -1917,7 +1918,9 @@ function ns.arrowRoute(i)
             if f then add(j, f.own and s or f, true) return seq end
         elseif s.t ~= "complete" and s.m and not side and not s.vendor and not s.rec and not s.errand and not there and not ns.stepDone(j) then
             -- (a vendor errand only when you click it: then it's the arrow's manual target)
-            add(j, s, false)
+            -- someone to talk to on the way ("Talk to The Threshwackonator 4100 to start the escort") is a stop
+            -- the arrow doesn't skip, even when you stand at the step's own place already (where you lead him)
+            add(j, s, false, s.npc and not ItineraryCharDB.arrived[j])
         end
     end
     local s = steps[i]

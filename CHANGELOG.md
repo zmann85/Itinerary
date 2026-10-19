@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- The arrow skipped someone to talk to on the way when you already stood at the step's own place: on "Talk to
+  The Threshwackonator 4100 to start the escort" after taking the quest from Gelkak, it pointed at Gelkak (where
+  you lead the robot) instead of the robot. The arrow still joins a path at its closest point, but no longer
+  past an NPC on the way you haven't reached yet.
+
 ## v2.1.5 (2026-10-19)
 
 ### Fixed

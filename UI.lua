@@ -1830,11 +1830,13 @@ local function buildArrow()
         local seq = nav.seq or {}
         if #seq > 0 and pc then
             if not nav.seqIdx then
-                -- join the way at the closest point (when you are already halfway in, don't send you back)
+                -- join the way at the closest point (when you are already halfway in, don't send you back), but
+                -- not past someone to talk to on the way that you haven't reached yet (a stop)
                 local best, bd = 1, nil
                 for k, p in ipairs(seq) do
                     local d = dist(p)
                     if d and (not bd or d < bd) then best, bd = k, d end
+                    if p.stop then break end
                 end
                 nav.seqIdx = best
             end

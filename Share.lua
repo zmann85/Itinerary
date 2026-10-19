@@ -281,9 +281,12 @@ end
 
 ---------------------------------------------------------------- the whole route as a file (/iti dump)
 -- Writes the route this character follows - every step as Itinerary built it for you (your route pack choices,
--- your edits, steps for your race and class) - as JSON into the saved variables: ItineraryDB.routeExport. The
+-- your edits, the steps for your race and class) - as JSON into the saved variables: ItineraryDB.routeExport. The
 -- game writes it to WTF\Account\<account>\SavedVariables\Itinerary.lua at a /reload or logout; route_export.py
 -- (or any Lua-string reader) takes the JSON out of it. /iti dump clear removes it again (it can be a megabyte).
+-- The JSON explains itself in its first field, "about".
+local ORDERED = {} -- (marks a list of { key, value } pairs written as an object in that order)
+local function obj(...) local t = { ... }; t[ORDERED] = true; return t end
 local function json(v, out)
     local t = type(v)
     if t == "string" then
@@ -293,9 +296,20 @@ local function json(v, out)
             return string.format("\\u%04x", c:byte())
         end) .. '"'
     elseif t == "number" then
-        out[#out + 1] = (v ~= v or v == math.huge or v == -math.huge) and "null" or (math.floor(v) == v and string.format("%d", v) or string.format("%.4f", v))
+        out[#out + 1] = (v ~= v or v == math.huge or v == -math.huge) and "null" or (math.floor(v) == v and string.format("%d", v) or string.format("%.4g", v))
     elseif t == "boolean" then
         out[#out + 1] = v and "true" or "false"
+    elseif t == "table" and v[ORDERED] then
+        out[#out + 1] = "{"
+        local first = true
+        for _, kv in ipairs(v) do
+            if kv[2] ~= nil then
+                if not first then out[#out + 1] = "," end
+                first = false
+                json(kv[1], out); out[#out + 1] = ":"; json(kv[2], out)
+            end
+        end
+        out[#out + 1] = "}"
     elseif t == "table" then
         local n = #v
         local isArray = n > 0 or next(v) == nil
@@ -320,8 +334,37 @@ local function json(v, out)
     end
 end
 ns.toJSON = function(v) local out = {}; json(v, out); return table.concat(out) end
--- (Itinerary's own bookkeeping, not the route)
-local INTERNAL = { edKey = true, till0 = true, built = true }
+
+local ABOUT = {
+    "Itinerary route export: one leveling route, step by step, as the Itinerary add-on (WoW Forever) built it for",
+    "one character - its race and class, its route pack choices and its own edits are already applied.",
+    "route: id, name, version, faction; pack = the route pack it comes from (with license), copyOf = your copy's original.",
+    "forCharacter: race, class, level of the character it was written for. packChoices: that route pack's switches (dungeons ...).",
+    "chapters: [ { chapter, name, firstStep } ] - the route's sections in order (a zone and its levels).",
+    "steps: in order. Every step has step (its number), chapter, type and title; the rest only when it applies:",
+    "  type: accept, complete (do a quest's objectives), turnin, travel, do, train, grind (to a level), fly, flightPath",
+    "        (get it), hearth, setHearth, dungeon.",
+    "  title: what to do (the step's text, or the quest names). hint: more about it.",
+    "  quests: [ { id, name, objective } ] - objective n = only the quest's n-th objective. objectives: their texts.",
+    "  npc: who to talk to. targets / mobs: who to target / kill.",
+    "  location: { mapId (uiMapID), zone, x, y (% of that zone map), worldX, worldY, radius (yards, when it counts as",
+    "            reached), subzoneId }. waypoints: the way there, [ { mapId, x, y } ]. killArea: spots for the mobs.",
+    "  items: { collect: [ { id, count } ], buttons: [ item ids to use ], macro: { name, text } }.",
+    "  trainer: 'class', or { weaponSkills: [ spell ids ] }, or 'other' (profession and the like).",
+    "  level: { reach, xpIntoLevel / percentOfLevel / xpBelowNext } for grind steps.",
+    "  optional: true = can be skipped. sideTask: true = done next to the steps up to step `until` (an instruction",
+    "  or 'along the way'). deathSkip, vendorErrand, sellJunk, auctionHouse, selfFoundOnly: what kind of step.",
+    "  abandonQuests: quest ids to abandon. dialogue: gossip option ids to pick.",
+    "  conditions: Itinerary's own fields for when a step applies (quests in your log, level, zone, items, money,",
+    "              professions ...); most were applied for the character already, some depend on how you play.",
+}
+local TYPE = { go = "travel", xp = "grind", fp = "flightPath", sethearth = "setHearth" }
+local COND = { "cond", "lvskip", "zskip", "minlv", "need", "money", "skill", "skill2", "needProf", "buffItem", "dps",
+               "gateL", "gateMax", "untilQ", "dng" }
+local function pos(p) -- a waypoint or kill-area spot: { map, x, y, ... }
+    if type(p) ~= "table" then return nil end
+    return obj({ "mapId", p[1] }, { "x", p[2] }, { "y", p[3] })
+end
 function ns.dumpRoute(arg)
     if arg == "clear" then
         ItineraryDB.routeExport = nil
@@ -337,45 +380,97 @@ function ns.dumpRoute(arg)
     for _, s in ipairs(steps) do
         if s.q and s.n then for k, q in ipairs(s.q) do if s.n[k] and s.n[k] ~= "" then qn[q] = s.n[k] end end end
     end
+    local function questName(q) return qn[q] or (C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(q)) or nil end
     local chapterOf, chapters = {}, {}
     for c, ch in ipairs(r.chapters or {}) do
-        chapters[#chapters + 1] = { index = c, name = ch.name, firstStep = ch.first }
+        chapters[#chapters + 1] = obj({ "chapter", c }, { "name", ch.name }, { "firstStep", ch.first })
         local last = (r.chapters[c + 1] and r.chapters[c + 1].first or #steps + 1) - 1
         for j = ch.first or 1, last do chapterOf[j] = c end
     end
-    local list = {}
+    local function list(t) return (type(t) == "table" and #t > 0) and t or nil end
+    local out = {}
     for j, s in ipairs(steps) do
-        local e = { index = j, chapter = chapterOf[j] }
-        for k, v in pairs(s) do
-            if type(k) == "string" and not INTERNAL[k] and type(v) ~= "function" then e[k] = v end
+        -- the title: the step's text, else its quests' names
+        local quests, names = nil, {}
+        if s.q and #s.q > 0 then
+            quests = {}
+            for k, q in ipairs(s.q) do
+                local nm = (s.n and s.n[k] ~= "" and s.n[k]) or questName(q)
+                local oi = s.qo and s.qo[k]
+                quests[k] = obj({ "id", q }, { "name", nm }, { "objective", (oi and oi > 0) and oi or nil })
+                if nm then names[#names + 1] = nm end
+            end
         end
-        -- zone coordinates (% of the zone map) where the step only has world ones
-        if not e.x and s.wx and s.m and HBD then
-            local ok, x, y = pcall(HBD.GetZoneCoordinatesFromWorld, HBD, s.wx, s.wy, s.m, true)
-            if ok and x and y then e.x, e.y = math.floor(x * 10000 + 0.5) / 100, math.floor(y * 10000 + 0.5) / 100 end
+        local titleText = s.name or (#names > 0 and table.concat(names, " / ")) or nil
+        if s.t == "fly" and s.name then titleText = "Fly to " .. s.name
+        elseif s.t == "fp" and s.name then titleText = "Get the flight path at " .. s.name
+        elseif s.t == "hearth" and s.name then titleText = "Hearth to " .. s.name
+        elseif s.t == "sethearth" and s.name then titleText = "Make the inn at " .. s.name .. " your home"
+        elseif s.t == "train" and not s.name then titleText = (s.cls and "Train your class skills" or "Train") .. (s.npc and (" at " .. s.npc) or "")
         end
-        if s.q then
-            e.questNames = {}
-            for k, q in ipairs(s.q) do e.questNames[k] = qn[q] or (C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(q)) or "" end
+        titleText = titleText or s.npc or s.t
+        local x, y = s.x, s.y
+        if not x and s.wx and s.m and HBD then
+            local ok, zx, zy = pcall(HBD.GetZoneCoordinatesFromWorld, HBD, s.wx, s.wy, s.m, true)
+            if ok and zx and zy then x, y = math.floor(zx * 10000 + 0.5) / 100, math.floor(zy * 10000 + 0.5) / 100 end
         end
-        list[#list + 1] = e
+        local location = (s.m or s.wx or s.z) and obj({ "mapId", s.m }, { "zone", s.z or s.zone }, { "x", x }, { "y", y },
+            { "worldX", s.wx }, { "worldY", s.wy }, { "radius", s.r }, { "subzoneId", s.sub }) or nil
+        local wps, area
+        if list(s.path) then wps = {}; for k, p in ipairs(s.path) do wps[k] = pos(p) end end
+        if list(s.wp) then area = {}; for k, p in ipairs(s.wp) do area[k] = pos(p) end end
+        local items
+        if s.col or s.item or s.macro then
+            local col
+            if list(s.col) then col = {}; for k, c in ipairs(s.col) do col[k] = obj({ "id", c[1] }, { "count", c[2] }) end end
+            items = obj({ "collect", col }, { "buttons", list(s.item) },
+                { "macro", type(s.macro) == "table" and obj({ "name", s.macro[1] }, { "text", s.macro[3] }) or nil })
+        end
+        local trainer
+        if s.t == "train" then
+            trainer = s.cls and "class" or (s.wpn and obj({ "weaponSkills", s.wpn })) or "other"
+        end
+        local level = (s.t == "xp") and obj({ "reach", s.lvl }, { "xpIntoLevel", s.xpIn }, { "percentOfLevel", s.xpPct },
+            { "xpBelowNext", s.xpLeft }) or nil
+        local cond
+        for _, k in ipairs(COND) do
+            if s[k] ~= nil then cond = cond or {}; cond[k] = s[k] end
+        end
+        local mobs = list(s.mobs)
+        local targets = list(s.targets)
+        if targets and #targets == 1 and targets[1] == s.npc then targets = nil end
+        out[#out + 1] = obj(
+            { "step", j }, { "chapter", chapterOf[j] }, { "type", TYPE[s.t] or s.t }, { "title", titleText },
+            { "hint", s.note }, { "quests", quests }, { "objectives", list(s.obj) },
+            { "npc", s.npc }, { "targets", targets }, { "mobs", mobs },
+            { "location", location }, { "waypoints", wps }, { "killArea", area },
+            { "items", items }, { "trainer", trainer }, { "level", level },
+            { "optional", s.opt or nil }, { "sideTask", s.along or nil }, { "until", s.along and s.till or nil },
+            { "deathSkip", s.death or nil }, { "vendorErrand", s.errand or nil }, { "sellJunk", s.vendor or nil },
+            { "auctionHouse", s.ah or nil }, { "selfFoundOnly", s.ssf or nil },
+            { "abandonQuests", list(s.abandon) }, { "dialogue", type(s.gossip) == "table" and list(s.gossip) or nil },
+            { "conditions", cond })
     end
     local _, race = UnitRace("player")
     local _, class = UnitClass("player")
-    local payload = {
-        format = "Itinerary route export 1",
-        exported = date and date("%Y-%m-%d %H:%M") or "",
-        addonVersion = (C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata or function() end)(ADDON, "Version"),
-        route = { id = ItineraryCharDB.route, name = r.name, version = r.version, faction = r.faction, pack = r.pack,
-                  custom = r.custom or nil, from = r.from },
-        forCharacter = { race = race, class = class, level = UnitLevel("player") },
-        packChoices = r.pack and ItineraryCharDB.packOptions and ItineraryCharDB.packOptions[r.pack] or nil,
-        chapters = chapters,
-        steps = list,
-    }
+    local getMeta = (C_AddOns and C_AddOns.GetAddOnMetadata) or GetAddOnMetadata
+    local license = r.pack and getMeta and getMeta(r.pack, "Notes") or nil
+    local payload = obj(
+        { "about", ABOUT },
+        { "format", "Itinerary route export 1" },
+        { "exported", date and date("%Y-%m-%d %H:%M") or nil },
+        { "addonVersion", getMeta and getMeta(ADDON, "Version") or nil },
+        { "route", obj({ "id", ItineraryCharDB.route }, { "name", r.name }, { "version", r.version }, { "faction", r.faction },
+            { "pack", r.pack and obj({ "name", r.pack }, { "about", license },
+                { "license", "see the pack's LICENSE.txt - the RestedXP-based routes: CC BY-NC-SA 4.0 (credit, non-commercial, share alike)" }) or nil },
+            { "copyOf", r.from }) },
+        { "forCharacter", obj({ "race", race }, { "class", class }, { "level", UnitLevel("player") }) },
+        { "packChoices", r.pack and ItineraryCharDB.packOptions and next(ItineraryCharDB.packOptions[r.pack] or {}) and ItineraryCharDB.packOptions[r.pack] or nil },
+        { "chapters", chapters },
+        { "steps", out })
     local text = ns.toJSON(payload)
     ItineraryDB.routeExport = text
     ns.print(string.format("route written: %s, %d steps (%d KB). It lands in SavedVariables\\Itinerary.lua at your next /reload or logout; /iti dump clear removes it.",
-        r.name or ItineraryCharDB.route, #list, math.floor(#text / 1024)))
+        r.name or ItineraryCharDB.route, #out, math.floor(#text / 1024)))
     if r.pack then ns.print("(a route pack's routes keep that pack's license - see its LICENSE.txt)") end
 end

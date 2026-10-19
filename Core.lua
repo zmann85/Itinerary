@@ -1297,13 +1297,15 @@ function ns.itemStepIdle(s)
 end
 
 -- a ".skill" condition { key, n, "lt" } that rules the step out right now
-local function skillOff(sk)
+local function skillOff(sk, s)
     if not (sk and ns.profKnown) then return false end
     local known, rank = ns.profKnown(sk[1])
     if known == nil then return false end -- a skill we can't read: no condition
     if sk[3] == "lt" then
-        -- (a profession you didn't pick and don't know: its steps aren't for you; riding is no profession)
-        if ns.PROF and ns.PROF[sk[1]] and ns.profIsChosen and not ns.profIsChosen(sk[1]) and not known then return true end
+        -- (a profession you didn't pick and don't know: its steps aren't for you - "Cook until 50"; riding is no
+        -- profession. Not a quest's step: there "below" is the version for those without it - Bathran's Hair
+        -- without [Find Herbs], the wolves for Wolves at Our Heels without cooking 50)
+        if not QUEST_STEP[s.t] and ns.PROF and ns.PROF[sk[1]] and ns.profIsChosen and not ns.profIsChosen(sk[1]) and not known then return true end
         if known and (rank or 0) >= sk[2] then return true end
     elseif not known or (rank or 0) < sk[2] then return true end
     return false
@@ -1333,7 +1335,7 @@ local function notApplicable(s)
     if s.needProf and ns.profKnown and not ns.profKnown(s.needProf) then return true end
     -- ".skill cooking,50,1": only while you're below 50 in a profession you picked (or not learned yet);
     -- without "lt": only from that skill on. Two of them (skill2) make a range
-    if skillOff(s.skill) or skillOff(s.skill2) then return true end
+    if skillOff(s.skill, s) or skillOff(s.skill2, s) then return true end
     -- money {"<", c}: skipped while you have less than that (the step is for when you can afford it);
     -- {">", c}: skipped once you have that much (grind / sell until you have it)
     if s.money then

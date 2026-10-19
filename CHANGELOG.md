@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- A quest step meant for players without a profession (Bathran's Hair without [Find Herbs], the wolves of
+  Wolves at Our Heels below Cooking 50) was left out when you hadn't picked that profession, so neither version
+  of the objective showed. Leaving out "below" steps of a profession you didn't pick now applies to profession
+  steps only ("Cook until 50"), not to a quest's own steps.
+
 ## v2.1.6 (2026-10-19)
 
 ### Fixed

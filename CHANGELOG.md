@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+### New
+- `/iti dump` writes the route you follow - every step as Itinerary built it for you, with quest names, zone
+  coordinates and chapters - as JSON into the saved variables (SavedVariables\Itinerary.lua, at the next /reload
+  or logout), to use it outside the game. `/iti dump clear` removes it.
+
 ### Fixed
 - "Ready to learn" listed higher ranks of talent spells you haven't taken (Seal of Command Rank 2 without the
   talent): a spell whose first rank no trainer teaches (a talent or a quest) shows its next ranks only once you

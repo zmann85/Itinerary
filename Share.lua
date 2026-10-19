@@ -278,3 +278,104 @@ function ns.openShare(mode, id)
         win.eb:SetFocus()
     end
 end
+
+---------------------------------------------------------------- the whole route as a file (/iti dump)
+-- Writes the route this character follows - every step as Itinerary built it for you (your route pack choices,
+-- your edits, steps for your race and class) - as JSON into the saved variables: ItineraryDB.routeExport. The
+-- game writes it to WTF\Account\<account>\SavedVariables\Itinerary.lua at a /reload or logout; route_export.py
+-- (or any Lua-string reader) takes the JSON out of it. /iti dump clear removes it again (it can be a megabyte).
+local function json(v, out)
+    local t = type(v)
+    if t == "string" then
+        out[#out + 1] = '"' .. v:gsub('[%c"\\]', function(c)
+            if c == '"' then return '\\"' elseif c == "\\" then return "\\\\" elseif c == "\n" then return "\\n"
+            elseif c == "\t" then return "\\t" elseif c == "\r" then return "\\r" end
+            return string.format("\\u%04x", c:byte())
+        end) .. '"'
+    elseif t == "number" then
+        out[#out + 1] = (v ~= v or v == math.huge or v == -math.huge) and "null" or (math.floor(v) == v and string.format("%d", v) or string.format("%.4f", v))
+    elseif t == "boolean" then
+        out[#out + 1] = v and "true" or "false"
+    elseif t == "table" then
+        local n = #v
+        local isArray = n > 0 or next(v) == nil
+        if isArray then for k in pairs(v) do if type(k) ~= "number" or k < 1 or k > n or k % 1 ~= 0 then isArray = false break end end end
+        if isArray then
+            out[#out + 1] = "["
+            for i = 1, n do if i > 1 then out[#out + 1] = "," end; json(v[i], out) end
+            out[#out + 1] = "]"
+        else
+            local keys = {}
+            for k in pairs(v) do if type(k) == "string" or type(k) == "number" then keys[#keys + 1] = k end end
+            table.sort(keys, function(a, b) return tostring(a) < tostring(b) end)
+            out[#out + 1] = "{"
+            for i, k in ipairs(keys) do
+                if i > 1 then out[#out + 1] = "," end
+                json(tostring(k), out); out[#out + 1] = ":"; json(v[k], out)
+            end
+            out[#out + 1] = "}"
+        end
+    else
+        out[#out + 1] = "null"
+    end
+end
+ns.toJSON = function(v) local out = {}; json(v, out); return table.concat(out) end
+-- (Itinerary's own bookkeeping, not the route)
+local INTERNAL = { edKey = true, till0 = true, built = true }
+function ns.dumpRoute(arg)
+    if arg == "clear" then
+        ItineraryDB.routeExport = nil
+        ns.print("route file removed from your saved variables")
+        return
+    end
+    local r = ns.route()
+    if not r then ns.print("no route to write") return end
+    local steps = ns.steps()
+    local HBD = LibStub and LibStub("HereBeDragons-2.0", true)
+    -- quest names the route knows (accept / turn in steps name them)
+    local qn = {}
+    for _, s in ipairs(steps) do
+        if s.q and s.n then for k, q in ipairs(s.q) do if s.n[k] and s.n[k] ~= "" then qn[q] = s.n[k] end end end
+    end
+    local chapterOf, chapters = {}, {}
+    for c, ch in ipairs(r.chapters or {}) do
+        chapters[#chapters + 1] = { index = c, name = ch.name, firstStep = ch.first }
+        local last = (r.chapters[c + 1] and r.chapters[c + 1].first or #steps + 1) - 1
+        for j = ch.first or 1, last do chapterOf[j] = c end
+    end
+    local list = {}
+    for j, s in ipairs(steps) do
+        local e = { index = j, chapter = chapterOf[j] }
+        for k, v in pairs(s) do
+            if type(k) == "string" and not INTERNAL[k] and type(v) ~= "function" then e[k] = v end
+        end
+        -- zone coordinates (% of the zone map) where the step only has world ones
+        if not e.x and s.wx and s.m and HBD then
+            local ok, x, y = pcall(HBD.GetZoneCoordinatesFromWorld, HBD, s.wx, s.wy, s.m, true)
+            if ok and x and y then e.x, e.y = math.floor(x * 10000 + 0.5) / 100, math.floor(y * 10000 + 0.5) / 100 end
+        end
+        if s.q then
+            e.questNames = {}
+            for k, q in ipairs(s.q) do e.questNames[k] = qn[q] or (C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(q)) or "" end
+        end
+        list[#list + 1] = e
+    end
+    local _, race = UnitRace("player")
+    local _, class = UnitClass("player")
+    local payload = {
+        format = "Itinerary route export 1",
+        exported = date and date("%Y-%m-%d %H:%M") or "",
+        addonVersion = (C_AddOns and C_AddOns.GetAddOnMetadata or GetAddOnMetadata or function() end)(ADDON, "Version"),
+        route = { id = ItineraryCharDB.route, name = r.name, version = r.version, faction = r.faction, pack = r.pack,
+                  custom = r.custom or nil, from = r.from },
+        forCharacter = { race = race, class = class, level = UnitLevel("player") },
+        packChoices = r.pack and ItineraryCharDB.packOptions and ItineraryCharDB.packOptions[r.pack] or nil,
+        chapters = chapters,
+        steps = list,
+    }
+    local text = ns.toJSON(payload)
+    ItineraryDB.routeExport = text
+    ns.print(string.format("route written: %s, %d steps (%d KB). It lands in SavedVariables\\Itinerary.lua at your next /reload or logout; /iti dump clear removes it.",
+        r.name or ItineraryCharDB.route, #list, math.floor(#text / 1024)))
+    if r.pack then ns.print("(a route pack's routes keep that pack's license - see its LICENSE.txt)") end
+end

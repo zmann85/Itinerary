@@ -2639,6 +2639,7 @@ SlashCmdList.ITINERARY = function(input)
     elseif cmd == "record" then if ns.setRecording then ns.setRecording() end
     elseif cmd == "recorder" or cmd == "rec" then if ns.openRecorder then ns.openRecorder(true) end
     elseif cmd == "export" then if ns.openShare then ns.openShare("export", ItineraryCharDB.route) end
+    elseif cmd == "dump" then if ns.dumpRoute then ns.dumpRoute(arg) end
     elseif cmd == "import" then if ns.openShare then ns.openShare("import") end
     elseif cmd == "professions" or cmd == "prof" then if ns.showProfPicker then ns.showProfPicker() end
     else

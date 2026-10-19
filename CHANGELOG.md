@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### New
+- Along the way: the small × that instructions have is on side objectives too. It hides the entry on this
+  character - a Camping 101 quest you're not doing, items you don't want to collect (with all their tiers), a
+  quest's objectives. The target and item buttons leave hidden entries out; the route's own steps for that
+  quest still come. Settings > Panel > Hidden along the way lists them; click one, or Show all, to bring them
+  back.
+
+### Changed
+- The profession question for a new character (and `/iti professions`) has the look of the settings window:
+  professions as chips, the first main profession as a switch, Save and Later, × and Escape to close.
+
 ## v2.1.3 (2026-10-19)
 
 ### Fixed

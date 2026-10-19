@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.6 (2026-10-19)
 
 ### Fixed
 - An escort quest step (Therylune's Escape, The Defias Traitor) stayed open after the escort made it: the game

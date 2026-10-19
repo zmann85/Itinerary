@@ -211,6 +211,7 @@ local OPTIONS = {
     { tab = 6, label = "Instructions", desc = "What to do next to your step (sell junk, buy a quest item, learn a profession, die to skip a run back...) in their own card on the route panel, or inside the panel.",
       choices = { { "Own card", true }, { "In the panel", false } }, get = function() return ItineraryDB.panel.recCard ~= false end,
       set = function(v) ItineraryDB.panel.recCard = v; if ns.refresh then ns.refresh() end end },
+    { tab = 6, kind = "hiddenAlong", label = "Hidden along the way" },
     { tab = 6, label = "Item and spell links", desc = "Items and spells in the step text get their icon and quality colour. Hover one for its tooltip, Shift-click to link it in chat.",
       choices = SHOW_HIDE, get = function() return ItineraryDB.panel.links ~= false end,
       set = function(v) ItineraryDB.panel.links = v; if ns.refresh then ns.refresh() end end },
@@ -678,6 +679,26 @@ local function buildRow(opt, i)
             self.sub:SetText(opt.desc or "")
             self:SetHeight(opt.desc and math.max(ROW_H, 8 + SEG_H + 6 + self.sub:GetStringHeight() + 10) or (8 + SEG_H + 12))
         end
+    elseif opt.kind == "hiddenAlong" then
+        -- the along-the-way entries you hid (the × on their row in the panel), this character's; click one to
+        -- show it again
+        row.lbl:SetText(opt.label)
+        local all = segment(row, "Show all")
+        all:SetSize(96, SEG_H)
+        all:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, -8)
+        all:SetScript("OnClick", function() if ns.unhideAlong then ns.unhideAlong() end; refresh() end)
+        chipRow(row, 2, function()
+            local out = {}
+            for _, e in ipairs(ns.hiddenAlongList and ns.hiddenAlongList() or {}) do
+                out[#out + 1] = { e.name, true, false, function() ns.unhideAlong(e.key) end, e.name .. "\nClick to show it again." }
+            end
+            return out
+        end, function(self, list)
+            all:SetShown(#list > 0); all:SetActive(false)
+            self.sub:SetText(#list == 0
+                and "None. The × on an entry under ALONG THE WAY hides it on this character: a Camping 101 quest you're not doing, items you don't want to collect. The route's own steps for a quest stay."
+                or "Hidden on this character: not shown under ALONG THE WAY, and the target and item buttons leave them out. Click one to show it again.")
+        end)
     elseif opt.kind == "prof" then
         row.lbl:SetText(opt.label)
         row.sub:SetText(opt.desc)

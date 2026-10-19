@@ -70,6 +70,11 @@ From top to bottom:
   objectives, side quests (*Camping 101: First Aid*) or items to collect (*Small Spider Leg 0/7*), one per
   line; items for a later quest say which one (*For Recipe of the Kaldorei*). Finished ones stay listed,
   greyed. Once the route reaches its own step for that quest, that step shows the counts instead.
+  - The small **×** at an entry's right hides it on this character: a *Camping 101* quest you're not doing,
+    items you don't want to collect. A hidden quest stays hidden wherever it would show along the way, and
+    hidden items take all their tiers with them (*Chunks of Boar Meat* 4, 10 and 50). The target and item
+    buttons leave them out too, but the route's own steps for that quest still come. Settings > Panel >
+    *Hidden along the way* lists them; click one to show it again.
 - **Next steps**: a preview of what comes after. Steps that are done already are left out (a quest you
   have, an *Abandon* step for a quest you never took or handed in already).
 - **Skipped quests** (*2 skipped quests still open · hover for the list*): quests you skipped that are still
@@ -632,7 +637,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | Travel | Take flights, set hearthstone, spirit healer, map pins (on the world map, on the minimap, the line between them) |
 | Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills, buy weapon skills, your class's skill list (worth a visit / auto-buy) |
 | Professions | Learn at the trainer, main professions, first profession, secondary professions, gather mode, gather data (shipped, own, both), gathering tracking, node icons, gathering tools |
-| Panel | Color scheme (Itinerary, Amethyst, Frost, Ember, Slate), instructions (own card or in the panel), item and spell links, panel style (card or minimal), opacity, size, text on a see-through panel (shadow or outline), grow direction, item & target button corner, lock |
+| Panel | Color scheme (Itinerary, Amethyst, Frost, Ember, Slate), instructions (own card or in the panel), the along-the-way entries you hid, item and spell links, panel style (card or minimal), opacity, size, text on a see-through panel (shadow or outline), grow direction, item & target button corner, lock |
 | Arrow | Arrow on/off, arrow look, instructions at the arrow, death skips at the arrow, their size, tooltip, lock |
 | Keys | Key bindings for the target and item buttons; show the target button, talk on second press, tag with a spell, mark the target |
 

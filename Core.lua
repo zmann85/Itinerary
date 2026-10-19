@@ -1654,6 +1654,96 @@ local function comingUp(s, steps, i)
     return false
 end
 
+-- Along-the-way entries you hid (the × on the row in ALONG THE WAY), per character: by quest (a quest's
+-- objectives, a Camping 101 quest the route doesn't have) or by the items collected, so every tier of the same
+-- items goes with it. Hidden means not shown and not acted on along the way (target button, item buttons); the
+-- route's own steps for that quest stay. Settings > Panel shows them again.
+local alongKeyCache = setmetatable({}, { __mode = "k" })
+local NO_KEYS = {}
+local function alongKeyList(s)
+    local k = alongKeyCache[s]
+    if k then return k end
+    if s.t == "complete" and s.q and #s.q > 0 then
+        k = {}
+        for _, q in ipairs(s.q) do k[#k + 1] = "q" .. q end
+    elseif s.col and #s.col > 0 then
+        local ids = {}
+        for _, c in ipairs(s.col) do ids[#ids + 1] = c[1] end
+        table.sort(ids)
+        k = { "i" .. table.concat(ids, ",") }
+    else
+        k = NO_KEYS
+    end
+    alongKeyCache[s] = k
+    return k
+end
+local function alongHidden(s)
+    local h = ItineraryCharDB and ItineraryCharDB.hiddenAlong
+    if not h or next(h) == nil then return false end
+    local keys = alongKeyList(s)
+    if #keys == 0 then return false end
+    for _, key in ipairs(keys) do if not h[key] then return false end end
+    return true
+end
+ns.alongHidden = alongHidden
+function ns.alongHideable(s) return s and #alongKeyList(s) > 0 or false end
+function ns.alongKeyHidden(key)
+    local h = ItineraryCharDB and ItineraryCharDB.hiddenAlong
+    return h and h[key] and true or false
+end
+-- what hiding this along-the-way step stores: { {key, name}, ... }, or nil when it can't be hidden
+function ns.alongKeys(s)
+    local keys = s and alongKeyList(s) or NO_KEYS
+    if #keys == 0 then return nil end
+    local out = {}
+    if s.t == "complete" and s.q then
+        local title = C_QuestLog and C_QuestLog.GetTitleForQuestID
+        -- (the name: the quest log's, else the route's accept or turn-in step's)
+        local function routeName(q)
+            for _, x in ipairs(ns.steps()) do
+                if x.n and x.q then for k, y in ipairs(x.q) do if y == q and x.n[k] then return x.n[k] end end end
+            end
+        end
+        for k, q in ipairs(s.q) do out[#out + 1] = { keys[k], (s.n and s.n[k]) or (title and title(q)) or routeName(q) or ("Quest " .. q) } end
+    else
+        local nameOf = (C_Item and C_Item.GetItemNameByID) or function(id) return GetItemInfo and (GetItemInfo(id)) end
+        local names = {}
+        for _, c in ipairs(s.col) do names[#names + 1] = nameOf(c[1]) or ("item " .. c[1]) end
+        out[1] = { keys[1], table.concat(names, ", ") }
+    end
+    return out
+end
+function ns.hideAlong(entries)
+    if not (entries and entries[1]) then return end
+    local c = ItineraryCharDB
+    c.hiddenAlong = type(c.hiddenAlong) == "table" and c.hiddenAlong or {}
+    local names = {}
+    for _, e in ipairs(entries) do
+        c.hiddenAlong[e[1]] = e[2] or e[1]
+        names[#names + 1] = e[2] or e[1]
+    end
+    ns.print("hidden from Along the way: " .. table.concat(names, ", ") .. " (Settings > Panel shows it again)")
+    if ns.update then ns.update() end
+    if ns.refresh then ns.refresh() end
+    if ns.refreshSettings then ns.refreshSettings() end
+end
+-- show one again (key), or all of them (no key)
+function ns.unhideAlong(key)
+    local c = ItineraryCharDB
+    if type(c.hiddenAlong) ~= "table" then return end
+    if key then c.hiddenAlong[key] = nil else c.hiddenAlong = {} end
+    if ns.update then ns.update() end
+    if ns.refresh then ns.refresh() end
+end
+-- the hidden entries, by name: { {key=, name=}, ... }
+function ns.hiddenAlongList()
+    local out, h = {}, ItineraryCharDB and ItineraryCharDB.hiddenAlong
+    if type(h) ~= "table" then return out end
+    for k, v in pairs(h) do out[#out + 1] = { key = k, name = type(v) == "string" and v or k } end
+    table.sort(out, function(a, b) return a.name < b.name or (a.name == b.name and a.key < b.key) end)
+    return out
+end
+
 function ns.alongActive(i)
     local out, steps = {}, ns.steps()
     local _, _, first = ns.chapterOf(i)
@@ -1663,7 +1753,8 @@ function ns.alongActive(i)
         -- (an item collect taken over by the current step still counts as its tier below)
         local tier = s.t == "do" and s.col
         if s.along and (not s.till or s.till >= i) and not ns.stepDone(j) and (tier or not (j ~= i and takenOver(s, cur)))
-           and not (j ~= i and comingUp(s, steps, i)) and not ((s.need or s.buffItem) and ns.itemStepIdle(s)) then
+           and not (j ~= i and comingUp(s, steps, i)) and not ((s.need or s.buffItem) and ns.itemStepIdle(s))
+           and not alongHidden(s) then
             out[#out + 1] = j
         end
     end

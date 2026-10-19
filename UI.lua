@@ -747,7 +747,7 @@ local function buildPanel()
         x:SetScript("OnEnter", function(self)
             self.fs:SetTextColor(1, 0.45, 0.4, 1)
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine("Dismiss this instruction", 1, 1, 1)
+            GameTooltip:AddLine(type(row.dismissTitle) == "string" and row.dismissTitle or "Dismiss this instruction", 1, 1, 1)
             GameTooltip:AddLine(type(row.dismissText) == "string" and row.dismissText or "It won't show again.", 0.7, 0.7, 0.7, true)
             GameTooltip:Show()
         end)
@@ -765,6 +765,7 @@ local function buildPanel()
     local function setDismiss(row, e)
         row.dismiss = (e and type(e.dismiss) == "function") and e.dismiss or false
         row.dismissText = e and e.dismissText or false
+        row.dismissTitle = e and e.dismissTitle or false
         if row.x then if row.dismiss then row.x:Show() else row.x:Hide() end end
     end
     ns.setRowDismiss = setDismiss
@@ -1541,7 +1542,17 @@ function ns.refresh()
                               dismissText = untilLevel, dismiss = function() C.dismissed[key] = lvl end }
         end
     end
-    for _, e in ipairs((not gs) and ns.campingSide and ns.campingSide() or {}) do if #side < 2 then side[#side + 1] = e end end
+    -- (the × on an along-the-way entry hides it on this character; Settings > Panel shows it again)
+    local HIDE_TITLE, HIDE_TEXT = "Hide this", "It won't show under Along the way again on this character. Settings > Panel > Hidden along the way brings it back."
+    for _, e in ipairs((not gs) and ns.campingSide and ns.campingSide() or {}) do
+        if #side < 2 then
+            if e.q and ns.hideAlong then
+                local key, name = "q" .. e.q, e[1]
+                e.dismiss, e.dismissTitle, e.dismissText = function() ns.hideAlong({ { key, name } }) end, HIDE_TITLE, HIDE_TEXT
+            end
+            side[#side + 1] = e
+        end
+    end
     ns.hearthCheckAt = nil
     local seenLabel = {}
     for _, j in ipairs(al) do
@@ -1584,8 +1595,14 @@ function ns.refresh()
             for x = #list, 1, -1 do if not list[x].death then table.remove(list, x) break end end
         end
         if label and #list < 3 then
-            list[#list + 1] = { label, desc, go = go, spells = spells, timer = left or nil, death = st.death or nil,
-                                dismiss = kind == "rec" and function() C.manual[j] = true end or nil }
+            local e = { label, desc, go = go, spells = spells, timer = left or nil, death = st.death or nil }
+            if kind == "rec" then e.dismiss = function() C.manual[j] = true end
+            elseif ns.alongHideable and ns.alongHideable(st) then
+                -- (a side objective: hidden, not done - its quest's own steps still come)
+                e.dismiss = function() ns.hideAlong(ns.alongKeys(st)) end
+                e.dismissTitle, e.dismissText = HIDE_TITLE, HIDE_TEXT
+            end
+            list[#list + 1] = e
         end
         end
     end

@@ -124,12 +124,14 @@ function ns.campingSide()
             local t, _, _, isHeader, _, _, _, id = GetQuestLogTitle(i)
             title, q, header = t, id, isHeader
         end
-        if not header and title and title:match("^Camping 101: ") and q and not inRoute(q) then
+        -- (not one you hid with the × on its row)
+        if not header and title and title:match("^Camping 101: ") and q and not inRoute(q)
+           and not (ns.alongKeyHidden and ns.alongKeyHidden("q" .. q)) then
             local parts, done = {}, true
             for _, o in ipairs(C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(q) or {}) do
                 if not o.finished then done = false; parts[#parts + 1] = o.text end
             end
-            out[#out + 1] = { title, done and "Done - hand it in" or table.concat(parts, ", ") }
+            out[#out + 1] = { title, done and "Done - hand it in" or table.concat(parts, ", "), q = q }
         end
     end
     return out

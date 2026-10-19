@@ -984,97 +984,179 @@ f:SetScript("OnEvent", function(_, event)
 end)
 
 ---------------------------------------------------------------- the picker
-local picker
-local function accent() return ns.accent() end
-local function label(parent, size, r, g, b, a)
-    local fs = parent:CreateFontString(nil, "OVERLAY")
-    fs:SetFont(STANDARD_TEXT_FONT, size, "")
-    fs:SetTextColor(r, g, b, a or 1)
-    fs:SetJustifyH("LEFT")
-    return fs
+-- The first-login question (and /iti professions), in the settings window's look: chips to pick the professions,
+-- the first main profession as a switch, Save / Later. Nothing changes until Save.
+local picker, saved
+local PW, PPAD, SEG_H, ROW_H = 480, 18, 22, 56
+-- which gathering profession the starting-zone book is for, with these main professions (as ns.bookProf)
+local function bookFor(order)
+    local g = {}
+    for _, k in ipairs(order) do if PROF[k].gather and PROF[k].book then g[#g + 1] = k end end
+    return g[2] or g[1]
 end
 local function buildPicker()
-    local ar, ag, ab = accent()
+    local ui = ns.ui
+    local ar, ag, ab = ui.accent()
+    local text, segment = ui.text, ui.segment
     picker = CreateFrame("Frame", "ItineraryProfPicker", UIParent)
-    picker:SetSize(380, 330)
+    picker:Hide() -- (before its OnHide is set: building it isn't closing it)
+    picker:SetSize(PW, 400)
     picker:SetPoint("CENTER", 0, 80)
     picker:SetFrameStrata("DIALOG")
+    picker:SetClampedToScreen(true)
     picker:EnableMouse(true); picker:SetMovable(true); picker:RegisterForDrag("LeftButton")
     picker:SetScript("OnDragStart", picker.StartMoving)
     picker:SetScript("OnDragStop", picker.StopMovingOrSizing)
-    local bg = picker:CreateTexture(nil, "BACKGROUND"); bg:SetAllPoints(); bg:SetColorTexture(ns.themeBg(0.96))
+    tinsert(UISpecialFrames, "ItineraryProfPicker") -- Escape: decide later
+    local bg = picker:CreateTexture(nil, "BACKGROUND"); bg:SetAllPoints(); bg:SetColorTexture(ns.themeBg(0.97))
+    ui.addEdges(picker, 1, 1, 1, 0.15)
     local top = picker:CreateTexture(nil, "ARTWORK"); top:SetColorTexture(ar, ag, ab, 0.9)
     top:SetPoint("TOPLEFT", 1, -1); top:SetPoint("TOPRIGHT", -1, -1); top:SetHeight(2)
-    for _, p in ipairs({ { "TOPLEFT", "TOPRIGHT", true }, { "BOTTOMLEFT", "BOTTOMRIGHT", true }, { "TOPLEFT", "BOTTOMLEFT" }, { "TOPRIGHT", "BOTTOMRIGHT" } }) do
-        local t = picker:CreateTexture(nil, "OVERLAY"); t:SetColorTexture(1, 1, 1, 0.15)
-        t:SetPoint(p[1]); t:SetPoint(p[2]); if p[3] then t:SetHeight(1) else t:SetWidth(1) end
-    end
-    local h = label(picker, 11, ar, ag, ab, 0.9); h:SetPoint("TOPLEFT", 16, -14); h:SetText("ITINERARY")
-    local t = label(picker, 16, 1, 1, 1, 1); t:SetPoint("TOPLEFT", 16, -30); t:SetText("Your professions")
-    local sub = label(picker, 11, 1, 1, 1, 0.55); sub:SetPoint("TOPLEFT", 16, -52); sub:SetWidth(348)
-    sub:SetText("Pick up to two main professions; the one you tick first is your 1st (Swap changes it). The 1st gets the quest reward book if it gathers, and its tool first.")
-    picker.checks = {}
-    local function add(key, x, y)
-        local cb = CreateFrame("CheckButton", nil, picker, "UICheckButtonTemplate")
-        cb:SetSize(22, 22); cb:SetPoint("TOPLEFT", x, y)
-        cb.key = key
-        cb.text = label(cb, 12, 1, 1, 1, 0.9); cb.text:SetPoint("LEFT", cb, "RIGHT", 2, 0)
-        cb.text:SetText(PROF[key].name .. (PROF[key].gather and "  |cff888888gathering|r" or ""))
-        -- "1st" / "2nd": which main profession comes first (book, trainer, tool); click order, or the Swap button
-        cb.badge = label(cb, 10, ar, ag, ab, 0.95)
-        cb.badge:SetPoint("LEFT", cb.text, "RIGHT", 6, 0)
-        cb:SetScript("OnClick", function(self)
-            if not PROF[key].secondary then
-                for n = #picker.order, 1, -1 do if picker.order[n] == key then table.remove(picker.order, n) end end
-                if self:GetChecked() then picker.order[#picker.order + 1] = key end
-            end
-            picker.refresh()
-        end)
-        picker.checks[#picker.checks + 1] = cb
-    end
-    local h1 = label(picker, 10, ar, ag, ab, 0.75); h1:SetPoint("TOPLEFT", 16, -92); h1:SetText("MAIN (UP TO TWO)")
-    for n, k in ipairs(PRIMARY) do
-        local col, row = (n - 1) % 2, math.floor((n - 1) / 2)
-        add(k, 14 + col * 175, -106 - row * 24)
-    end
-    local h2 = label(picker, 10, ar, ag, ab, 0.75); h2:SetPoint("TOPLEFT", 16, -232); h2:SetText("SECONDARY")
-    for n, k in ipairs(SECONDARY) do add(k, 14 + (n - 1) * 118, -246) end
-    picker.order = {}
-    local swap = CreateFrame("Button", nil, picker, "UIPanelButtonTemplate")
-    swap:SetSize(110, 22); swap:SetPoint("BOTTOMLEFT", 14, 14); swap:SetText("Swap 1st / 2nd")
-    swap:SetScript("OnClick", function()
-        local o = picker.order
-        if #o == 2 then o[1], o[2] = o[2], o[1] end
+
+    local eyebrow = text(picker, 12, ar, ag, ab, 0.9); eyebrow:SetPoint("TOPLEFT", PPAD, -16); eyebrow:SetText("ITINERARY")
+    local title = text(picker, 19, 1, 1, 1, 1); title:SetPoint("TOPLEFT", eyebrow, "BOTTOMLEFT", 0, -4); title:SetText("Your professions")
+    local desc = text(picker, 12, 1, 1, 1, 0.45)
+    desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6); desc:SetWidth(PW - PPAD * 2); desc:SetWordWrap(true)
+    desc:SetText("The route sends you to their trainers when you pass close by and buys their tools. You can change them any time in Settings > Professions.")
+    local close = CreateFrame("Button", nil, picker)
+    close:SetSize(24, 24); close:SetPoint("TOPRIGHT", -8, -8)
+    local x = text(close, 18, 1, 1, 1, 0.5); x:SetPoint("CENTER"); x:SetJustifyH("CENTER"); x:SetText("×")
+    close:SetScript("OnEnter", function() x:SetTextColor(1, 1, 1, 0.9) end)
+    close:SetScript("OnLeave", function() x:SetTextColor(1, 1, 1, 0.5) end)
+    close:SetScript("OnClick", function() picker:Hide() end)
+    local div = picker:CreateTexture(nil, "ARTWORK")
+    div:SetColorTexture(1, 1, 1, 0.08); div:SetHeight(1)
+    div:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -12); div:SetPoint("RIGHT", picker, "RIGHT", -PPAD, 0)
+
+    picker.order, picker.sec = {}, {}
+    local function mainFull() return #picker.order >= 2 end
+    local function isMain(k) for _, o in ipairs(picker.order) do if o == k then return true end end return false end
+    local function toggle(k)
+        if PROF[k].secondary then picker.sec[k] = (not picker.sec[k]) or nil
+        elseif isMain(k) then
+            for n = #picker.order, 1, -1 do if picker.order[n] == k then table.remove(picker.order, n) end end
+        elseif not mainFull() then picker.order[#picker.order + 1] = k end
         picker.refresh()
-    end)
-    picker.swap = swap
-    picker.refresh = function()
-        for _, cb in ipairs(picker.checks) do
-            local pos
-            for n, k in ipairs(picker.order) do if k == cb.key then pos = n end end
-            cb.badge:SetText(pos == 1 and "1st" or pos == 2 and "2nd" or "")
-        end
-        swap:SetShown(#picker.order == 2)
-        local main = 0
-        for _, cb in ipairs(picker.checks) do if cb:GetChecked() and not PROF[cb.key].secondary then main = main + 1 end end
-        for _, cb in ipairs(picker.checks) do
-            if not PROF[cb.key].secondary then
-                local on = cb:GetChecked() or main < 2
-                cb:SetEnabled(on); cb.text:SetAlpha(on and 1 or 0.35)
-            end
-        end
     end
-    local save = CreateFrame("Button", nil, picker, "UIPanelButtonTemplate")
-    save:SetSize(110, 22); save:SetPoint("BOTTOMRIGHT", -14, 14); save:SetText("Save")
+
+    -- rows as in the settings window: a label, the controls, a line of explanation under them
+    local rows = {}
+    local function newRow(label)
+        local row = CreateFrame("Frame", nil, picker)
+        row:SetHeight(ROW_H)
+        row.lbl = text(row, 15, 1, 1, 1, 0.9); row.lbl:SetPoint("TOPLEFT", 0, -11); row.lbl:SetText(label)
+        row.sub = text(row, 11, 1, 1, 1, 0.38); row.sub:SetWidth(PW - PPAD * 2); row.sub:SetWordWrap(true)
+        row.line = row:CreateTexture(nil, "ARTWORK"); row.line:SetColorTexture(1, 1, 1, 0.05); row.line:SetHeight(1)
+        row.line:SetPoint("BOTTOMLEFT"); row.line:SetPoint("BOTTOMRIGHT")
+        rows[#rows + 1] = row
+        return row
+    end
+    -- a grid of profession chips under the label (lit = picked)
+    local chipW = math.floor((PW - PPAD * 2) / 3)
+    local function chipRow(row, keys)
+        row.chips = {}
+        for n, k in ipairs(keys) do
+            local b = segment(row, PROF[k].name)
+            b:SetSize(chipW + 1, SEG_H)
+            local col, line = (n - 1) % 3, math.floor((n - 1) / 3)
+            b:SetPoint("TOPLEFT", row, "TOPLEFT", col * chipW, -(8 + SEG_H + 6 + line * (SEG_H - 1)))
+            b.key = k
+            b.tip = PROF[k].gather and (PROF[k].name .. " - gathering") or nil
+            b:SetScript("OnClick", function() toggle(k) end)
+            row.chips[n] = b
+        end
+        row.gridH = math.ceil(#keys / 3) * (SEG_H - 1) + 1 + 6
+        row.sub:SetPoint("TOPLEFT", row, "TOPLEFT", 0, -(8 + SEG_H + 6 + row.gridH))
+    end
+    local mainRow = newRow("Main professions")
+    chipRow(mainRow, PRIMARY)
+    local firstRow = newRow("First profession")
+    firstRow.segs = {}
+    for c = 2, 1, -1 do
+        local b = segment(firstRow, "")
+        b:SetSize(104, SEG_H)
+        if c == 2 then b:SetPoint("TOPRIGHT", firstRow, "TOPRIGHT", 0, -8)
+        else b:SetPoint("RIGHT", firstRow.segs[2], "LEFT", 1, 0) end
+        b:SetScript("OnClick", function(self)
+            local o = picker.order
+            if #o == 2 and self.key and o[1] ~= self.key then o[1], o[2] = o[2], o[1]; picker.refresh() end
+        end)
+        firstRow.segs[c] = b
+    end
+    firstRow.sub:SetPoint("TOPLEFT", firstRow, "TOPLEFT", 0, -(8 + SEG_H + 6))
+    local secRow = newRow("Secondary")
+    chipRow(secRow, SECONDARY)
+
+    -- footer: a hint, Later and Save
+    local hint = text(picker, 11, 1, 1, 1, 0.3)
+    hint:SetPoint("BOTTOMLEFT", picker, "BOTTOMLEFT", PPAD, 18); hint:SetWidth(PW - PPAD * 2 - 200); hint:SetWordWrap(true)
+    hint:SetText("Nothing changes until you save.")
+    local save = segment(picker, "Save")
+    save:SetSize(96, SEG_H + 2); save:SetPoint("BOTTOMRIGHT", picker, "BOTTOMRIGHT", -PPAD, 14)
+    local later = segment(picker, "Later")
+    later:SetSize(96, SEG_H + 2); later:SetPoint("RIGHT", save, "LEFT", -6, 0)
+    local fl = picker:CreateTexture(nil, "ARTWORK")
+    fl:SetColorTexture(1, 1, 1, 0.08); fl:SetHeight(1)
+    fl:SetPoint("BOTTOMLEFT", picker, "BOTTOMLEFT", PPAD, 14 + SEG_H + 2 + 12); fl:SetPoint("RIGHT", picker, "RIGHT", -PPAD, 0)
+
+    local function layout()
+        local last, total = nil, 0
+        for k, r in ipairs(rows) do
+            r:ClearAllPoints()
+            if last then r:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, 0)
+            else r:SetPoint("TOPLEFT", div, "BOTTOMLEFT", 0, -4) end
+            r:SetPoint("RIGHT", picker, "RIGHT", -PPAD, 0)
+            r.line:SetShown(k < #rows)
+            total = total + (r:GetHeight() or ROW_H)
+            last = r
+        end
+        local header = 16 + eyebrow:GetStringHeight() + 4 + title:GetStringHeight() + 6 + desc:GetStringHeight() + 12 + 1
+        local pt, db = picker:GetTop(), div:GetBottom()
+        if pt and db and pt > db then header = pt - db end
+        local footer = 12 + 1 + 12 + SEG_H + 2 + 14
+        picker:SetHeight(math.floor(header + 4 + total + footer + 0.5))
+    end
+
+    picker.refresh = function()
+        local o = picker.order
+        for _, b in ipairs(mainRow.chips) do
+            local on = isMain(b.key)
+            b:SetActive(on, not on and mainFull())
+        end
+        mainRow.sub:SetText("Up to two. Click one again to take it off. A gathering one is learned from the first quest's reward book.")
+        mainRow:SetHeight(8 + SEG_H + 6 + mainRow.gridH + mainRow.sub:GetStringHeight() + 10)
+        local two = #o == 2
+        for c, b in ipairs(firstRow.segs) do
+            b.key = o[c]
+            b.text:SetText(o[c] and PROF[o[c]].name or "-")
+            b:SetActive(two and c == 1, not two)
+        end
+        firstRow.lbl:SetAlpha(two and 1 or 0.4)
+        local d
+        if not two then d = "Pick two main professions to choose which one comes first."
+        else
+            d = PROF[o[1]].name .. " is learned first and gets its tool first."
+            local book = bookFor(o)
+            if book then d = d .. " The first quest's reward book teaches " .. PROF[book].name .. "." end
+        end
+        firstRow.sub:SetText(d)
+        firstRow:SetHeight(math.max(ROW_H, 8 + SEG_H + 6 + firstRow.sub:GetStringHeight() + 10))
+        for _, b in ipairs(secRow.chips) do b:SetActive(picker.sec[b.key] and true or false) end
+        secRow.sub:SetText("Low priority: learned (and the Fishing Pole bought) only when everything else is paid for.")
+        secRow:SetHeight(8 + SEG_H + 6 + secRow.gridH + secRow.sub:GetStringHeight() + 10)
+        save:SetActive(true)
+        later:SetActive(false)
+        layout()
+    end
+
     save:SetScript("OnClick", function()
         local c = C()
         c.prof = c.prof or {}
         c.prof.list, c.prof.asked = {}, true
         -- main ones in the order you set (1st, 2nd), then the secondary ones
         for _, k in ipairs(picker.order) do table.insert(c.prof.list, k) end
-        for _, cb in ipairs(picker.checks) do
-            if cb:GetChecked() and PROF[cb.key].secondary then table.insert(c.prof.list, cb.key) end
-        end
+        for _, k in ipairs(SECONDARY) do if picker.sec[k] then table.insert(c.prof.list, k) end end
+        saved = true
         picker:Hide()
         local names = {}
         for _, k in ipairs(c.prof.list) do names[#names + 1] = PROF[k].name end
@@ -1082,25 +1164,30 @@ local function buildPicker()
         if ns.update then ns.update() end
         if ns.refreshSettings then ns.refreshSettings() end
     end)
-    local later = CreateFrame("Button", nil, picker, "UIPanelButtonTemplate")
-    later:SetSize(110, 22); later:SetPoint("RIGHT", save, "LEFT", -6, 0); later:SetText("Later")
-    later:SetScript("OnClick", function() picker:Hide(); ns.print("pick your professions any time with /iti professions") end)
-    picker:Hide()
+    later:SetScript("OnClick", function() picker:Hide() end)
+    picker.rows, picker.saveBtn, picker.laterBtn = { main = mainRow, first = firstRow, sec = secRow }, save, later
+    -- closed without saving (Later, the ×, Escape): asked again next login
+    picker:SetScript("OnHide", function()
+        if not saved then ns.print("pick your professions any time with /iti professions") end
+    end)
+    picker:SetScript("OnShow", function()
+        picker.refresh()
+        C_Timer.After(0, function() if picker:IsShown() then layout() end end) -- positions settle next frame
+    end)
 end
 function ns.showProfPicker()
     if not picker then buildPicker() end
     local list = ns.profChosen()
-    picker.order = {}
-    for _, k in ipairs(list) do if PROF[k] and not PROF[k].secondary then picker.order[#picker.order + 1] = k end end
-    -- a character that hasn't picked yet: Cooking and First Aid start ticked
-    local fresh = not (C().prof and C().prof.asked) and #list == 0
-    for _, cb in ipairs(picker.checks) do
-        local on = fresh and (cb.key == "cooking" or cb.key == "firstaid") or false
-        for _, k in ipairs(list) do if k == cb.key then on = true end end
-        cb:SetChecked(on)
+    picker.order, picker.sec, saved = {}, {}, false
+    for _, k in ipairs(list) do
+        if PROF[k] and PROF[k].secondary then picker.sec[k] = true
+        elseif PROF[k] and #picker.order < 2 then picker.order[#picker.order + 1] = k end
     end
+    -- a character that hasn't picked yet: Cooking and First Aid start ticked
+    if not (C().prof and C().prof.asked) and #list == 0 then picker.sec.cooking, picker.sec.firstaid = true, true end
     picker.refresh()
     picker:Show()
+    picker:Raise()
 end
 
 ---------------------------------------------------------------- gathering: node icons and tracking

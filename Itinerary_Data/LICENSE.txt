@@ -1,9 +1,9 @@
 Itinerary - Data
 ================
 
-Where trainers, weapon masters and tool vendors stand, where herbs and ore veins can spawn, and which
-objects give the items a quest asks for, for Itinerary (trainer instructions, gathering tools, gather mode,
-object name tags).
+Where trainers, weapon masters, flight masters and tool vendors stand, where herbs and ore veins can spawn,
+and which objects give the items a quest asks for, for Itinerary (trainer instructions, flights, gathering
+tools, gather mode, object name tags).
 
 The positions come from the WoW Forever data of QuestieDB (Questie, https://github.com/Questie/Questie,
 GNU General Public License v3) and from nodes and quest objects Itinerary players found in game. This data add-on is

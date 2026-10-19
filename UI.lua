@@ -410,7 +410,9 @@ local function detail(s)
     elseif s.t == "complete" and s.obj and #s.obj > 0 then
         lines[#lines + 1] = table.concat(s.obj, ", ")
     end
-    if s.npc and s.t ~= "train" and s.t ~= "complete" then lines[#lines + 1] = s.npc end
+    -- (a flight: the flight master it leads to, which may not be the one the route names)
+    local who = s.t == "fly" and ns.flightMasterFor and (ns.flightMasterFor(s) or {}).npc or s.npc
+    if who and s.t ~= "train" and s.t ~= "complete" then lines[#lines + 1] = who end
     local note = usefulNote(s)
     if note and cl then
         local keep = {}
@@ -1560,6 +1562,11 @@ function ns.refresh()
         local st = steps[j]
         -- (a trainer or a vendor errand: click it and the arrow leads there)
         local go = (st.trainRec or st.errand) and st.m and st.x and { m = st.m, x = st.x, y = st.y, npc = st.npc } or nil
+        -- (a flight: at the nearest flight master, which the arrow leads to already)
+        if st.t == "fly" and ns.flightMasterFor then
+            local f = ns.flightMasterFor(st)
+            if f and f.npc then desc = "At " .. f.npc .. ((desc and desc ~= "") and ("\n" .. desc) or "") end
+        end
         local spells = st.trainRec and ns.trainerSpec(st) or nil
         if st.trainRec and st.cls then desc = ns.affordText() end
         -- (not twice: when your step shows the timer, because no instruction has it, nothing else does)

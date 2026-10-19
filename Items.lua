@@ -290,6 +290,13 @@ local function targetNames()
         if st and singleTarget(st, m) then prio[m[1]] = true end
     end
     if #mobs > 0 then return mobs, false, prio, main end
+    -- a flight to take (your step, or under Instructions): the flight master it leads to first
+    if ns.flightMasterFor then
+        for _, st in ipairs(list) do
+            local f = st and st.t == "fly" and ns.flightMasterFor(st)
+            if f and f.npc then add(friends, f.npc) break end
+        end
+    end
     if cur then
         -- (generated routes leave out "targets" when it's just the step's NPC)
         for _, n in ipairs(cur.targets or (cur.npc and { cur.npc }) or {}) do add(friends, n) end

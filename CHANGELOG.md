@@ -7,6 +7,10 @@
   the step was "Head to the Redridge Mountains"): talking to the flight master now flies you there as it does
   when the flight is the step itself. That's how most of the routes' flights are written. The arrow points to
   the flight master until you're in the air, and only then to the step's place.
+- A flight leads to the nearest flight master of your side, not only the one the route names: the guide may mean
+  either of two ("Dungar Longdrink or Thor") or you come back to the route from somewhere else. The arrow, the
+  target button and the instruction ("At Dungar Longdrink") go there; only flight masters on the continent of
+  the route's own count. Itinerary_Data 1.5 lists where they stand.
 
 ## v2.1.2 (2026-10-19)
 

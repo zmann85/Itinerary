@@ -1738,6 +1738,53 @@ function ns.alongActive(i)
     return kept
 end
 
+-- A flight step's flight master: the nearest one of your side, not only the one the route names. The guide may
+-- mean either of two ("Dungar Longdrink or Thor", by where you are), or you went somewhere on your own and come
+-- back to the route from there. Only flight masters on the continent of the route's own one count (a flight from
+-- there gets you where the step goes); without the data or your position it's the route's. Returns
+-- { m, x, y, npc, own = true for the route's } or nil (no place known).
+local fmWorld = {} -- (each flight master's world position, worked out once)
+ns.fmWorld = fmWorld -- (tests)
+local function fmPos(k, f)
+    local w = fmWorld[k]
+    if w then return w[1], w[2], w[3] end
+    local c, wx, wy = ns.worldPos(f[2], f[3] / 100, f[4] / 100)
+    if c and wx then fmWorld[k] = { c, wx, wy } end -- (not kept when the map can't say yet)
+    return c, wx, wy
+end
+function ns.flightMasterFor(s)
+    if not (s and s.t == "fly") then return nil end
+    local own = s.m and s.m > 0 and s.x and { m = s.m, x = s.x, y = s.y, npc = s.npc, own = true } or nil
+    local list, worldPos, playerWorld = ns.DATA_FLIGHT_MASTERS, ns.worldPos, ns.playerWorld
+    if not (list and worldPos and playerWorld) then return own end
+    local pc, px, py = playerWorld()
+    if not (pc and px) then return own end
+    local oc, ox, oy
+    if own then oc, ox, oy = worldPos(own.m, own.x / 100, own.y / 100) end
+    if own and oc ~= pc then return own end -- (you're on another continent: the route's way stands)
+    local side = ({ Alliance = "A", Horde = "H" })[UnitFactionGroup and UnitFactionGroup("player") or ""]
+    local best, bd = nil, nil
+    local function consider(f, c, wx, wy)
+        if not (c and c == pc and wx) then return end
+        local d = (wx - px) ^ 2 + (wy - py) ^ 2
+        if not bd or d < bd then best, bd = f, d end
+    end
+    for k, f in ipairs(list) do
+        if f[5] == side or f[5] == "AH" then
+            local c, wx, wy = fmPos(k, f)
+            -- the route's own flight master (its exact place; the name the data gives there - a guide that
+            -- names two may have the other one's name on it)
+            if own and c == oc and wx and (wx - ox) ^ 2 + (wy - oy) ^ 2 < 50 * 50 then
+                own.npc = f[1]
+            else
+                consider({ m = f[2], x = f[3], y = f[4], npc = f[1] }, c, wx, wy)
+            end
+        end
+    end
+    if own then consider(own, oc, ox, oy) end
+    return best or own
+end
+
 -- Where the arrow should lead for step i: first the unfinished "along the way" travel steps (enter the cave,
 -- follow the path inside...), then the step's own way in and its target. Each point: {map, x, y, radius, step, last}
 function ns.arrowRoute(i)
@@ -1759,16 +1806,23 @@ function ns.arrowRoute(i)
         -- while you pass ("loot boars for meat") have a farming path of their own that isn't your way
         local side = s.col or s.mobs or s.t == "accept" or s.t == "turnin"
         local there = s.death and ItineraryCharDB.arrived[j] == "at" -- (at the place to die: on to the step)
-        -- (a vendor errand only when you click it: then it's the arrow's manual target)
-        if s.t ~= "complete" and s.m and not side and not s.vendor and not s.rec and not s.errand and not there and not ns.stepDone(j) then
-            -- a flight to take first ("Fly to Redridge" while the step is the travel there): the flight master
-            -- is where the arrow leads until you're in the air or there already - reaching them doesn't move
-            -- it on, and the step's own place comes after the flight
-            if s.t == "fly" and (s.way or s.x) then add(j, s, true) return seq end
+        if s.t == "fly" then
+            -- a flight to take first ("Fly to Redridge" while the step is the travel there): its flight master
+            -- is where the arrow leads until you're in the air or there already - reaching them doesn't move it
+            -- on, and the step's own place comes after the flight
+            local f = not s.rec and not ns.stepDone(j) and ns.flightMasterFor(s)
+            if f then add(j, f.own and s or f, true) return seq end
+        elseif s.t ~= "complete" and s.m and not side and not s.vendor and not s.rec and not s.errand and not there and not ns.stepDone(j) then
+            -- (a vendor errand only when you click it: then it's the arrow's manual target)
             add(j, s, false)
         end
     end
     local s = steps[i]
+    if s and s.t == "fly" then
+        local f = ns.flightMasterFor(s)
+        if f then add(i, f.own and s or f, true) end
+        return seq
+    end
     if s and s.m and s.m > 0 and not s.area then add(i, s, true) end
     return seq
 end

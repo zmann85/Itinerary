@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.5 (2026-10-19)
 
 ### Fixed
 - Lua errors on every mouseover of an enemy (dead ones too) in a dungeon fight. WoW Forever's engine keeps the

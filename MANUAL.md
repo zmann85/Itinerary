@@ -169,8 +169,11 @@ Settings > Keys, or in the game's key bindings under *Itinerary*. A button's too
     With enemy nameplates on and a step with several kinds of mobs, it goes for the kind that's closest
     and worth it: alive, not tagged by someone else, not fighting another player (out of combat; in
     combat the last pick stays). Among mobs of the same name the game picks.
-    A step after one particular mob (Anaya Dawnrunner for her pendant: one kind of mob, one of it needed)
-    comes first, ahead of anything closer, until you have what you need from it.
+    Your step's own mobs always come before the ones of an along-the-way objective, however close those
+    are; an along-the-way mob only wins when none of your step's mobs is in reach (or the ones in view are
+    tagged by someone else). A step after one particular mob (Anaya Dawnrunner for her pendant: one kind of
+    mob, one of it needed) puts that mob first among its own: ahead of anything closer from the same kind of
+    step, until you have what you need from it.
   - **NPCs**: it targets the NPC you need to talk to and marks them with an orange circle. Press the key
     again to talk to them. That's handy for taking a contested escort quest first.
   - **Its face**: the button shows the **portrait** of the one it would target now: the mob or NPC on a

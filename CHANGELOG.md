@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- The target button always goes for your step's own mobs before the ones of an along-the-way objective,
+  however close those are (it used to prefer them only by a little, so one right next to you won). An
+  along-the-way mob wins only when none of your step's mobs is in reach, or the ones in view are tagged by
+  someone else. A mob an along-the-way step is after on its own (one of it needed) now comes first only among
+  the along-the-way ones.
+
 ## v2.1.4 (2026-10-19)
 
 ### New

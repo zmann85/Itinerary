@@ -357,37 +357,46 @@ end
 
 -- The closest one worth taking among the names, from the nameplates you can see (nameplates on): alive, not
 -- tagged by someone else, not already fighting another player (its name then goes last in the macro). How
--- close comes in steps (10, 11, 28 yards,
--- further) - what the game lets an addon know. nil: no nameplate fits (then the names decide).
+-- close comes in steps (10, 11, 28 yards, further) - what the game lets an addon know. nil: no nameplate fits
+-- (then the names decide). Also returns the names seen only on mobs someone else has tagged (blocked).
+-- Tiers before distance: your step's own mobs always before the along-the-way ones, and within each, the one
+-- particular mob a step is after (Anaya Dawnrunner) before anything closer.
+local function nameTier(n, prio, main)
+    local mine = main and (main[n] or main[n .. "s"])
+    local one = prio and (prio[n] or prio[n .. "s"])
+    return (mine and 2 or 0) + (one and 1 or 0)
+end
 local function nearestPlate(names, friendly, prio, main)
-    local want, first = {}, {}
+    local want = {}
     -- (a guide's plural - "Ice Claw Bears" - finds the mob too)
     for _, n in ipairs(names) do
         local one = n:gsub("s$", "")
-        want[n] = true; want[one] = true
-        if prio and prio[n] then first[n] = true; first[one] = true end
+        want[n] = n; want[one] = n
     end
     local best, bestScore
+    local good, tapped = {}, {}
     for _, p in ipairs(plates()) do
         local u = p.u
         local name = UnitName(u) or ""
         if want[name] and not UnitIsDead(u) and not UnitIsPlayer(u) then
             local ok = friendly or (UnitCanAttack("player", u) and not (UnitIsTapDenied and UnitIsTapDenied(u)))
             if ok then
+                good[want[name]] = true
                 local d = 4
                 if near(u, 3) then d = 1 elseif near(u, 2) then d = 2 elseif near(u, 4) then d = 3 end
                 -- busy with someone else (in combat, not with you): only when nothing else is there
                 local busy = not friendly and UnitAffectingCombat(u) and not UnitIsUnit(u .. "target", "player")
-                -- the one particular mob a step is after (Anaya Dawnrunner) before anything closer; your step's own
-                -- mobs a bit before the along-the-way ones (one range band: an along-the-way mob right next to you
-                -- still wins over one of yours far off)
-                local mine = main and (main[name] or main[name .. "s"])
-                local score = d + (busy and 5 or 0) - (first[name] and 20 or 0) - (mine and 1.5 or 0)
+                -- (a tier is worth more than any distance: 10 against at most 8)
+                local score = d + (busy and 5 or 0) - nameTier(name, prio, main) * 10
                 if not bestScore or score < bestScore then best, bestScore = u, score end
+            else
+                tapped[want[name]] = true
             end
         end
     end
-    return best
+    local blocked = {}
+    for n in pairs(tapped) do if not good[n] then blocked[n] = true end end
+    return best, blocked
 end
 
 -- /iti target: what the target button looks for and what it sees
@@ -417,21 +426,25 @@ function ns.targetDebug()
     if not ok then ns.print("target debug error: " .. tostring(err)) end
 end
 
-local function targetMacro(names, friendly, plate, prio)
+local function targetMacro(names, friendly, plate, prio, main, blocked)
     local lines = {}
-    -- the game won't target a nameplate by its unit in a macro, so the closest fitting mob's NAME goes last
-    -- (the last line that finds something wins); the game then takes the nearest of that name. The one mob a
-    -- step is after (prio: Anaya Dawnrunner) comes after that, so it wins whenever it's around.
+    -- The last line that finds something wins. Lowest first: names seen only on mobs someone else has tagged,
+    -- then by tier - along-the-way mobs, the one an along-the-way step is after, your step's own mobs, the one
+    -- your step is after (Anaya Dawnrunner) - so a mob of your step always beats an along-the-way one. The game
+    -- won't target a nameplate by its unit in a macro, so the closest fitting mob's NAME goes last in its tier;
+    -- the game then takes the nearest of that name.
     local first = plate and UnitName(plate)
-    local function isPrio(n) return prio and prio[n] end
+    local function add(n) lines[#lines + 1] = "/targetexact " .. n end
     for k = #names, 1, -1 do
-        if names[k] ~= first and not isPrio(names[k]) then lines[#lines + 1] = "/targetexact " .. names[k] end
+        if blocked and blocked[names[k]] and names[k] ~= first then add(names[k]) end
     end
-    if first and not isPrio(first) then lines[#lines + 1] = "/targetexact " .. first end
-    for k = #names, 1, -1 do
-        if names[k] ~= first and isPrio(names[k]) then lines[#lines + 1] = "/targetexact " .. names[k] end
+    for t = 0, 3 do
+        for k = #names, 1, -1 do
+            local n = names[k]
+            if n ~= first and not (blocked and blocked[n]) and nameTier(n, prio, main) == t then add(n) end
+        end
+        if first and nameTier(first, prio, main) == t then add(first) end
     end
-    if first and isPrio(first) then lines[#lines + 1] = "/targetexact " .. first end
     local tail = "\n/targetlasttarget [dead]"
     -- a mark on what you found, picked by what was actually targeted: an orange circle on friendly NPCs and
     -- players, a skull on enemies. Only a macro may do this (Lua gets blocked); "!" keeps an existing mark
@@ -703,8 +716,8 @@ do
         if acc < 0.3 then return end
         acc = 0
         if not (target and target.names and target:IsShown()) or InCombatLockdown() then return end
-        local ok, plate = pcall(nearestPlate, target.names, target.friendly, target.prio, target.main)
-        local text = targetMacro(target.names, target.friendly, ok and plate or nil, target.prio)
+        local ok, plate, blocked = pcall(nearestPlate, target.names, target.friendly, target.prio, target.main)
+        local text = targetMacro(target.names, target.friendly, ok and plate or nil, target.prio, target.main, ok and blocked or nil)
         if text ~= target.lastMacro then
             target.lastMacro = text
             target:SetAttribute("macrotext", text)
@@ -794,7 +807,7 @@ local function update()
     if #names > 0 then
         target.names, target.friendly, target.prio, target.main = names, friendly, prio, main
         target:SetAttribute("type", "macro")
-        target.lastMacro = targetMacro(names, friendly, nil, prio)
+        target.lastMacro = targetMacro(names, friendly, nil, prio, main)
         target:SetAttribute("macrotext", target.lastMacro)
         target.icon:SetTexture(friendly and "Interface\\Icons\\Ability_EyeOfTheOwl" or "Interface\\Icons\\Ability_Hunter_SniperShot")
         local sig = table.concat(names, "|") .. (friendly and "+" or "-")

@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.7 (2026-10-20)
 
 ### Fixed
 - A quest step meant for players without a profession (Bathran's Hair without [Find Herbs], the wolves of

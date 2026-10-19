@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.4 (2026-10-19)
 
 ### New
 - Along the way: the small × that instructions have is on side objectives too. It hides the entry on this
@@ -12,6 +12,12 @@
 ### Changed
 - The profession question for a new character (and `/iti professions`) has the look of the settings window:
   professions as chips, the first main profession as a switch, Save and Later, × and Escape to close.
+
+### Fixed
+- The target button didn't find the next step's NPC while you still had the last one targeted: "Talk on second
+  press" had turned its key into Interact with Target for any friendly NPC you had targeted, so the next
+  presses talked to the old one (or did nothing) until you cleared your target. Now only an NPC of the step
+  you're on makes the next press talk, and a new step undoes it right away.
 
 ## v2.1.3 (2026-10-19)
 

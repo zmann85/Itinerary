@@ -20,7 +20,7 @@ The **brass compass** on the minimap: click shows or hides the panel, right-clic
 
 - The **current step** (accept, complete, turn in, travel, fly, hearth, train, grind ...) with its hints and live objective counts
 - An **INSTRUCTIONS** card for things to keep doing, with clickable trainer and vendor errands
-- **ALONG THE WAY**: side objectives and items to collect while you pass
+- **ALONG THE WAY**: side objectives and items to collect while you pass; hide the ones you don't want with one click
 - The **next few steps**, skipped quests worth going back for, and your **pace** against a reference run
 - Item and spell names show as coloured links with their icons and tooltips
 

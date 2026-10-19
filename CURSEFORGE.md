@@ -57,6 +57,7 @@ Every part can be switched off. Hold **Shift** while talking to an NPC to do thi
 - **The recorder** writes a route while you play: quests with where you fought, trainers, vendors, flights, your hearthstone, dungeons, boats and the tram, death skips and the way you walked
 - **The route editor** (`/iti edit`) changes any step and everything it can do: every step type, conditions, hints, waypoints and kill areas (drag them on the world map), dialogue and macro buttons
 - **Share** a route as a text: Export in the editor, Import on the other side
+- **Export** the route you follow as JSON (`/iti dump`), to use it outside the game
 
 ### Commands
 
@@ -66,6 +67,7 @@ Every part can be switched off. Hold **Shift** while talking to an NPC to do thi
 - `/iti routes` list the routes for your character
 - `/iti edit`, `/iti recorder` route editor, recorder
 - `/iti export`, `/iti import` share a route
+- `/iti dump` write your route as JSON into the saved variables
 - `/iti gather` gather mode on/off
 - `/iti debug` details about the current step (for bug reports)
 

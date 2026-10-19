@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.3 (2026-10-19)
 
 ### Fixed
 - Flying didn't happen when the route's flight was an instruction ("Fly to Redridge" under Instructions while

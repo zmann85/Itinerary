@@ -5,7 +5,8 @@
 ### Fixed
 - Flying didn't happen when the route's flight was an instruction ("Fly to Redridge" under Instructions while
   the step was "Head to the Redridge Mountains"): talking to the flight master now flies you there as it does
-  when the flight is the step itself. That's how most of the routes' flights are written.
+  when the flight is the step itself. That's how most of the routes' flights are written. The arrow points to
+  the flight master until you're in the air, and only then to the step's place.
 
 ## v2.1.2 (2026-10-19)
 

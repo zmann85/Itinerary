@@ -1760,7 +1760,13 @@ function ns.arrowRoute(i)
         local side = s.col or s.mobs or s.t == "accept" or s.t == "turnin"
         local there = s.death and ItineraryCharDB.arrived[j] == "at" -- (at the place to die: on to the step)
         -- (a vendor errand only when you click it: then it's the arrow's manual target)
-        if s.t ~= "complete" and s.m and not side and not s.vendor and not s.rec and not s.errand and not there and not ns.stepDone(j) then add(j, s, false) end
+        if s.t ~= "complete" and s.m and not side and not s.vendor and not s.rec and not s.errand and not there and not ns.stepDone(j) then
+            -- a flight to take first ("Fly to Redridge" while the step is the travel there): the flight master
+            -- is where the arrow leads until you're in the air or there already - reaching them doesn't move
+            -- it on, and the step's own place comes after the flight
+            if s.t == "fly" and (s.way or s.x) then add(j, s, true) return seq end
+            add(j, s, false)
+        end
     end
     local s = steps[i]
     if s and s.m and s.m > 0 and not s.area then add(i, s, true) end

@@ -182,13 +182,21 @@ local function bindWanted()
     return false
 end
 local function optionText(o) return (o.name or ""):lower() end
--- the route wants a flight now: only when the step you're on is the flight (never a later one, so you
--- can't be flown away from a step you still have to do)
+-- the route wants a flight now: when the step you're on is the flight, or a flight runs along the way right
+-- now ("Fly to Redridge" under Instructions while the step is the travel there). Never a later step, so you
+-- can't be flown away from a step you still have to do
 local function flyWanted()
-    if not (ns.steps and ItineraryCharDB) then return nil end
+    if not (ns.steps and ItineraryCharDB) or ns.detourStep then return nil end
     local i = ItineraryCharDB.step
-    local s = ns.steps()[i]
-    if s and s.t == "fly" and s.name and not ns.detourStep and not ns.stepDone(i) then return s end
+    local steps = ns.steps()
+    local s = steps[i]
+    if s and s.t == "fly" and s.name and not ns.stepDone(i) then return s end
+    if ns.alongActive then
+        for _, j in ipairs(ns.alongActive(i)) do
+            local f = steps[j]
+            if f and f.t == "fly" and f.name and not ns.stepDone(j) then return f end
+        end
+    end
 end
 -- on the flight map: the node for the route's destination ("Ironforge", or a zone like "Loch Modan" for
 -- "Thelsamar, Loch Modan"), only if you can fly there from here

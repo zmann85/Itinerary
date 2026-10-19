@@ -798,7 +798,10 @@ local function update()
         target:SetAttribute("macrotext", target.lastMacro)
         target.icon:SetTexture(friendly and "Interface\\Icons\\Ability_EyeOfTheOwl" or "Interface\\Icons\\Ability_Hunter_SniperShot")
         local sig = table.concat(names, "|") .. (friendly and "+" or "-")
-        if sig ~= target.sig then target.sig = sig; setPortrait(nil) end
+        if sig ~= target.sig then
+            target.sig = sig; setPortrait(nil)
+            if ns.dropInteract then ns.dropInteract() end
+        end
         target.hotkey:SetText(hotkey(target))
         target:Show()
         -- hidden by setting: invisible and not clickable, but its key binding keeps working
@@ -812,6 +815,7 @@ local function update()
         end
     else
         target.names, target.sig = nil, nil
+        if ns.dropInteract then ns.dropInteract() end
         setPortrait(nil)
         target:SetAttribute("macrotext", nil)
         target:Hide()
@@ -904,10 +908,15 @@ function ns.buildItems(panel)
         if talking and ns.shiftOK then ns.shiftOK = GetTime() + 15 else ns.shiftOK = nil end
     end
     ns.releaseInteract = release
+    -- a new step (other names): a talk key still armed for the last NPC goes, Shift handling left as it is
+    ns.dropInteract = function()
+        if overridden and not InCombatLockdown() then ClearOverrideBindings(owner); overridden = false end
+    end
     target:HookScript("PostClick", function()
         if InCombatLockdown() or (ItineraryDB.auto and ItineraryDB.auto.interact == false) then return end
-        if not (target.friendly and UnitExists("target") and not UnitCanAttack("player", "target") and not UnitIsDead("target")) then return end
-        if UnitIsPlayer("target") then return end
+        -- only when what you have targeted is one of this step's NPCs: the NPC of the step before, still targeted
+        -- because this one isn't in reach yet, would get the next press (and every press for 8 seconds)
+        if not (target.friendly and targetFits()) then return end
         local k1, k2 = GetBindingKey("CLICK ItineraryTarget:LeftButton")
         if not k1 then return end
         SetOverrideBinding(owner, true, k1, "INTERACTTARGET")

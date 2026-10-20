@@ -89,16 +89,35 @@ end
 
 ---------------------------------------------------------------- which quests are ours
 local routeQuests, routeQuestsFor
+-- A quest the route takes somewhere. A pick-up that's only for when you have its items (RestedXP's "take it and
+-- hand it in at once, if you bought the parts": Harvesting the Harvesters, Pearl Diving) counts only while you
+-- have them - talking to the quest giver without them doesn't take a quest nothing in the route works on.
 local function inRoute(q)
     local r = ns.route and ns.route()
     if not r then return false end
     if routeQuestsFor ~= r.steps then -- a new step list (another route, or edited) builds it again
         routeQuests, routeQuestsFor = {}, r.steps
         for _, s in ipairs(r.steps) do
-            if s.t == "accept" then for _, id in ipairs(s.q) do routeQuests[id] = true end end
+            if s.t == "accept" then
+                for _, id in ipairs(s.q) do
+                    local cur = routeQuests[id]
+                    if not (s.need or s.needs) then
+                        routeQuests[id] = true
+                    elseif cur ~= true then
+                        cur = cur or {}
+                        cur[#cur + 1] = s
+                        routeQuests[id] = cur
+                    end
+                end
+            end
         end
     end
-    return routeQuests[q] or false
+    local e = routeQuests[q]
+    if e == true or not e then return e or false end
+    for _, s in ipairs(e) do
+        if ns.itemNeedsMet and ns.itemNeedsMet(s) then return true end
+    end
+    return false
 end
 -- Forever's "Camping 101: <Profession>" quests: one per profession, offered together; take the ones for the
 -- professions you picked (Cooking and First Aid included when you picked them)
@@ -1223,7 +1242,7 @@ local function vendorStepDone()
         if s and s.vendor then c.manual[j] = true end
         -- the guide's vendor visits (".vendor", "Vendor trash at Rallic Finn"): done when you open that vendor
         -- (a "Vendor trash" step with no NPC: any vendor). Steps that buy something finish on their items instead.
-        if s and s.t == "do" and not s.col and not s.need then
+        if s and s.t == "do" and not s.col and not s.need and not s.needs then
             local junk = s.name and (s.name:find("^Vendor trash") or s.name:find("^Sell ") or s.name:find("[Vv]endor"))
             -- (selling junk as an instruction next to your step: any vendor you open does it)
             local sell = s.errand and s.name and (s.name:find("^Vendor trash") or s.name:find("^Sell "))

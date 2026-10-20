@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Quest automation took a quest the route only picks up when you already have its items (take it and hand it in
+  at once, like Harvesting the Harvesters or Pearl Diving) whenever you talked to its quest giver, so it sat in
+  your log with nothing in the route working on it. Such a quest is now only taken while you have the items.
+- A route step can check several items (all of them must be in your bags, or all missing); before, only one of
+  them counted.
+
 ## v2.1.7 (2026-10-20)
 
 ### Fixed

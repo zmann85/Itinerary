@@ -674,12 +674,12 @@ function ns.prepareRoute(r)
         if not (n:find("^Buy ") or n:find("^Stock up")) or ammo(n) then return false end
         local auction = s.ah or (s.npc and s.npc:find("^Auctioneer")) or false
         if not (s.npc or auction) then return false end
-        return true, (s.col or s.need or auction) and true or false
+        return true, (s.col or s.need or s.needs or auction) and true or false
     end
     local function errand(s)
         local buy, onClose = optionalBuy(s)
         if buy then s.errandBuy = onClose or nil; return true end
-        if s.t ~= "do" or not s.npc or s.col or s.need or s.ah or s.item or s.death or s.untilQ or s.abandon or s.vendor then return false end
+        if s.t ~= "do" or not s.npc or s.col or s.need or s.needs or s.ah or s.item or s.death or s.untilQ or s.abandon or s.vendor then return false end
         if s.errand then return true end -- (marked as one: the recorder's food, drink and bags)
         local n = s.name or ""
         if n:find("^Vendor") or n:find("^Sell ") or n:find("^Repair ") then return true end
@@ -729,7 +729,7 @@ function ns.prepareRoute(r)
     -- arrow there first.
     local steps = r.steps
     -- (what can leave a step out for you; "skip while in Ironforge" and optional steps still show)
-    local COND = { "cond", "lvskip", "gateL", "need", "needProf", "skill", "skill2", "money", "dps", "ah", "ssf", "buffItem" }
+    local COND = { "cond", "lvskip", "gateL", "need", "needs", "needProf", "skill", "skill2", "money", "dps", "ah", "ssf", "buffItem" }
     local function conditional(x)
         for _, f in ipairs(COND) do if x[f] ~= nil then return true end end
         return false
@@ -1290,8 +1290,17 @@ function ns.itemNeedMet(need)
     if need[3] == "lt" then return have < (need[2] or 1) end
     return have >= (need[2] or 1)
 end
+-- a step's item checks: "need" (one item), "needs" (several, all of them: 14 Golem Isosprings and 5 Harvester
+-- Gyrostabilizers); routes for older versions carry the first one in "need" as well
+function ns.itemNeedsMet(s)
+    if s.needs then
+        for _, n in ipairs(s.needs) do if not ns.itemNeedMet(n) then return false end end
+        return true
+    end
+    return not s.need or ns.itemNeedMet(s.need)
+end
 function ns.itemStepIdle(s)
-    if s.need and not ns.itemNeedMet(s.need) then return true end
+    if (s.need or s.needs) and not ns.itemNeedsMet(s) then return true end
     if s.buffItem and ns.itemBuffUp(s.buffItem) then return true end
     return false
 end
@@ -1317,7 +1326,7 @@ local function notApplicable(s)
     -- ...and the self-found versions of steps (a vendor stop without the auction house hint) only then
     if s.ssf and not (ItineraryDB and ItineraryDB.skipAH) then return true end
     -- a step for when you have an item ("cook the Small Eggs") without it
-    if s.need and not s.along and not ns.itemNeedMet(s.need) then return true end
+    if (s.need or s.needs) and not s.along and not ns.itemNeedsMet(s) then return true end
     -- a quest step whose quests are all dropped (skipped, or their pre-quest was)
     if s.q and #s.q > 0 and QUEST_STEP[s.t] then
         local all = true
@@ -1771,7 +1780,7 @@ function ns.alongActive(i)
         -- (an item collect taken over by the current step still counts as its tier below)
         local tier = s.t == "do" and s.col
         if s.along and (not s.till or s.till >= i) and not ns.stepDone(j) and (tier or not (j ~= i and takenOver(s, cur)))
-           and not (j ~= i and comingUp(s, steps, i)) and not ((s.need or s.buffItem) and ns.itemStepIdle(s))
+           and not (j ~= i and comingUp(s, steps, i)) and not ((s.need or s.needs or s.buffItem) and ns.itemStepIdle(s))
            and not alongHidden(s) then
             out[#out + 1] = j
         end

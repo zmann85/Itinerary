@@ -1863,7 +1863,6 @@ local function buildArrow()
     arrow:SetScript("OnMouseUp", function(_, button)
         if button == "RightButton" and IsAltKeyDown() then ns.setArrowLocked(not ItineraryDB.arrow.locked) end
     end)
-    ns.applyArrowMouse()
     restorePos(arrow, ItineraryDB.arrow, "TOP", 0, -140)
     arrow.tex = arrow:CreateTexture(nil, "ARTWORK")
     arrow.tex:SetPoint("TOP", 0, -2)
@@ -2057,6 +2056,8 @@ local function buildArrow()
             self.dist:SetText(dt) -- just the distance (no "spot 1/3" or "way in" line)
         end
     end)
+    -- click-through last: the game turns a frame's mouse back on when it gets a mouse script (OnEnter above)
+    ns.applyArrowMouse()
 end
 
 -- Settings > Display > "Arrow instruction size"
@@ -2193,6 +2194,9 @@ function ns.applyArrowMouse()
     if not arrow then return end
     local through = ItineraryDB.arrow.clickThrough and ItineraryDB.arrow.locked and true or false
     arrow:EnableMouse(not through)
+    -- (clicks and hovering each: the game keeps them apart, and a mouse script switches them back on)
+    if arrow.SetMouseClickEnabled then arrow:SetMouseClickEnabled(not through) end
+    if arrow.SetMouseMotionEnabled then arrow:SetMouseMotionEnabled(not through) end
     if through and GameTooltip:GetOwner() == arrow then GameTooltip:Hide() end
 end
 function ns.setArrowLocked(on)

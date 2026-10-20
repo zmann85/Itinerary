@@ -6,6 +6,10 @@
 - The route's pins on the world map sit on top of the game's quest symbols (quest givers, the quests in your log,
   the tracked quest), which covered them; your own arrow, your group and the map's waypoint stay on top.
 
+### Fixed
+- Click through the arrow didn't work after a reload or login: the arrow took the mouse again (the game turns a
+  frame's mouse back on when it gets its hover script, which was set after the click-through).
+
 ## v2.1.12 (2026-10-20)
 
 ### Added

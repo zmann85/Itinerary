@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.9 (2026-10-20)
 
 ### Added
 - Settings > Quests > Skip overlevelled steps (on): off, the route doesn't leave anything out for your level.

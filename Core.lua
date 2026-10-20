@@ -1184,12 +1184,13 @@ end
 -- From ns.QUEST_PRE: the quests that come before a quest and the ones that follow it, and which of those the
 -- route takes - so you see what skipping a quest costs you before you skip it.
 local NONE = {}
-local chainFor, chainNext, chainCache = nil, nil, nil
+-- (no route pack, or one without the chains: no chains, and nothing breaks)
+local chainFor, chainNext, chainCache = false, {}, {}
 local function chainData()
-    local pre = ns.QUEST_PRE
+    local pre = ns.QUEST_PRE or NONE
     if chainFor ~= pre then
         chainFor, chainNext, chainCache = pre, {}, {}
-        for x, p in pairs(pre or NONE) do
+        for x, p in pairs(pre) do
             for _, list in ipairs({ p.g or NONE, p.s or NONE }) do
                 for _, y in ipairs(list) do
                     chainNext[y] = chainNext[y] or {}

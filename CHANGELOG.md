@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.13 (2026-10-20)
 
 ### Changed
 - The route's pins on the world map sit on top of the game's quest symbols (quest givers, the quests in your log,

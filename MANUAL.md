@@ -147,6 +147,9 @@ points at the area where the mobs are.
   click its instruction in the panel.
 - Hover the arrow for the step's details (Settings > Arrow > *Arrow tooltip*, on).
 - **Alt + right-click** the arrow to unlock it, drag it, then Alt + right-click again to lock it.
+- **Click-through** (Settings > Arrow > *Click through the arrow*, off): while the arrow is locked, your
+  mouse goes through it to whatever is behind it - no tooltip, no Alt + right-click. Unlock it under
+  *Arrow position* to move it; unlocked, it takes the mouse again.
 - Arrow styles (Settings > Arrow):
   - **Itinerary**, **Gold**, **White**, **Big**
   - **Guide**: green when you're heading the right way, red when the target is behind you
@@ -665,7 +668,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills, buy weapon skills, your class's skill list (worth a visit / auto-buy) |
 | Professions | Learn at the trainer, main professions, first profession, secondary professions, gather mode, gather data (shipped, own, both), gathering tracking, node icons, gathering tools |
 | Panel | Color scheme (Itinerary, Amethyst, Frost, Ember, Slate), instructions (own card or in the panel), the along-the-way entries you hid, item and spell links, panel style (card or minimal), opacity, size, text on a see-through panel (shadow or outline), grow direction, item & target button corner, lock |
-| Arrow | Arrow on/off, arrow look, instructions at the arrow, death skips at the arrow, their size, tooltip, lock |
+| Arrow | Arrow on/off, arrow look, instructions at the arrow, death skips at the arrow, their size, tooltip, click-through, lock |
 | Keys | Key bindings for the target and item buttons (two keys each); show the target button, talk on second press, tag with a spell, mark the target |
 | Sounds | The sound when a step is done: one of Itinerary's, your own sound files, or a sound your other add-ons share |
 

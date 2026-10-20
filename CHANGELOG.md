@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Settings > Arrow > Click through the arrow (off): while the waypoint arrow is locked, your mouse goes through
+  it to whatever is behind it. Unlocked (Arrow position), it takes the mouse again so you can drag it.
+
 ## v2.1.11 (2026-10-20)
 
 ### Added

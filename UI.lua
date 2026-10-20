@@ -1863,6 +1863,7 @@ local function buildArrow()
     arrow:SetScript("OnMouseUp", function(_, button)
         if button == "RightButton" and IsAltKeyDown() then ns.setArrowLocked(not ItineraryDB.arrow.locked) end
     end)
+    ns.applyArrowMouse()
     restorePos(arrow, ItineraryDB.arrow, "TOP", 0, -140)
     arrow.tex = arrow:CreateTexture(nil, "ARTWORK")
     arrow.tex:SetPoint("TOP", 0, -2)
@@ -2186,9 +2187,19 @@ C_Timer.NewTicker(2, function()
     if arrow and not arrow:IsShown() then ns.refreshArrow() end
 end)
 
+-- Settings > Arrow > Click through the arrow: while it's locked, the mouse goes through it to the world behind
+-- (no tooltip, no Alt + right-click); unlocked, it takes the mouse again so you can drag it
+function ns.applyArrowMouse()
+    if not arrow then return end
+    local through = ItineraryDB.arrow.clickThrough and ItineraryDB.arrow.locked and true or false
+    arrow:EnableMouse(not through)
+    if through and GameTooltip:GetOwner() == arrow then GameTooltip:Hide() end
+end
 function ns.setArrowLocked(on)
     ItineraryDB.arrow.locked = on
-    ns.print(on and "arrow locked (Alt + right-click it to unlock)" or "arrow unlocked - drag it where you like")
+    ns.applyArrowMouse()
+    ns.print(on and (ItineraryDB.arrow.clickThrough and "arrow locked - clicks go through it; unlock it in Settings > Arrow" or "arrow locked (Alt + right-click it to unlock)")
+        or "arrow unlocked - drag it where you like")
     if ns.refreshSettings then ns.refreshSettings() end
 end
 

@@ -195,6 +195,89 @@ function ns.trainerTip(owner, spec)
     end
     GameTooltip:Show()
 end
+-- the quest chain of a quest step (hover its title): the quests before it, this one, the ones that follow -
+-- for each where the route takes it - and what the route's follow-ups need from this step
+local CHAIN_MAX = 10 -- quests named on each side; the rest are counted
+local CHECK = "|TInterface\\RaidFrame\\ReadyCheck-Ready:0|t "
+function ns.chainTip(owner, s, at)
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    local Q = ns.quest
+    local ar, ag, ab = accent()
+    local steps = ns.steps()
+    local curCh = at and ns.chapterOf(at)
+    local function where(x)
+        if Q.flaggedDone(x) then return "done", 0.5, 0.5, 0.5 end
+        if Q.onQuest(x) then return "in your log", 0.55, 0.92, 0.5 end
+        local j = ns.routeQuestStep(x)
+        if not j then return "not on this route", 0.5, 0.5, 0.5 end
+        if ns.questDropped(x) then return "left out", 0.5, 0.5, 0.5 end
+        local n, ch = ns.chapterOf(j)
+        if j < (at or 0) then return "passed", 0.7, 0.7, 0.7 end
+        if n and n == curCh then return "this chapter", 0.85, 0.85, 0.85 end
+        return ch and ch.name or ("step " .. j), 0.85, 0.85, 0.85
+    end
+    local function nameOf(x) return ns.routeQuestName(x) or (C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(x)) end
+    -- (a chain whose quests share a name - The Defias Brotherhood, seven times - numbers them: "(part 2)")
+    local label = {}
+    local function names(ch, q)
+        local all, count, nth = {}, {}, {}
+        for _, x in ipairs(ch.before) do all[#all + 1] = x end
+        all[#all + 1] = q
+        for _, x in ipairs(ch.after) do all[#all + 1] = x end
+        for _, x in ipairs(all) do local n = nameOf(x); if n then count[n] = (count[n] or 0) + 1 end end
+        for _, x in ipairs(all) do
+            local n = nameOf(x)
+            if n and count[n] > 1 then nth[n] = (nth[n] or 0) + 1; label[x] = n .. " (part " .. nth[n] .. ")" else label[x] = n end
+        end
+    end
+    local function line(x, this)
+        local name = label[x]
+        if not name then return false end
+        local r, g, b = 1, 1, 1
+        local right, rr, rg, rb = where(x)
+        if this then r, g, b = ar, ag, ab; right, rr, rg, rb = "this step", ar, ag, ab
+        elseif right == "done" or right == "not on this route" or right == "left out" then r, g, b = 0.6, 0.6, 0.6 end
+        GameTooltip:AddDoubleLine((Q.flaggedDone(x) and not this and CHECK or "   ") .. name, right, r, g, b, rr, rg, rb)
+        return true
+    end
+    local function list(qs)
+        local shown, more = 0, 0
+        for _, x in ipairs(qs) do
+            if shown < CHAIN_MAX and line(x) then shown = shown + 1 else more = more + 1 end
+        end
+        if more > 0 then GameTooltip:AddLine("   +" .. more .. " more", 0.6, 0.6, 0.6) end
+    end
+    local seen, any = {}, false
+    for _, q in ipairs(s.q or {}) do
+        local ch = not seen[q] and ns.questChain(q)
+        seen[q] = true
+        if ch then
+            if any then GameTooltip:AddLine(" ") end
+            any = true
+            label = {}
+            names(ch, q)
+            GameTooltip:AddLine("QUEST CHAIN", ns.WARM[1], ns.WARM[2], ns.WARM[3])
+            list(ch.before)
+            if not line(q, true) then GameTooltip:AddDoubleLine("   " .. ("Quest " .. q), "this step", ar, ag, ab, ar, ag, ab) end
+            list(ch.after)
+            local f = ns.routeFollowUps(q, at)
+            local n = #f
+            if n > 0 then
+                local what = n == 1 and "its follow-up" or ("its " .. n .. " follow-ups")
+                local text = s.t == "accept" and ("Skip it and the route leaves out " .. what .. " too.")
+                    or s.t == "turnin" and ("The route takes " .. what .. " once you've handed it in.")
+                    or ("The route takes " .. what .. " once it's done.")
+                GameTooltip:AddLine(text, 0.7, 0.7, 0.7, true)
+            elseif #ch.after == 0 then
+                GameTooltip:AddLine("The end of the chain.", 0.7, 0.7, 0.7, true)
+            else
+                GameTooltip:AddLine("The route doesn't take its follow-ups.", 0.7, 0.7, 0.7, true)
+            end
+        end
+    end
+    if any then GameTooltip:Show() else GameTooltip:Hide() end
+end
+
 -- what kind of trainer a route step visits, as a tooltip spec (nil: not a trainer)
 function ns.trainerSpec(s)
     if not s or s.t ~= "train" then return nil end
@@ -314,16 +397,25 @@ local function questName(q, name)
     return string.format("|cff%02x%02x%02x%s|r", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5), name)
 end
 ns.questName = questName
-local function title(s)
+-- after a quest's name on your step: how many quests later on the route follow from it ("+2 follow-ups"; the
+-- title's tooltip has the chain)
+local function chainMark(q, i)
+    if not (i and q and ns.routeFollowUps) then return "" end
+    local n = #ns.routeFollowUps(q, i)
+    if n == 0 then return "" end
+    return "  " .. ns.hintHex() .. "+" .. n .. " follow-up" .. (n == 1 and "" or "s") .. "|r"
+end
+-- (i: the step's place on the route, for the panel's own title - it adds the chain marks)
+local function title(s, i)
     if s.detour and s.name then return linkify(s.name) .. (s.npc and (" at " .. s.npc) or "") end
     if s.n then
         -- (a quest of the step you're leaving out - a profession you didn't pick - isn't named)
         local t = {}
         for k, n in ipairs(s.n) do
             local q = s.q and s.q[k]
-            if not (q and ns.questDropped and ns.questDropped(q) and #s.n > 1) then t[#t + 1] = questName(q, n) end
+            if not (q and ns.questDropped and ns.questDropped(q) and #s.n > 1) then t[#t + 1] = questName(q, n) .. chainMark(q, i) end
         end
-        if #t == 0 then for k, n in ipairs(s.n) do t[k] = questName(s.q and s.q[k], n) end end
+        if #t == 0 then for k, n in ipairs(s.n) do t[k] = questName(s.q and s.q[k], n) .. chainMark(s.q and s.q[k], i) end end
         return table.concat(t, "\n")
     end
     if s.t == "complete" then
@@ -331,7 +423,7 @@ local function title(s)
         local names, seen = {}, {}
         for _, q in ipairs(s.q or {}) do
             local n = questTitle(q)
-            if n and not seen[n] then seen[n] = true; names[#names + 1] = questName(q, n) end
+            if n and not seen[n] then seen[n] = true; names[#names + 1] = questName(q, n) .. chainMark(q, i) end
         end
         if #names > 0 then return table.concat(names, "\n") end
         if s.obj and #s.obj > 0 then return table.concat(s.obj, "\n") end
@@ -694,14 +786,18 @@ local function buildPanel()
     panel.title:SetPoint("TOPLEFT", panel.icon, "TOPRIGHT", 8, 1)
     panel.title:SetWidth(W - PAD * 2 - 26)
     panel.title:SetWordWrap(true)
-    -- a trainer step: hover its title for what the trainer has for you (mouse motion only, so dragging
-    -- the panel still works; shown only on trainer steps, so links in other titles keep working)
+    -- a trainer step: hover its title for what the trainer has for you; a quest step of a quest chain: for the
+    -- chain (mouse motion only, so dragging the panel still works; shown only on those steps, so links in other
+    -- titles keep working)
     do
         local hov = CreateFrame("Frame", nil, panel)
         hov:SetPoint("TOPLEFT", panel.icon, "TOPLEFT", -2, 2)
         hov:SetPoint("BOTTOMRIGHT", panel.title, "BOTTOMRIGHT", 2, -2)
         local ok = pcall(function() hov:SetMouseClickEnabled(false); hov:SetMouseMotionEnabled(true) end)
-        hov:SetScript("OnEnter", function(self) if self.spec then ns.trainerTip(self, self.spec) end end)
+        hov:SetScript("OnEnter", function(self)
+            if self.spec then ns.trainerTip(self, self.spec)
+            elseif self.chain then ns.chainTip(self, self.chain, self.chainAt) end
+        end)
         hov:SetScript("OnLeave", function() GameTooltip:Hide() end)
         hov:Hide()
         if ok then panel.titleHover = hov end
@@ -1505,7 +1601,7 @@ function ns.refresh()
         panel.progress:SetWidth(math.max(1, (W - 2) * frac))
         panel.progress:SetShown(cp and true or false)
         panel.icon:SetTexture(ICON[s.t])
-        panel.title:SetText(title(s))
+        panel.title:SetText(title(s, not detour and i or nil))
         local dt = detail(s)
         -- a quest timer goes on the instruction that runs until the turn-in when there is one (more
         -- prominent there), else on your step
@@ -1523,7 +1619,13 @@ function ns.refresh()
     if panel.titleHover then
         local spec = s and ns.trainerSpec(s) or nil
         panel.titleHover.spec = spec
-        panel.titleHover:SetShown(spec ~= nil)
+        -- a quest step of a quest chain: hover the title for the chain
+        local chain = nil
+        if not spec and s and not detour and ns.QUEST_STEP[s.t] and s.q and ns.questChain then
+            for _, q in ipairs(s.q) do if ns.questChain(q) then chain = s break end end
+        end
+        panel.titleHover.chain, panel.titleHover.chainAt = chain, i
+        panel.titleHover:SetShown(spec ~= nil or chain ~= nil)
     end
     local y = -(34 + math.max(18, panel.title:GetStringHeight()) + 4 + ((panel.detail:GetText() or "") ~= "" and panel.detail:GetStringHeight() or 0) + 10)
     -- recommended actions and side objectives (along-the-way steps), with their explanations

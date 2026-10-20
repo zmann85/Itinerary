@@ -8,6 +8,9 @@
   back to one brings its quest back. Chat says when a part of a chapter is skipped for your level.
 - Settings > Keys: a second key for the target button and each quest item button, as in the game's Key
   Bindings. Changing or clearing one keeps the other; the button tooltips name both.
+- Quest chains on your step: a quest the route takes follow-ups of later says so after its name ("+7
+  follow-ups"), and hovering the quest name shows its chain - the quests before it (done ones checked), this
+  one and the ones after it, each with where the route takes it - and what skipping it leaves out.
 
 ### Fixed
 - A guide's level jump (Westfall 13-15 is skipped when you get there at 15 or above) skipped the rest of the

@@ -63,7 +63,10 @@ From top to bottom:
   route's level range. A thin bar along the top shows how far through the chapter you are. Click the
   header to open the **chapter list** and jump to any chapter.
 - **The step**: what to do now, with the NPC, quest names coloured by difficulty, and live objective
-  counts (*Filled Tourmaline Phial 0/1*).
+  counts (*Filled Tourmaline Phial 0/1*). A quest the route takes follow-ups of later says so after its name
+  (*The Defias Brotherhood +7 follow-ups*). Hover the quest name for its **quest chain**: the quests before
+  it (done ones checked), this one, and the ones after it, each with where the route takes it (its chapter,
+  *this chapter*, *in your log*, *not on this route*).
 - **Hint**: a line under the step with extra advice (*Fill the Tourmaline Phial from the moonwell ...*). Items and
   spells in the text show their icon. Hover them for the tooltip; Shift-click links them in chat.
 - **ALONG THE WAY**: side objectives you work on while you go, with live counts. These are quest
@@ -219,7 +222,8 @@ You rarely have to touch anything:
   you eat it.
 
 **Skipping a quest**: if you skip a step where you would *accept* a quest (›), that quest is dropped. Its
-later steps and all follow-up quests are left out too, and chat tells you how many. Taking the quest
+later steps and all follow-up quests are left out too, and chat tells you how many - before you skip,
+the *+N follow-ups* after its name and its chain (hover the name) show what you'd leave out. Taking the quest
 anyway (or going back with ‹) brings them back. Abandoning a quest in your quest log drops it the same
 way.
 

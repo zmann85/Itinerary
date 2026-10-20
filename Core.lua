@@ -1180,6 +1180,118 @@ function ns.undropQuests(list)
     dropCache = nil
 end
 
+---------------------------------------------------------------- quest chains (the step title's tooltip)
+-- From ns.QUEST_PRE: the quests that come before a quest and the ones that follow it, and which of those the
+-- route takes - so you see what skipping a quest costs you before you skip it.
+local NONE = {}
+local chainFor, chainNext, chainCache = nil, nil, nil
+local function chainData()
+    local pre = ns.QUEST_PRE
+    if chainFor ~= pre then
+        chainFor, chainNext, chainCache = pre, {}, {}
+        for x, p in pairs(pre or NONE) do
+            for _, list in ipairs({ p.g or NONE, p.s or NONE }) do
+                for _, y in ipairs(list) do
+                    chainNext[y] = chainNext[y] or {}
+                    table.insert(chainNext[y], x)
+                end
+            end
+        end
+        for _, l in pairs(chainNext) do table.sort(l) end
+    end
+    return pre or NONE
+end
+-- x can't be done without q: q is one of the quests it needs all of, or every way to it (any one of) goes
+-- through q
+local function needsQuest(x, q, depth)
+    if x == q then return true end
+    if depth > 12 then return false end
+    local p = chainData()[x]
+    if not p then return false end
+    for _, y in ipairs(p.g or NONE) do if needsQuest(y, q, depth + 1) then return true end end
+    if p.s and #p.s > 0 then
+        for _, y in ipairs(p.s) do if not needsQuest(y, q, depth + 1) then return false end end
+        return true
+    end
+    return false
+end
+-- where the route takes each quest (its first pick-up) and the names it gives them, once per step list
+local routeQ = setmetatable({}, { __mode = "k" })
+local function routeQuests(steps)
+    local e = routeQ[steps]
+    if e and e.n == #steps then return e end
+    e = { n = #steps, at = {}, name = {} }
+    for j, s in ipairs(steps) do
+        for k, q in ipairs(s.q or NONE) do
+            if s.t == "accept" and not e.at[q] then e.at[q] = j end
+            if s.n and s.n[k] and not e.name[q] then e.name[q] = s.n[k] end
+        end
+    end
+    routeQ[steps] = e
+    return e
+end
+-- q's chain: { before = {...}, after = {...} }, quest IDs in chain order (before: the earliest first; after:
+-- the quests that need q, nearest first). Nil when q isn't part of a chain.
+function ns.questChain(q)
+    local pre = chainData()
+    -- (what follows q is fixed and kept; what comes before is worked out each time: which of several ways to
+    -- it you took can change)
+    local after = chainCache[q]
+    if after == nil then
+        after = {}
+        local seenA, wave = { [q] = true }, { q }
+        for _ = 1, 12 do
+            local nextWave = {}
+            for _, y in ipairs(wave) do
+                for _, x in ipairs(chainNext[y] or NONE) do
+                    if not seenA[x] and needsQuest(x, q, 0) then seenA[x] = true; after[#after + 1] = x; nextWave[#nextWave + 1] = x end
+                end
+            end
+            if #nextWave == 0 then break end
+            wave = nextWave
+        end
+        chainCache[q] = after
+    end
+    if not pre[q] and #after == 0 then return nil end
+    local before, seenB = {}, { [q] = true }
+    local function up(x, depth)
+        local p = pre[x]
+        if not p or depth > 12 then return end
+        local list = {}
+        for _, y in ipairs(p.g or NONE) do list[#list + 1] = y end
+        if p.s and #p.s > 0 then
+            -- (any one of: the one you did, else the one the route takes, else the first)
+            local pick = p.s[1]
+            local at = routeQuests(ns.steps()).at
+            for _, y in ipairs(p.s) do if flaggedDone(y) then pick = y break end end
+            if not flaggedDone(pick) then for _, y in ipairs(p.s) do if at[y] then pick = y break end end end
+            list[#list + 1] = pick
+        end
+        for _, y in ipairs(list) do
+            if not seenB[y] then seenB[y] = true; up(y, depth + 1); before[#before + 1] = y end
+        end
+    end
+    up(q, 0)
+    if #before == 0 and #after == 0 then return nil end
+    return { before = before, after = after }
+end
+-- the follow-ups of q the route still takes after step i (not done, not in your log, not left out already):
+-- { {q = x, step = j}, ... } in route order
+function ns.routeFollowUps(q, i)
+    local ch = ns.questChain(q)
+    if not ch then return NONE end
+    local at = routeQuests(ns.steps()).at
+    local out = {}
+    for _, x in ipairs(ch.after) do
+        local j = at[x]
+        if j and j > (i or 0) and not onQuest(x) and not flaggedDone(x) and not dropped(x) then out[#out + 1] = { q = x, step = j } end
+    end
+    table.sort(out, function(a, b) return a.step < b.step end)
+    return out
+end
+function ns.routeQuestName(q) return routeQuests(ns.steps()).name[q] end
+function ns.routeQuestStep(q) return routeQuests(ns.steps()).at[q] end
+
 -- an auction house step: tagged by the guide, or one that sends you to an auctioneer
 local function isAH(s)
     if s.ah then return true end

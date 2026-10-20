@@ -1470,7 +1470,9 @@ function ns.stepDone(i)
         if all then return true end
     end
     if s.t == "accept" then
-        for _, q in ipairs(s.q) do if not (onQuest(q) or flaggedDone(q)) then return false end end
+        -- (several quests: one you skipped, abandoned or weren't offered doesn't hold up the others, as for
+        -- hand-ins; the panel doesn't name it either)
+        for _, q in ipairs(s.q) do if not (onQuest(q) or flaggedDone(q) or (#s.q > 1 and leftOut(q))) then return false end end
         return true
     elseif s.t == "complete" then
         for k, q in ipairs(s.q) do
@@ -1558,13 +1560,19 @@ end
 function ns.stepProgress(i)
     local s = ns.steps()[i]
     if not s or not s.q or #s.q < 2 then return nil end
-    local n = 0
+    -- (the quests you left out don't count: "1/1" after skipping one of two is just the step itself)
+    local n, total, seen = 0, 0, {}
     for _, q in ipairs(s.q) do
-        if s.t == "accept" and (onQuest(q) or flaggedDone(q)) then n = n + 1
-        elseif s.t == "complete" and (flaggedDone(q) or (onQuest(q) and readyToTurnIn(q))) then n = n + 1
-        elseif s.t == "turnin" and flaggedDone(q) then n = n + 1 end
+        if not seen[q] and not leftOut(q) then
+            seen[q] = true
+            total = total + 1
+            if s.t == "accept" and (onQuest(q) or flaggedDone(q)) then n = n + 1
+            elseif s.t == "complete" and (flaggedDone(q) or (onQuest(q) and readyToTurnIn(q))) then n = n + 1
+            elseif s.t == "turnin" and flaggedDone(q) then n = n + 1 end
+        end
     end
-    return n, #s.q
+    if total < 2 then return nil end
+    return n, total
 end
 
 local LOOKAHEAD = 12

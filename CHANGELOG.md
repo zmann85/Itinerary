@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- A pick-up step for several quests waited for a quest you had skipped, abandoned or weren't offered (Testing the
+  Wells taken, Murloc Gills left out: the step stayed at 1/2 until you skipped it). Such a quest no longer holds up
+  the others, as for hand-ins. The panel's count leaves out the quests you left out, and an objective step for
+  two objectives of one quest no longer shows a quest count.
+
 ## v2.1.8 (2026-10-20)
 
 ### Fixed

@@ -751,8 +751,11 @@ end
 
 -- the tooltip's key line: the key, and where to change it (Itinerary's settings, Keys)
 local function keyLine(b)
-    local key = GetBindingKey and b.bindName and GetBindingKey("CLICK " .. b.bindName .. ":LeftButton")
-    local text = key and ("Key: " .. (GetBindingText and GetBindingText(key) or key) .. " - change it under Keys in Itinerary's settings (/iti settings)")
+    local k1, k2
+    if GetBindingKey and b.bindName then k1, k2 = GetBindingKey("CLICK " .. b.bindName .. ":LeftButton") end
+    local function name(k) return GetBindingText and GetBindingText(k) or k end
+    local text = k1 and ((k2 and ("Keys: " .. name(k1) .. " or " .. name(k2)) or ("Key: " .. name(k1)))
+            .. " - change " .. (k2 and "them" or "it") .. " under Keys in Itinerary's settings (/iti settings)")
         or "Bind a key under Keys in Itinerary's settings (/iti settings)"
     GameTooltip:AddLine(text, 0.5, 0.5, 0.5, true)
 end

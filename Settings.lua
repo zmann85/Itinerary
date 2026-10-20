@@ -617,27 +617,34 @@ local function buildRow(opt, i)
             self:SetHeight(8 + SEG_H + 8 + 16 + 6 + self.sub:GetStringHeight() + 10)
         end
     elseif opt.kind == "key" then
-        -- click, then press a key (or a mouse button 3-5) to bind it; right-click clears it
+        -- two keys, as in the game's Key Bindings: click one, then press a key (or a mouse button 3-5) to bind
+        -- it; right-click clears it. Changing one keeps the other.
         row.lbl:SetText(opt.label)
         local cmd = "CLICK " .. opt.bind .. ":LeftButton"
-        local b = segment(row, "")
-        b:SetSize(150, SEG_H)
-        b:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, -8)
-        b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
-        b.tip = "Click, then press a key, a mouse button (3-5) or turn the mouse wheel - with Shift, Ctrl or Alt if you like. Right-click clears it. Escape cancels."
-        local function keysOf() return GetBindingKey and { GetBindingKey(cmd) } or {} end
+        local KW = 128
+        row.lbl:SetWidth(W - PAD * 2 - KW * 2 - 16)
+        local function keysOf()
+            if not GetBindingKey then return {} end
+            local k1, k2 = GetBindingKey(cmd)
+            return { k1, k2 }
+        end
+        local slots = {}
         local function stop()
-            if win.capture == b then win.capture = nil end
+            for _, b in ipairs(slots) do if win.capture == b then win.capture = nil end end
             win:EnableKeyboard(false)
             win:SetScript("OnKeyDown", nil)
             win:EnableMouseWheel(false)
             win:SetScript("OnMouseWheel", nil)
             refresh()
         end
-        local function bind(key)
+        local function bind(slot, key)
             if InCombatLockdown() then ns.print("key bindings can only change outside combat") stop() return end
-            for _, k in ipairs(keysOf()) do SetBinding(k) end
-            if key then SetBinding(key, cmd) end
+            local keys = keysOf()
+            for n = 1, 2 do if keys[n] then SetBinding(keys[n]) end end
+            keys[slot] = key
+            -- (the same key in both: once)
+            if keys[1] and keys[1] == keys[2] then keys[2] = nil end
+            for n = 1, 2 do if keys[n] then SetBinding(keys[n], cmd) end end
             SaveBindings(GetCurrentBindingSet and GetCurrentBindingSet() or 1)
             if ns.updateItems then ns.updateItems() end
             stop()
@@ -650,34 +657,50 @@ local function buildRow(opt, i)
             if IsShiftKeyDown() then p = p .. "SHIFT-" end
             return p .. key
         end
-        b:SetScript("OnClick", function(_, button)
-            if button == "RightButton" then bind(nil) return end
-            if win.capture == b then stop() return end
-            win.capture = b
-            b.text:SetText("Press a key…"); b:SetActive(true)
-            win:EnableKeyboard(true)
-            if win.SetPropagateKeyboardInput then win:SetPropagateKeyboardInput(false) end
-            win:SetScript("OnKeyDown", function(_, key)
-                if key == "ESCAPE" then stop() return end
-                if MODS[key] then return end
-                bind(combo(key))
+        for slot = 2, 1, -1 do
+            local b = segment(row, "")
+            b:SetSize(KW, SEG_H)
+            if slot == 2 then b:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, -8)
+            else b:SetPoint("RIGHT", slots[2], "LEFT", -4, 0) end
+            b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+            b.tip = (slot == 2 and "A second key for the same thing. " or "")
+                .. "Click, then press a key, a mouse button (3-5) or turn the mouse wheel - with Shift, Ctrl or Alt if you like. Right-click clears it. Escape cancels."
+            b:SetScript("OnClick", function(_, button)
+                if button == "RightButton" then bind(slot, nil) return end
+                if win.capture == b then stop() return end
+                -- (another key button waiting for a key: this one takes over)
+                win.capture = b
+                refresh()
+                b.text:SetText("Press a key…"); b:SetActive(true)
+                win:EnableKeyboard(true)
+                if win.SetPropagateKeyboardInput then win:SetPropagateKeyboardInput(false) end
+                win:SetScript("OnKeyDown", function(_, key)
+                    if key == "ESCAPE" then stop() return end
+                    if MODS[key] then return end
+                    bind(slot, combo(key))
+                end)
+                -- the mouse wheel (with Shift / Ctrl / Alt too) anywhere over this window
+                win:EnableMouseWheel(true)
+                win:SetScript("OnMouseWheel", function(_, delta)
+                    bind(slot, combo(delta > 0 and "MOUSEWHEELUP" or "MOUSEWHEELDOWN"))
+                end)
             end)
-            -- the mouse wheel (with Shift / Ctrl / Alt too) anywhere over this window
-            win:EnableMouseWheel(true)
-            win:SetScript("OnMouseWheel", function(_, delta)
-                bind(combo(delta > 0 and "MOUSEWHEELUP" or "MOUSEWHEELDOWN"))
+            b:SetScript("OnMouseDown", function(_, button)
+                if win.capture ~= b then return end
+                local m = ({ MiddleButton = "BUTTON3", Button4 = "BUTTON4", Button5 = "BUTTON5" })[button]
+                if m then bind(slot, combo(m)) end
             end)
-        end)
-        b:SetScript("OnMouseDown", function(_, button)
-            if win.capture ~= b then return end
-            local m = ({ MiddleButton = "BUTTON3", Button4 = "BUTTON4", Button5 = "BUTTON5" })[button]
-            if m then bind(combo(m)) end
-        end)
+            slots[slot] = b
+        end
+        row.keyButtons = slots
         function row:Refresh()
-            if win.capture ~= b then
-                local k = keysOf()[1]
-                b.text:SetText(k and (GetBindingText and GetBindingText(k) or k) or "Not bound")
-                b:SetActive(false, not k)
+            local keys = keysOf()
+            for slot, b in ipairs(slots) do
+                if win.capture ~= b then
+                    local k = keys[slot]
+                    b.text:SetText(k and (GetBindingText and GetBindingText(k) or k) or (slot == 1 and "Not bound" or "Second key"))
+                    b:SetActive(false, not k)
+                end
             end
             self.sub:SetText(opt.desc or "")
             self:SetHeight(opt.desc and math.max(ROW_H, 8 + SEG_H + 6 + self.sub:GetStringHeight() + 10) or (8 + SEG_H + 12))

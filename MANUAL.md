@@ -152,8 +152,9 @@ minimap (Off, Current, Next 3, Next 5; default Next 5), and the line.
 
 ## 4. Item and target buttons
 
-Next to the panel sit small action buttons. Each one can have a **key binding**: set them in
-Settings > Keys, or in the game's key bindings under *Itinerary*. A button's tooltip shows its key.
+Next to the panel sit small action buttons. Each one can have **two key bindings**: set them in
+Settings > Keys (click a key's button, then press the key; right-click clears it, the other key stays), or in
+the game's key bindings under *Itinerary*. A button's tooltip shows its keys.
 
 - **Quest item buttons (up to 4)**: the usable items your step needs (a quest item to use at a spot, a
   book to learn a profession). Your **Hearthstone** shows on hearth steps, with its cooldown.
@@ -652,7 +653,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | Professions | Learn at the trainer, main professions, first profession, secondary professions, gather mode, gather data (shipped, own, both), gathering tracking, node icons, gathering tools |
 | Panel | Color scheme (Itinerary, Amethyst, Frost, Ember, Slate), instructions (own card or in the panel), the along-the-way entries you hid, item and spell links, panel style (card or minimal), opacity, size, text on a see-through panel (shadow or outline), grow direction, item & target button corner, lock |
 | Arrow | Arrow on/off, arrow look, instructions at the arrow, death skips at the arrow, their size, tooltip, lock |
-| Keys | Key bindings for the target and item buttons; show the target button, talk on second press, tag with a spell, mark the target |
+| Keys | Key bindings for the target and item buttons (two keys each); show the target button, talk on second press, tag with a spell, mark the target |
 
 <details>
 <summary><b>Screenshots of every settings tab</b> (click to open)</summary>

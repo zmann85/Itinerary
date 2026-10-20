@@ -6,6 +6,8 @@
 - Settings > Quests > Skip overlevelled steps (on): off, the route doesn't leave anything out for your level.
   Quests in your log that a level skip left out show in the panel's skipped line, marked "your level"; going
   back to one brings its quest back. Chat says when a part of a chapter is skipped for your level.
+- Settings > Keys: a second key for the target button and each quest item button, as in the game's Key
+  Bindings. Changing or clearing one keeps the other; the button tooltips name both.
 
 ### Fixed
 - A guide's level jump (Westfall 13-15 is skipped when you get there at 15 or above) skipped the rest of the

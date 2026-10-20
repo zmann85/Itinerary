@@ -1436,6 +1436,13 @@ function ns.timeText(sec)
 end
 
 -- Is step i finished? Quest steps read the quest log; the rest are marked by events or by hand.
+-- A quest of a step for several quests that you're not going to have: skipped or abandoned (and what needs it),
+-- or not offered to you - and not in your log now
+local function leftOut(q)
+    if onQuest(q) then return false end
+    local c = ItineraryCharDB
+    return dropped(q) or (c and c.unavailQ and c.unavailQ[q]) and true or false
+end
 function ns.stepDone(i)
     local s = ns.steps()[i]
     if not s then return true end
@@ -1469,6 +1476,7 @@ function ns.stepDone(i)
         for k, q in ipairs(s.q) do
             local oi = s.qo and s.qo[k] or 0
             local ok = flaggedDone(q) or (onQuest(q) and (oi > 0 and objectiveDone(q, oi) or (oi == 0 and readyToTurnIn(q))))
+                or (#s.q > 1 and leftOut(q))
             if not ok then return false end
         end
         -- items to loot on the way that aren't quest objectives (the Fang that starts the next quest): in
@@ -1481,7 +1489,9 @@ function ns.stepDone(i)
         end
         return true
     elseif s.t == "turnin" then
-        for _, q in ipairs(s.q) do if not flaggedDone(q) then return false end end
+        -- (a step for several quests: one you skipped, abandoned or weren't offered doesn't hold up the others -
+        -- An Aggressive Defense handed in, Culling the Threat skipped. All of them left out: not for you at all)
+        for _, q in ipairs(s.q) do if not (flaggedDone(q) or (#s.q > 1 and leftOut(q))) then return false end end
         return true
     elseif s.t == "hearth" or s.t == "fly" then
         -- already where the step would take you

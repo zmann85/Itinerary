@@ -8,6 +8,9 @@
   your log with nothing in the route working on it. Such a quest is now only taken while you have the items.
 - A route step can check several items (all of them must be in your bags, or all missing); before, only one of
   them counted.
+- A hand-in or objective step for several quests waited for a quest you had skipped, abandoned or weren't
+  offered (An Aggressive Defense handed in, Culling the Threat skipped: the step stayed at 1/2). Such a quest no
+  longer holds up the others.
 
 ## v2.1.7 (2026-10-20)
 

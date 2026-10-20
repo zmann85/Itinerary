@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- The route's pins on the world map sit on top of the game's quest symbols (quest givers, the quests in your log,
+  the tracked quest), which covered them; your own arrow, your group and the map's waypoint stay on top.
+
 ## v2.1.12 (2026-10-20)
 
 ### Added

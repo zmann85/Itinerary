@@ -159,8 +159,9 @@ points at the area where the mobs are.
 continent map) and on the minimap. Your current stop is in your theme colour. Steps at the same place
 share one pin: *2-3* is a hand-in and the follow-up quest at the same NPC. On the world map a dotted line
 runs from one stop to the next; the stretch to your next stop is the brighter one. On the minimap only the
-first pin stays at the edge when it's far away; the others show once they're in range. Hover a pin for its
-steps. Settings > Travel: *Map pins* (all of them, also `/iti pins`), how many on the world map and on the
+first pin stays at the edge when it's far away; the others show once they're in range. On the world map the
+pins sit on top of the game's quest symbols (quest givers, your quests, the tracked quest), under your own
+arrow and your group. Hover a pin for its steps. Settings > Travel: *Map pins* (all of them, also `/iti pins`), how many on the world map and on the
 minimap (Off, Current, Next 3, Next 5; default Next 5), and the line.
 
 ---

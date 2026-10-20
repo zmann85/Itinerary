@@ -98,6 +98,25 @@ function ns.routePlaces(n)
     return places
 end
 
+-- Our world map pins go above the game's quest symbols - quest givers, the quests in your log, the tracked
+-- quest - which covered them, and stay below your own arrow, your group and the map's waypoint: a pin level of
+-- our own right above the tracked quest's. A client without those levels keeps HereBeDragons' default.
+local PIN_LEVEL = "PIN_FRAME_LEVEL_ITINERARY"
+local pinLevel -- PIN_LEVEL once set up, false when the map can't take it
+function ns.mapPinLevel()
+    if pinLevel ~= nil then return pinLevel or nil end
+    local map = WorldMapFrame
+    local lm = map and map.GetPinFrameLevelsManager and map:GetPinFrameLevelsManager()
+    if not (lm and lm.InsertFrameLevelAbove) then return nil end -- (the map isn't there yet: ask again later)
+    if lm.definitions and lm.definitions[PIN_LEVEL] then pinLevel = PIN_LEVEL return pinLevel end
+    for _, above in ipairs({ "PIN_FRAME_LEVEL_SUPER_TRACKED_QUEST", "PIN_FRAME_LEVEL_ACTIVE_QUEST", "PIN_FRAME_LEVEL_QUEST_OFFER" }) do
+        local ok, done = pcall(lm.InsertFrameLevelAbove, lm, PIN_LEVEL, above)
+        if ok and done then pinLevel = PIN_LEVEL return pinLevel end
+    end
+    pinLevel = false
+    return nil
+end
+
 local drawEditor -- (below: the route editor's step on the world map)
 function ns.refreshPins()
     ns.pinPlaces = nil
@@ -128,8 +147,8 @@ function ns.refreshPins()
                 if here then pin.dot:SetVertexColor(ar, ag, ab, 1) else pin.dot:SetVertexColor(0.75, 0.72, 0.68, 0.9) end
                 setLabel(pin, label)
                 -- by world position: also on the neighbouring zone's map when it shows that spot, and on the continent
-                if wx then HBDP:AddWorldMapIconWorld(ns, pin, inst, wx, wy, HBD_PINS_WORLDMAP_SHOW_CONTINENT)
-                else HBDP:AddWorldMapIconMap(ns, pin, pl.m, pl.x / 100, pl.y / 100, HBD_PINS_WORLDMAP_SHOW_CONTINENT) end
+                if wx then HBDP:AddWorldMapIconWorld(ns, pin, inst, wx, wy, HBD_PINS_WORLDMAP_SHOW_CONTINENT, ns.mapPinLevel())
+                else HBDP:AddWorldMapIconMap(ns, pin, pl.m, pl.x / 100, pl.y / 100, HBD_PINS_WORLDMAP_SHOW_CONTINENT, ns.mapPinLevel()) end
                 if here and pl.area then
                     -- the spots of the kill/loot area as small dots
                     for n, a in ipairs(pl.area) do
@@ -137,7 +156,7 @@ function ns.refreshPins()
                         areaPins[n] = ap
                         ap.steps = pl.steps
                         ap.dot:SetVertexColor(ar, ag, ab, 0.7)
-                        HBDP:AddWorldMapIconMap(ns, ap, a[1], a[2] / 100, a[3] / 100, HBD_PINS_WORLDMAP_SHOW_PARENT)
+                        HBDP:AddWorldMapIconMap(ns, ap, a[1], a[2] / 100, a[3] / 100, HBD_PINS_WORLDMAP_SHOW_PARENT, ns.mapPinLevel())
                     end
                 end
             end
@@ -180,7 +199,7 @@ local function drawLine(map)
     local f = line.frame
     f:SetParent(canvas)
     f:ClearAllPoints(); f:SetAllPoints(canvas)
-    -- right under the pins, above the map itself
+    -- above the map itself, under the game's quest symbols (the stops' pins are above those)
     local lm = map.GetPinFrameLevelsManager and map:GetPinFrameLevelsManager()
     local lvl = lm and lm.GetValidFrameLevel and lm:GetValidFrameLevel("PIN_FRAME_LEVEL_AREA_POI")
     f:SetFrameLevel(math.max(1, (lvl or (canvas:GetFrameLevel() + 100)) - 1))
@@ -326,20 +345,20 @@ drawEditor = function()
         local pin = editorPin("way", k)
         pin.dot:SetVertexColor(0.85, 0.82, 0.76, 0.95)
         setLabel(pin, tostring(k))
-        HBDP:AddWorldMapIconMap(ns, pin, w.m, w.x / 100, w.y / 100, HBD_PINS_WORLDMAP_SHOW_CONTINENT)
+        HBDP:AddWorldMapIconMap(ns, pin, w.m, w.x / 100, w.y / 100, HBD_PINS_WORLDMAP_SHOW_CONTINENT, ns.mapPinLevel())
         line[#line + 1] = w
     end
     for k, a in ipairs(g.area or {}) do
         local pin = editorPin("area", k)
         pin.dot:SetVertexColor(ar, ag, ab, 0.75)
         setLabel(pin, tostring(k))
-        HBDP:AddWorldMapIconMap(ns, pin, a.m, a.x / 100, a.y / 100, HBD_PINS_WORLDMAP_SHOW_CONTINENT)
+        HBDP:AddWorldMapIconMap(ns, pin, a.m, a.x / 100, a.y / 100, HBD_PINS_WORLDMAP_SHOW_CONTINENT, ns.mapPinLevel())
     end
     if g.point then
         local pin = editorPin("point")
         pin.dot:SetVertexColor(ar, ag, ab, 1)
         setLabel(pin, "P")
-        HBDP:AddWorldMapIconMap(ns, pin, g.point.m, g.point.x / 100, g.point.y / 100, HBD_PINS_WORLDMAP_SHOW_CONTINENT)
+        HBDP:AddWorldMapIconMap(ns, pin, g.point.m, g.point.x / 100, g.point.y / 100, HBD_PINS_WORLDMAP_SHOW_CONTINENT, ns.mapPinLevel())
         line[#line + 1] = g.point
     end
     ns.pinPlaces = { list = line, n = #line, editor = true }

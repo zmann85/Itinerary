@@ -109,9 +109,18 @@ From top to bottom:
   - A timed quest's time left counts down on the instruction that runs until its turn-in (or on your step).
   - A "turn in / accept it if you pass by" that the route does as one of the next steps anyway isn't listed.
 
-**A sound when a step is done**: Settings > General > *Sound when a step is done* plays one of nine sounds
+**A sound when a step is done**: Settings > Sounds > *Sound when a step is done* plays one of nine sounds
 (from a quest chime to a meow) when a step that takes a while is done: kill or loot objectives, collecting
-items, grinding a level. Not for talking to NPCs, travelling or skipping. Off by default.
+items, grinding a level. Not for talking to NPCs, travelling or skipping. Off by default. It can also be:
+- **Your own sound**: put .ogg or .mp3 files in `Interface\AddOns\Itinerary_Sounds\` (a folder you make next
+  to Itinerary; an update of Itinerary doesn't touch it) and type their names under *Your own sounds*,
+  separated by commas (*done.ogg, ding.mp3*). Each one becomes a pick. The game only finds files that were
+  there when it started, so restart the game after adding one - a /reload isn't enough. A name starting with
+  `Interface\` is a full path to a sound anywhere in your AddOns folder.
+- **A sound from your other add-ons**: the sounds add-ons like EllesmereUI, WeakAuras or a SharedMedia pack
+  share (LibSharedMedia), 15 to a page.
+
+A sound that can't play says so in chat: when you pick it, and once a session when a step is done.
 
 **Moving the panel**: Alt + right-click the panel to unlock it, drag it, then Alt + right-click again to
 lock it.
@@ -650,7 +659,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 
 | Tab | What's there |
 |---|---|
-| General | Route panel and minimap button, hide them in dungeons, the game's quest tracker, the sound when a step is done, route pack order and the packs' own choices, factory reset, forget this character |
+| General | Route panel and minimap button, hide them in dungeons, the game's quest tracker, route pack order and the packs' own choices, factory reset, forget this character |
 | Quests | Accept and hand in, which quests (route or all), share quests in a group, skip overlevelled steps, quest dialogue, object name tags, quest sparkles, pick gear rewards, best-selling reward coin, sell junk, auction house steps |
 | Travel | Take flights, set hearthstone, spirit healer, map pins (on the world map, on the minimap, the line between them) |
 | Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills, buy weapon skills, your class's skill list (worth a visit / auto-buy) |
@@ -658,6 +667,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | Panel | Color scheme (Itinerary, Amethyst, Frost, Ember, Slate), instructions (own card or in the panel), the along-the-way entries you hid, item and spell links, panel style (card or minimal), opacity, size, text on a see-through panel (shadow or outline), grow direction, item & target button corner, lock |
 | Arrow | Arrow on/off, arrow look, instructions at the arrow, death skips at the arrow, their size, tooltip, lock |
 | Keys | Key bindings for the target and item buttons (two keys each); show the target button, talk on second press, tag with a spell, mark the target |
+| Sounds | The sound when a step is done: one of Itinerary's, your own sound files, or a sound your other add-ons share |
 
 <details>
 <summary><b>Screenshots of every settings tab</b> (click to open)</summary>

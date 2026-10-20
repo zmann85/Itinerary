@@ -2750,9 +2750,54 @@ ns.SOUNDS = {
     { "Meow", file = SND .. "Meow.ogg" },
 }
 local OLD = { Chime = "Quest" } -- names from earlier versions
-function ns.stepSound(name)
+-- Your own sounds: files in a folder of your own next to Itinerary (an update of Itinerary doesn't touch it),
+-- named in Settings > Sounds - the game can't list a folder. A name starting with Interface\ is a full path.
+ns.OWN_SOUND_DIR = "Interface\\AddOns\\Itinerary_Sounds\\"
+function ns.ownSoundPath(name)
+    if name:lower():find("^interface[\\/]") then return (name:gsub("/", "\\")) end
+    return ns.OWN_SOUND_DIR .. name
+end
+function ns.ownSounds() return ItineraryDB.ownSounds or {} end
+-- Sounds other add-ons share (LibSharedMedia-3.0, when one of them loads it: EllesmereUI, WeakAuras, ...)
+local function sharedMedia() return LibStub and LibStub("LibSharedMedia-3.0", true) end
+function ns.sharedSounds()
+    local lib = sharedMedia()
+    local out = {}
+    if not lib then return out end
+    for _, name in ipairs(lib:List("sound") or {}) do if name ~= "None" then out[#out + 1] = name end end
+    return out
+end
+-- (a sound that can't play says so: always when you pick it, once a session when a step is done)
+local soundSaid = {}
+local function playFile(path, what, why, test)
+    local ok, willPlay = pcall(PlaySoundFile, path, "Master")
+    if ok and willPlay ~= false then return true end
+    if test or not soundSaid[what] then
+        soundSaid[what] = true
+        ns.print(why)
+    end
+    return false
+end
+-- name: a sound of ns.SOUNDS, "own:<file>" or "lsm:<shared name>" (nil: your setting). test: you picked it.
+function ns.stepSound(name, test)
     name = name or ItineraryDB.stepSound
     name = OLD[name] or name
+    if type(name) ~= "string" then return false end
+    local own = name:match("^own:(.+)$")
+    if own then
+        local path = ns.ownSoundPath(own)
+        return playFile(path, name, "can't play " .. path .. " - the game only finds a file that was there when it started: put it there and restart the game (a /reload isn't enough).", test)
+    end
+    local shared = name:match("^lsm:(.+)$")
+    if shared then
+        local lib = sharedMedia()
+        local f = lib and lib:Fetch("sound", shared, true)
+        if not f then
+            if test or not soundSaid[name] then soundSaid[name] = true; ns.print("the sound \"" .. shared .. "\" isn't shared by your add-ons right now (is the add-on that has it turned off?)") end
+            return false
+        end
+        return playFile(f, name, "can't play the sound \"" .. shared .. "\" (" .. tostring(f) .. ")", test)
+    end
     for _, snd in ipairs(ns.SOUNDS) do
         if snd[1] == name then
             if snd.kit or snd.id then

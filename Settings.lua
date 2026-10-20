@@ -5,7 +5,7 @@ local ADDON, ns = ...
 
 local W, PAD, ROW_H = 540, 18, 56
 local SEG_W, SEG_H = 74, 22
-local TAB_NAMES = { "General", "Quests", "Travel", "Trainer", "Professions", "Panel", "Arrow", "Keys" }
+local TAB_NAMES = { "General", "Quests", "Travel", "Trainer", "Professions", "Panel", "Arrow", "Keys", "Sounds" }
 
 local win, refresh
 local activeTab = 1
@@ -112,7 +112,6 @@ local OPTIONS = {
     { tab = 1, label = "Blizzard quest tracker", desc = "The game's own quest list on the right of the screen. The route panel already tracks your objectives.",
       choices = SHOW_HIDE, get = function() return ItineraryDB.hideTracker == false end,
       set = function(v) ItineraryDB.hideTracker = not v; if ns.applyTracker then ns.applyTracker() end end },
-    { tab = 1, kind = "sound", label = "Sound when a step is done", desc = "Plays when a step that takes a while is done: kill or loot objectives, collecting items, grinding a level. Not for talking to NPCs or travelling, and not when you skip. Click one to hear it." },
     { tab = 1, kind = "packs", label = "Route packs", desc = "When two packs have a route for a new character, the higher one in this list wins. A newly installed pack goes to the bottom. In the route list (the button in the panel footer) you can also make any route your default for a race and class." },
     { tab = 1, kind = "wipe", factory = true, label = "Factory reset", desc = "Itinerary as if just installed: all settings, your route edits and own routes, and every character's progress (each one the next time it logs in). Reloads the UI." },
     { tab = 1, kind = "wipe", label = "This character", desc = "Forgets everything Itinerary saved for this character: route progress, trainer prices, professions. For a new character that reuses a deleted one's name (that's also detected on its own). Settings stay." },
@@ -271,6 +270,10 @@ local OPTIONS = {
     { tab = 8, kind = "key", bind = "ItineraryItem2", label = "Quest item 2" },
     { tab = 8, kind = "key", bind = "ItineraryItem3", label = "Quest item 3" },
     { tab = 8, kind = "key", bind = "ItineraryItem4", label = "Quest item 4" },
+    -- Sounds
+    { tab = 9, kind = "sound", label = "Sound when a step is done", desc = "Plays when a step that takes a while is done: kill or loot objectives, collecting items, grinding a level. Not for talking to NPCs or travelling, and not when you skip. Click one to hear it - or pick one of your own or of your other add-ons below." },
+    { tab = 9, kind = "ownsound", label = "Your own sounds" },
+    { tab = 9, kind = "sharedsound", label = "From your other add-ons" },
 }
 
 ---------------------------------------------------------------- rows
@@ -535,6 +538,104 @@ local function buildRow(opt, i)
             end
             return out
         end)
+    elseif opt.kind == "ownsound" then
+        -- your own sound files: their names in a box (the game can't list a folder), each one a pick under it
+        row.lbl:SetText(opt.label)
+        local BW = 260
+        row.lbl:SetWidth(W - PAD * 2 - BW - 12)
+        local e = CreateFrame("EditBox", nil, row)
+        e:SetSize(BW, SEG_H)
+        e:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, -8)
+        e:SetAutoFocus(false)
+        e:SetFont(fontPath(), 12, "")
+        e:SetTextColor(1, 1, 1, 0.9)
+        e:SetTextInsets(6, 6, 0, 0)
+        local bg = e:CreateTexture(nil, "BACKGROUND"); bg:SetAllPoints(); bg:SetColorTexture(ns.themeBtn(1))
+        addEdges(e, 1, 1, 1, 0.18)
+        local ph = text(e, 12, 1, 1, 1, 0.3)
+        ph:SetPoint("LEFT", 6, 0); ph:SetText("done.ogg, ding.mp3")
+        local function commit(t)
+            local list, seen = {}, {}
+            for part in (t or ""):gmatch("[^,;]+") do
+                local n = part:gsub("^%s+", ""):gsub("%s+$", ""):gsub('^"(.*)"$', "%1")
+                if n ~= "" then
+                    -- (no extension: an .ogg)
+                    if not n:find("%.%w+$") then n = n .. ".ogg" end
+                    if not seen[n:lower()] then seen[n:lower()] = true; list[#list + 1] = n end
+                end
+            end
+            ItineraryDB.ownSounds = #list > 0 and list or nil
+            -- the one you had picked taken out of the list: no sound
+            local cur = ItineraryDB.stepSound
+            local own = type(cur) == "string" and cur:match("^own:(.+)$")
+            if own and not seen[own:lower()] then ItineraryDB.stepSound = "Off" end
+            refresh()
+        end
+        e:SetScript("OnEscapePressed", function(self) self.dirty = false; self:ClearFocus(); refresh() end)
+        e:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+        e:SetScript("OnEditFocusGained", function() ph:Hide() end)
+        e:SetScript("OnEditFocusLost", function(self)
+            if self.dirty then self.dirty = false; commit(self:GetText()) else refresh() end
+        end)
+        e:SetScript("OnTextChanged", function(self, user) if user then self.dirty = true end end)
+        row.ownBox = e
+        chipRow(row, 5, function()
+            local cur = ItineraryDB.stepSound
+            local out = {}
+            for _, n in ipairs(ns.ownSounds()) do
+                local key = "own:" .. n
+                local label = n:match("([^\\/]+)$"):gsub("%.%w+$", "")
+                out[#out + 1] = { label, cur == key, false, function()
+                    ItineraryDB.stepSound = key
+                    ns.stepSound(key, true)
+                end, ns.ownSoundPath(n) .. "\nClick to pick it and hear it." }
+            end
+            return out
+        end, function(self, list)
+            if not e:HasFocus() then
+                e:SetText(table.concat(ns.ownSounds(), ", "))
+                ph:SetShown(#ns.ownSounds() == 0)
+            end
+            self.sub:SetText("Put .ogg or .mp3 files in Interface\\AddOns\\Itinerary_Sounds\\ (a folder of your own next to Itinerary - an update doesn't touch it) and type their names in the box, separated by commas. The game only finds files that were there when it started: restart it after adding one (a /reload isn't enough).")
+        end)
+    elseif opt.kind == "sharedsound" then
+        -- the sounds your other add-ons share (LibSharedMedia), a page at a time
+        row.lbl:SetText(opt.label)
+        local PER_PAGE, page = 15, nil
+        chipRow(row, 5, function()
+            local all = ns.sharedSounds()
+            local cur = ItineraryDB.stepSound
+            local pages = math.max(1, math.ceil(#all / PER_PAGE))
+            if not page then
+                -- (first look: the page with the sound you picked)
+                page = 1
+                for k, n in ipairs(all) do if cur == "lsm:" .. n then page = math.ceil(k / PER_PAGE) end end
+            end
+            page = math.min(page, pages)
+            local out = {}
+            for k = (page - 1) * PER_PAGE + 1, math.min(#all, page * PER_PAGE) do
+                local n = all[k]
+                local key = "lsm:" .. n
+                out[#out + 1] = { n, cur == key, false, function()
+                    ItineraryDB.stepSound = key
+                    ns.stepSound(key, true)
+                end, n .. "\nClick to pick it and hear it." }
+            end
+            if pages > 1 then
+                out[#out + 1] = { "‹ Back", false, page == 1, function() if page > 1 then page = page - 1 end end }
+                out[#out + 1] = { "More ›", false, page == pages, function() if page < pages then page = page + 1 end end }
+            end
+            row.page, row.pages = page, pages
+            return out
+        end, function(self, list)
+            local n = #ns.sharedSounds()
+            if n == 0 then
+                self.sub:SetText("None of your add-ons share sounds right now. Add-ons like EllesmereUI, WeakAuras or a SharedMedia pack do (LibSharedMedia).")
+            else
+                self.sub:SetText(n .. " sounds from add-ons like EllesmereUI, WeakAuras or a SharedMedia pack (LibSharedMedia). Click one to pick it and hear it."
+                    .. ((self.pages or 1) > 1 and ("  Page " .. self.page .. " of " .. self.pages .. ".") or ""))
+            end
+        end)
     elseif opt.kind == "packopt" then
         -- a route pack's own on/off choices (registered by the pack; Itinerary only shows and keeps them)
         local g = opt.group
@@ -787,8 +888,8 @@ local function build()
     close:SetScript("OnClick", function() win:Hide() end)
 
     activeTab = math.min(ItineraryDB.settingsTab or 1, #TAB_NAMES)
-    -- two rows of four tabs
-    local PER = 4
+    -- two rows of five tabs
+    local PER = 5
     local tabW = math.floor((W - PAD * 2) / PER)
     win.tabs = {}
     for t, name in ipairs(TAB_NAMES) do

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Your own sound for a finished step: put .ogg or .mp3 files in Interface\AddOns\Itinerary_Sounds\ (a folder
+  of your own, so an update doesn't touch it) and name them in Settings > Sounds; each becomes a pick. The
+  sounds your other add-ons share (EllesmereUI, WeakAuras, SharedMedia packs - LibSharedMedia) are picks too.
+  A sound that can't play says so in chat (a file added while the game runs is found after a restart).
+
+### Changed
+- The step sound has its own settings tab, Sounds (it was under General); the tabs are two rows of five.
+
 ## v2.1.10 (2026-10-20)
 
 ### Changed

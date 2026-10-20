@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.11 (2026-10-20)
 
 ### Added
 - Your own sound for a finished step: put .ogg or .mp3 files in Interface\AddOns\Itinerary_Sounds\ (a folder

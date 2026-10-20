@@ -397,25 +397,16 @@ local function questName(q, name)
     return string.format("|cff%02x%02x%02x%s|r", math.floor(r * 255 + 0.5), math.floor(g * 255 + 0.5), math.floor(b * 255 + 0.5), name)
 end
 ns.questName = questName
--- after a quest's name on your step: how many quests later on the route follow from it ("+2 follow-ups"; the
--- title's tooltip has the chain)
-local function chainMark(q, i)
-    if not (i and q and ns.routeFollowUps) then return "" end
-    local n = #ns.routeFollowUps(q, i)
-    if n == 0 then return "" end
-    return "  " .. ns.hintHex() .. "+" .. n .. " follow-up" .. (n == 1 and "" or "s") .. "|r"
-end
--- (i: the step's place on the route, for the panel's own title - it adds the chain marks)
-local function title(s, i)
+local function title(s)
     if s.detour and s.name then return linkify(s.name) .. (s.npc and (" at " .. s.npc) or "") end
     if s.n then
         -- (a quest of the step you're leaving out - a profession you didn't pick - isn't named)
         local t = {}
         for k, n in ipairs(s.n) do
             local q = s.q and s.q[k]
-            if not (q and ns.questDropped and ns.questDropped(q) and #s.n > 1) then t[#t + 1] = questName(q, n) .. chainMark(q, i) end
+            if not (q and ns.questDropped and ns.questDropped(q) and #s.n > 1) then t[#t + 1] = questName(q, n) end
         end
-        if #t == 0 then for k, n in ipairs(s.n) do t[k] = questName(s.q and s.q[k], n) .. chainMark(s.q and s.q[k], i) end end
+        if #t == 0 then for k, n in ipairs(s.n) do t[k] = questName(s.q and s.q[k], n) end end
         return table.concat(t, "\n")
     end
     if s.t == "complete" then
@@ -423,7 +414,7 @@ local function title(s, i)
         local names, seen = {}, {}
         for _, q in ipairs(s.q or {}) do
             local n = questTitle(q)
-            if n and not seen[n] then seen[n] = true; names[#names + 1] = questName(q, n) .. chainMark(q, i) end
+            if n and not seen[n] then seen[n] = true; names[#names + 1] = questName(q, n) end
         end
         if #names > 0 then return table.concat(names, "\n") end
         if s.obj and #s.obj > 0 then return table.concat(s.obj, "\n") end
@@ -1601,7 +1592,7 @@ function ns.refresh()
         panel.progress:SetWidth(math.max(1, (W - 2) * frac))
         panel.progress:SetShown(cp and true or false)
         panel.icon:SetTexture(ICON[s.t])
-        panel.title:SetText(title(s, not detour and i or nil))
+        panel.title:SetText(title(s))
         local dt = detail(s)
         -- a quest timer goes on the instruction that runs until the turn-in when there is one (more
         -- prominent there), else on your step

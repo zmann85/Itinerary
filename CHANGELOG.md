@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.10 (2026-10-20)
 
 ### Changed
 - The quest chain only shows when you hover the quest name on your step: the "+N follow-ups" after the name is

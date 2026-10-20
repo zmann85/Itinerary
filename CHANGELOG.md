@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.12 (2026-10-20)
 
 ### Added
 - Settings > Arrow > Click through the arrow (off): while the waypoint arrow is locked, your mouse goes through

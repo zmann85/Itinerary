@@ -883,18 +883,21 @@ local function skipInfo(steps)
     return e
 end
 local doneSeen = {} -- quests the server has said are done (that doesn't change back)
+local partDone -- (below, with the step checks)
 function ns.skippedBehind()
     local out, c, steps = {}, ItineraryCharDB, ns.steps()
     local n = math.min(c.step - 1, #steps)
     local info = skipInfo(steps)
     -- what may go on the list, in route order: quest steps behind you that you skipped by hand, and turn-ins
     -- behind you for quests that are ready in your log and not handed in later on the route either (passed
-    -- while the route thought they were done)
+    -- while the route thought they were done). A quest of a skipped step only while its own part of the step
+    -- isn't done: "Accept Testing the Wells, Murloc Gills" skipped to leave out Murloc Gills, with Testing the
+    -- Wells in your log, lists Murloc Gills alone
     local cand = {}
     for i in pairs(c.manual) do
         local s = type(i) == "number" and i <= n and steps[i]
         if s and QUEST_STEP[s.t] and s.q then
-            for k, q in ipairs(s.q) do if not doneSeen[q] then cand[#cand + 1] = { i, k, q } end end
+            for k, q in ipairs(s.q) do if not doneSeen[q] and not partDone(s, k, q) then cand[#cand + 1] = { i, k, q } end end
         end
     end
     -- quest steps behind you left out for your level, for quests still in your log
@@ -903,7 +906,9 @@ function ns.skippedBehind()
             if i > n then break end
             local s = steps[i]
             if not c.manual[i] and ns.levelLeftOut(s) then
-                for k, q in ipairs(s.q) do if onQuest(q) and not doneSeen[q] then cand[#cand + 1] = { i, k, q, nil, true } end end
+                for k, q in ipairs(s.q) do
+                    if onQuest(q) and not doneSeen[q] and not partDone(s, k, q) then cand[#cand + 1] = { i, k, q, nil, true } end
+                end
             end
         end
     end
@@ -1509,6 +1514,18 @@ local function leftOut(q)
     if onQuest(q) then return false end
     local c = ItineraryCharDB
     return dropped(q) or (c and c.unavailQ and c.unavailQ[q]) and true or false
+end
+-- One quest's own part of quest step s (its k-th quest) done: the pick-up with the quest in your log, the
+-- objective done (or the quest ready), the hand-in made. For the skipped list: a skipped step isn't worth going
+-- back for a quest whose part of it got done anyway.
+function partDone(s, k, q)
+    if flaggedDone(q) then return true end
+    if s.t == "accept" then return onQuest(q) end
+    if s.t == "complete" then
+        local oi = s.qo and s.qo[k] or 0
+        return onQuest(q) and (oi > 0 and objectiveDone(q, oi) or (oi == 0 and readyToTurnIn(q))) and true or false
+    end
+    return false
 end
 function ns.stepDone(i)
     local s = ns.steps()[i]

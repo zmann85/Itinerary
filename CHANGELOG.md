@@ -16,6 +16,10 @@
   Wells taken, Murloc Gills left out: the step stayed at 1/2 until you skipped it). Such a quest no longer holds up
   the others, as for hand-ins. The panel's count leaves out the quests you left out, and an objective step for
   two objectives of one quest no longer shows a quest count.
+- The panel's skipped line listed every quest of a step you skipped, also one whose part of it you had done
+  anyway ("Accept Testing the Wells, Murloc Gills" skipped to leave out Murloc Gills: Testing the Wells, in your
+  log and done, showed as a skipped quest still open). A quest of a skipped step is only listed while its part of
+  the step isn't done.
 
 ## v2.1.8 (2026-10-20)
 

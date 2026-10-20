@@ -225,7 +225,9 @@ way.
 Skipped quests that are still open show as a line at the bottom of the panel (*1 skipped quest still open*): hover for
 the list, click to go back to the first one, **right-click** if you're not doing them (the line goes away,
 the steps stay skipped). Once you've moved on to the next chapter (zone), they drop off by themselves,
-except a quest that's ready to hand in.
+except a quest that's ready to hand in. A quest of a skipped step only counts while its part of the step isn't
+done: skip *Accept Testing the Wells, Murloc Gills* to leave out Murloc Gills, with Testing the Wells taken, and
+only Murloc Gills is listed.
 
 **Skipped for your level**: some routes leave out what they only do below a level once you're past it - a
 part of a chapter the guide skips when you get there too high (Westfall 13-15 at level 15 or above; chat

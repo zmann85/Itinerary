@@ -2,7 +2,16 @@
 
 ## Unreleased
 
+### Added
+- Settings > Quests > Skip overlevelled steps (on): off, the route doesn't leave anything out for your level.
+  Quests in your log that a level skip left out show in the panel's skipped line, marked "your level"; going
+  back to one brings its quest back. Chat says when a part of a chapter is skipped for your level.
+
 ### Fixed
+- A guide's level jump (Westfall 13-15 is skipped when you get there at 15 or above) skipped the rest of the
+  chapter when you reached that level in the middle of it after the route was walked again from the start (a
+  route change, /iti find), and with it the hand-ins of quests you had done. A part you've begun is no longer
+  skipped, and a quest that's done is always handed in, also on steps marked "skip from level N".
 - A pick-up step for several quests waited for a quest you had skipped, abandoned or weren't offered (Testing the
   Wells taken, Murloc Gills left out: the step stayed at 1/2 until you skipped it). Such a quest no longer holds up
   the others, as for hand-ins. The panel's count leaves out the quests you left out, and an objective step for

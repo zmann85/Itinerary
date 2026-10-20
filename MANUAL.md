@@ -227,6 +227,13 @@ the list, click to go back to the first one, **right-click** if you're not doing
 the steps stay skipped). Once you've moved on to the next chapter (zone), they drop off by themselves,
 except a quest that's ready to hand in.
 
+**Skipped for your level**: some routes leave out what they only do below a level once you're past it - a
+part of a chapter the guide skips when you get there too high (Westfall 13-15 at level 15 or above; chat
+says so), and steps marked for below a level. A part you've already begun isn't skipped when you level up in
+the middle of it, and a quest that's done is still handed in. Quests in your log it left out show in the
+skipped line, marked *your level*; going back to one brings its quest back. Settings > Quests > *Skip
+overlevelled steps* (on) switches it off: then you do every step.
+
 **Lost?**
 - `/iti find` goes to the first step you haven't done.
 - `/iti goto <number>` jumps to a step.
@@ -326,6 +333,7 @@ to do things by hand that time.
 |---|---|---|
 | Accept and hand in quests (only the route's quests, or all) | on | Quests |
 | Share every quest you accept with your group (not the ones shared with you) | off | Quests |
+| Skip steps you're overlevelled for (a part of a chapter you get to too high, steps for below a level) | on | Quests |
 | Click through quest dialogue | on | Quests |
 | Pick gear rewards (all white/green armor: the best armor type you wear, then the best-selling) | off | Quests |
 | Gold coin on the best-selling reward | on | Quests |
@@ -636,7 +644,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | Tab | What's there |
 |---|---|
 | General | Route panel and minimap button, hide them in dungeons, the game's quest tracker, the sound when a step is done, route pack order and the packs' own choices, factory reset, forget this character |
-| Quests | Accept and hand in, which quests (route or all), share quests in a group, quest dialogue, object name tags, quest sparkles, pick gear rewards, best-selling reward coin, sell junk, auction house steps |
+| Quests | Accept and hand in, which quests (route or all), share quests in a group, skip overlevelled steps, quest dialogue, object name tags, quest sparkles, pick gear rewards, best-selling reward coin, sell junk, auction house steps |
 | Travel | Take flights, set hearthstone, spirit healer, map pins (on the world map, on the minimap, the line between them) |
 | Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills, buy weapon skills, your class's skill list (worth a visit / auto-buy) |
 | Professions | Learn at the trainer, main professions, first profession, secondary professions, gather mode, gather data (shipped, own, both), gathering tracking, node icons, gathering tools |

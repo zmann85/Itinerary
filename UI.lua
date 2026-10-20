@@ -939,10 +939,16 @@ local function buildPanel()
         GameTooltip:AddLine("Skipped quests still open", 1, 1, 1)
         for _, e in ipairs(self.list or {}) do
             local n = ns.followUpsOf and ns.followUpsOf(e.q) or 0
-            GameTooltip:AddDoubleLine(e.name .. (n > 0 and string.format("  |cff999999(+%d follow-up%s)|r", n, n == 1 and "" or "s") or ""),
+            GameTooltip:AddDoubleLine(e.name .. (n > 0 and string.format("  |cff999999(+%d follow-up%s)|r", n, n == 1 and "" or "s") or "")
+                .. (e.level and "  |cffd8b070(your level)|r" or ""),
                 "step " .. e.step, 0.85, 0.85, 0.85, 0.5, 0.5, 0.5)
         end
         GameTooltip:AddLine("Click to go back to the first one", 0.5, 0.5, 0.5)
+        local lv = false
+        for _, e in ipairs(self.list or {}) do if e.level then lv = true end end
+        if lv then
+            GameTooltip:AddLine("Your level: left out because you're past the level the route does them at (Settings > Quests > Skip overlevelled steps). Going back to one brings its quest back.", 0.5, 0.5, 0.5, true)
+        end
         GameTooltip:AddLine("Right-click: not doing them (the line goes away)", 0.5, 0.5, 0.5)
         GameTooltip:AddLine("Quests of a zone you've left drop off by themselves", 0.5, 0.5, 0.5, true)
         GameTooltip:Show()
@@ -960,6 +966,11 @@ local function buildPanel()
         local e = self.list and self.list[1]
         if e then
             ItineraryCharDB.manual[e.step] = nil
+            if e.level then
+                -- left out for your level: you want it anyway (its steps count again)
+                ItineraryCharDB.levelKeepQ = ItineraryCharDB.levelKeepQ or {}
+                ItineraryCharDB.levelKeepQ[e.q] = true
+            end
             if ns.undropQuests then ns.undropQuests({ e.q }) end
             ns.setStep(e.step)
         end
@@ -1662,7 +1673,10 @@ function ns.refresh()
     panel.pace:SetText(paceText())
     panel.skipped.list = sk
     if #sk > 0 then
-        panel.skipped.fs:SetText(#sk .. (#sk == 1 and " skipped quest still open" or " skipped quests still open") .. "  ·  hover for the list")
+        local nl = 0
+        for _, e in ipairs(sk) do if e.level then nl = nl + 1 end end
+        panel.skipped.fs:SetText(#sk .. (#sk == 1 and " skipped quest still open" or " skipped quests still open")
+            .. (nl > 0 and (nl == #sk and " (your level)" or string.format(" (%d for your level)", nl)) or "") .. "  ·  hover for the list")
         panel.skipped:Show()
     else
         panel.skipped:Hide()

@@ -872,7 +872,13 @@ local function skipInfo(steps)
             end
         end
     end
-    e = { n = #steps, last = last, list = list }
+    -- quest steps a level skip can leave out (the guide's level jumps, "skip at level N or above")
+    local lv = {}
+    for j = 1, #steps do
+        local t = steps[j]
+        if QUEST_STEP[t.t] and t.q and (t.gateL or (t.lvskip and t.lvskip.atleast)) then lv[#lv + 1] = j end
+    end
+    e = { n = #steps, last = last, list = list, lv = lv }
     skipIndex[steps] = e
     return e
 end
@@ -889,6 +895,16 @@ function ns.skippedBehind()
         local s = type(i) == "number" and i <= n and steps[i]
         if s and QUEST_STEP[s.t] and s.q then
             for k, q in ipairs(s.q) do if not doneSeen[q] then cand[#cand + 1] = { i, k, q } end end
+        end
+    end
+    -- quest steps behind you left out for your level, for quests still in your log
+    if ns.levelLeftOut then
+        for _, i in ipairs(info.lv) do
+            if i > n then break end
+            local s = steps[i]
+            if not c.manual[i] and ns.levelLeftOut(s) then
+                for k, q in ipairs(s.q) do if onQuest(q) and not doneSeen[q] then cand[#cand + 1] = { i, k, q, nil, true } end end
+            end
         end
     end
     for _, e in ipairs(info.list) do
@@ -916,7 +932,7 @@ function ns.skippedBehind()
             else
                 seen[q] = true
                 local s = steps[i]
-                out[#out + 1] = { step = i, q = q, name = s.n and s.n[k] or ("Quest " .. q), t = s.t }
+                out[#out + 1] = { step = i, q = q, name = s.n and s.n[k] or ("Quest " .. q), t = s.t, level = e[5] }
             end
         end
     end
@@ -1320,6 +1336,64 @@ local function skillOff(sk, s)
     return false
 end
 
+-- A level jump in the guide (".maxlevel 14,endOfTheGuide": 15 or above when you get to it, the rest of the
+-- chapter is skipped) is only meant for when you get there that high. Begun: a quest the route first takes
+-- inside the jumped stretch is in your log or done, so you have been doing that chapter - the jump doesn't apply
+-- (you reached 15 in the middle of it, or the route was walked again from the start after a route change).
+-- (only asked about a jump that was taken, so no caching beyond the quest list)
+local gateQuests, gateQuestsFor = nil, nil
+local function gateBegun(g)
+    local steps = ns.steps and ns.steps()
+    if not steps then return false end
+    if gateQuestsFor ~= steps then
+        gateQuests, gateQuestsFor = {}, steps
+        local first = {}
+        for _, st in ipairs(steps) do
+            if st.t == "accept" and st.q then
+                for _, q in ipairs(st.q) do
+                    if first[q] == nil then
+                        first[q] = true
+                        if st.gateL then
+                            gateQuests[st.gateL] = gateQuests[st.gateL] or {}
+                            table.insert(gateQuests[st.gateL], q)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    for _, q in ipairs(gateQuests[g] or {}) do
+        if onQuest(q) or flaggedDone(q) then return true end
+    end
+    return false
+end
+ns.gateBegun = gateBegun
+-- Settings > Quests > Skip overlevelled steps (on): a step the route leaves out for your level - the guide's level
+-- jump (above), or "skip at level N or above" (lvskip.atleast). Never the hand-in of a quest that's done, and
+-- not the steps of a quest you asked back ("do it anyway" from the skipped list: c.levelKeepQ).
+-- ("skip below level N", lvskip.below, isn't about being overlevelled: it applies either way, as in RestedXP)
+local function levelSkipOn()
+    local a = ItineraryDB and ItineraryDB.auto
+    return not (a and a.levelSkip == false)
+end
+ns.levelSkipOn = levelSkipOn
+local function levelLeftOut(s)
+    if not levelSkipOn() then return false end
+    local c = ItineraryCharDB
+    local hit = false
+    if s.gateL and c and c.gates and c.gates[s.gateL] and not gateBegun(s.gateL) then hit = true end
+    if not hit and s.lvskip and s.lvskip.atleast and (UnitLevel("player") or 1) >= s.lvskip.atleast then hit = true end
+    if not hit then return false end
+    if s.q then
+        local keep = c and c.levelKeepQ
+        for _, q in ipairs(s.q) do
+            if keep and keep[q] then return false end
+            if s.t == "turnin" and onQuest(q) and readyToTurnIn(q) then return false end
+        end
+    end
+    return true
+end
+ns.levelLeftOut = levelLeftOut
 local function notApplicable(s)
     -- Settings > Quests > "Auction house": playing without it (self-found), its steps are left out
     if ItineraryDB and ItineraryDB.skipAH and isAH(s) then return true end
@@ -1377,15 +1451,8 @@ local function notApplicable(s)
         end
     end
     -- a level jump in the guide ("above 19 here: skip to Level20Check"), decided when you got there
-    if s.gateL then
-        local c = ItineraryCharDB
-        if c and c.gates and c.gates[s.gateL] then return true end
-    end
-    if s.lvskip then
-        local lvl = UnitLevel("player") or 1
-        if s.lvskip.atleast and lvl >= s.lvskip.atleast then return true end
-        if s.lvskip.below and lvl < s.lvskip.below then return true end
-    end
+    if (s.gateL or (s.lvskip and s.lvskip.atleast)) and levelLeftOut(s) then return true end
+    if s.lvskip and s.lvskip.below and (UnitLevel("player") or 1) < s.lvskip.below then return true end
     if s.zskip then
         for _, z in ipairs(s.zskip) do
             local here
@@ -1602,7 +1669,15 @@ function ns.advance()
         local g = steps[i].gateL
         if g then
             c.gates = c.gates or {}
-            if c.gates[g] == nil then c.gates[g] = (UnitLevel("player") or 1) > (steps[i].gateMax or 99) end
+            if c.gates[g] == nil then
+                local lvl = UnitLevel("player") or 1
+                c.gates[g] = levelSkipOn() and lvl > (steps[i].gateMax or 99) and not gateBegun(g)
+                if c.gates[g] then
+                    local _, ch = ns.chapterOf(i)
+                    ns.print(string.format("%s: left out - you're level %d, and the route skips this part from level %d on. "
+                        .. "Settings > Quests > Skip overlevelled steps.", ch and ch.name or "this part", lvl, (steps[i].gateMax or 0) + 1))
+                end
+            end
         end
         if steps[i].along or ns.stepDone(i) then
             if not steps[i].along and #log < 40 then log[#log + 1] = i .. " " .. steps[i].t .. ": " .. whyDone(i) end

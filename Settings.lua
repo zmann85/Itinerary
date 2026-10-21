@@ -6,6 +6,7 @@ local ADDON, ns = ...
 local W, PAD, ROW_H = 540, 18, 56
 local SEG_W, SEG_H = 74, 22
 local COMPACT_H = 8 + SEG_H + 9 -- a setting without its explanation underneath
+local SUB_IN = 20 -- how far a setting that belongs to the one above it is indented
 -- (Route came in as the third tab in v2.2: a saved tab number from before moves with it, ItineraryDB.settingsTabV)
 local TAB_NAMES = { "General", "Quests", "Route", "Travel", "Trainer", "Professions", "Panel", "Arrow", "Keys", "Sounds" }
 
@@ -120,14 +121,14 @@ local OPTIONS = {
     -- Quests
     { tab = 2, label = "Accept and hand in", desc = "Picks up quests and hands in finished ones when you talk to the NPC. With a choice of rewards you pick yourself (except the gathering book for your profession).",
       choices = ON_OFF, get = function() return A().quests end, set = function(v) A().quests = v end },
-    { tab = 2, label = "Which quests", desc = "Route: only quests this route uses. All: every quest you're offered.",
+    { tab = 2, label = "Which quests", parent = "Accept and hand in", desc = "Which quests it picks up for you. Route: only the quests this route uses. All: every quest you're offered. Finished quests in your log are handed in either way.",
       choices = { { "Route", "route" }, { "All", "all" } }, get = function() return A().scope end, set = function(v) A().scope = v end,
+      enabled = function() return A().quests end },
+    { tab = 2, label = "Escorts wait for your group", parent = "Accept and hand in", desc = "In a group, an escort it would pick up that starts as you accept it (Rescue OOX-17/TN!) waits until nobody near you still has the quest before it to hand in; chat says who. Solo and contested escorts: taken at once.",
+      choices = ON_OFF, get = function() return A().groupWait ~= false end, set = function(v) A().groupWait = v end,
       enabled = function() return A().quests end },
     { tab = 2, label = "Share quests in a group", desc = "In a group, every quest you accept is shared with the others right away (when it can be shared), so whoever is behind - skilling a profession, say - doesn't have to run to the quest giver. Not the quests someone shared with you.",
       choices = ON_OFF, get = function() return A().share == true end, set = function(v) A().share = v end },
-    { tab = 2, label = "Escorts wait for your group", desc = "In a group, an escort that starts as you accept it (Rescue OOX-17/TN!) waits until nobody near you still has the quest before it to hand in; chat says who. Solo and contested escorts: taken at once.",
-      choices = ON_OFF, get = function() return A().groupWait ~= false end, set = function(v) A().groupWait = v end,
-      enabled = function() return A().quests end },
     { tab = 3, label = "Group quests", desc = "Show: the guide's group quests (Tharil'zun, the Slag Pit chain) are in the route, its solo versions of those parts out. Skip: for playing alone - the other way round.",
       choices = { { "Show", true }, { "Skip", false } }, get = function() return A().groupQuests ~= false end,
       set = function(v) A().groupQuests = v; if ns.update then ns.update() end; if ns.refresh then ns.refresh() end end },
@@ -164,24 +165,24 @@ local OPTIONS = {
     { tab = 4, label = "Map pins", desc = "Your next stops as numbered pins on the world map and minimap (steps at the same place share one: \"2-3\"), and your step's kill-area spots. Also /iti pins.",
       choices = SHOW_HIDE, get = function() return ItineraryDB.pins ~= false end,
       set = function(v) ItineraryDB.pins = v; if ns.refreshPins then ns.refreshPins() end end },
-    { tab = 4, label = "...on the world map", desc = "How many of your next stops get a pin on the world map.",
+    { tab = 4, label = "...on the world map", parent = "Map pins", desc = "How many of your next stops get a pin on the world map.",
       choices = { { "Off", 0 }, { "Current", 1 }, { "Next 3", 3 }, { "Next 5", 5 } },
       get = function() return ItineraryDB.pinsWorld or 5 end,
       set = function(v) ItineraryDB.pinsWorld = v; if ns.refreshPins then ns.refreshPins() end end,
       enabled = function() return ItineraryDB.pins ~= false end },
-    { tab = 4, label = "...on the minimap", desc = "How many of your next stops get a pin on the minimap. Only the first one stays at the minimap's edge when it's far away; the others show once they're in range.",
+    { tab = 4, label = "...on the minimap", parent = "Map pins", desc = "How many of your next stops get a pin on the minimap. Only the first one stays at the minimap's edge when it's far away; the others show once they're in range.",
       choices = { { "Off", 0 }, { "Current", 1 }, { "Next 3", 3 }, { "Next 5", 5 } },
       get = function() return ItineraryDB.pinsMini or 5 end,
       set = function(v) ItineraryDB.pinsMini = v; if ns.refreshPins then ns.refreshPins() end end,
       enabled = function() return ItineraryDB.pins ~= false end },
-    { tab = 4, label = "Line between the pins", desc = "A dotted line on the world map from one stop to the next, in route order. The stretch to your next stop is the brighter one.",
+    { tab = 4, label = "Line between the pins", parent = "Map pins", desc = "A dotted line on the world map from one stop to the next, in route order. The stretch to your next stop is the brighter one.",
       choices = ON_OFF, get = function() return ItineraryDB.pinsLine ~= false end,
       set = function(v) ItineraryDB.pinsLine = v; if ns.refreshPins then ns.refreshPins() end end,
       enabled = function() return ItineraryDB.pins ~= false and (ItineraryDB.pinsWorld or 5) > 1 end },
     -- Trainer
     { tab = 5, label = "Buy class skills", desc = "Buys the skills you can afford when you open your class trainer, the worthwhile ones first (which ones: the setting below). From level 6 on it keeps some money: 40c at 6, doubling every other level, at most 5g (from level 28).",
       choices = ON_OFF, get = function() return A().train end, set = function(v) A().train = v end },
-    { tab = 5, label = "...only worthwhile ones", desc = "Part of Buy class skills: only the skills marked worthwhile (green, see the list below). Off: the others too, once the worthwhile ones and your gathering tools are paid for (from level 10).",
+    { tab = 5, label = "...only worthwhile ones", parent = "Buy class skills", desc = "Only the skills marked worthwhile (green, see the list below). Off: the others too, once the worthwhile ones and your gathering tools are paid for (from level 10).",
       choices = ON_OFF, get = function() return A().buyWorthOnly ~= false end, set = function(v) A().buyWorthOnly = v end,
       enabled = function() return A().train end },
     { tab = 5, label = "Open the training window", desc = "At a trainer you came to train at (the route's trainer stop or a trainer instruction), or one where Itinerary buys or learns something for you, the training window opens when you talk to them - also when the trainer has other dialogue first. Hold Shift to see the dialogue.",
@@ -363,6 +364,21 @@ local function buildRow(opt, i)
     row.line = row:CreateTexture(nil, "ARTWORK")
     row.line:SetColorTexture(1, 1, 1, 0.05); row.line:SetHeight(1)
     row.line:SetPoint("BOTTOMLEFT"); row.line:SetPoint("BOTTOMRIGHT")
+    row.treeV, row.treeH = false, false
+    if opt.parent then
+        -- a setting that belongs to the one above it: indented under it, hanging from it by a thin line
+        -- (the line runs on through the row when the next one belongs to the same setting: see the window)
+        row.lbl:ClearAllPoints(); row.lbl:SetPoint("TOPLEFT", SUB_IN, -11)
+        row.lbl:SetWidth(W - PAD * 2 - SEG_W * 2 - 12 - SUB_IN)
+        local ar, ag, ab = accent()
+        row.treeH = row:CreateTexture(nil, "ARTWORK")
+        row.treeH:SetColorTexture(ar, ag, ab, 0.45); row.treeH:SetSize(SUB_IN - 11, 1)
+        row.treeH:SetPoint("LEFT", row, "TOPLEFT", 6, -(11 + 8))
+        row.treeV = row:CreateTexture(nil, "ARTWORK")
+        row.treeV:SetColorTexture(ar, ag, ab, 0.45); row.treeV:SetWidth(1)
+        row.treeV:SetPoint("TOPLEFT", row, "TOPLEFT", 6, 0)
+        row.treeV:SetPoint("BOTTOMLEFT", row.treeH, "LEFT", 0, 0)
+    end
 
     if opt.choices then
         row.lbl:SetText(opt.label)
@@ -889,6 +905,10 @@ local function buildRow(opt, i)
         self.lbl:SetTextColor(1, 1, 1, 1)
         GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
         GameTooltip:SetText(opt.label or "", 1, 1, 1)
+        if opt.parent then
+            local ar, ag, ab = accent()
+            GameTooltip:AddLine("Part of " .. opt.parent, ar, ag, ab)
+        end
         GameTooltip:AddLine(d, 0.85, 0.85, 0.85, true)
         GameTooltip:Show()
     end)
@@ -1010,6 +1030,15 @@ local function build()
         end
     end
     for i, opt in ipairs(list) do buildRow(opt, i) end
+    -- a setting that belongs to the one above hangs from it: no divider between them, and the line runs on down
+    -- to the next one that belongs to the same setting
+    for i, row in ipairs(win.rows) do
+        local nx
+        for j = i + 1, #win.rows do if win.rows[j].tab == row.tab then nx = win.rows[j] break end end
+        local sub = nx and nx.opt.parent
+        if sub then row.line:Hide() end
+        if row.treeV and sub == row.opt.parent then row.treeV:SetPoint("BOTTOMLEFT", row, "BOTTOMLEFT", 6, 0) end
+    end
 
     local hint = text(win, 11, 1, 1, 1, 0.3)
     hint:SetPoint("BOTTOMLEFT", win, "BOTTOMLEFT", PAD, 14); hint:SetWidth(W - PAD * 2); hint:SetWordWrap(true)

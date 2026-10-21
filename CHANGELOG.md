@@ -27,7 +27,10 @@
   grow to its longest tab with every explanation written out, taller than many screens). The window is as tall as
   the tab you're on, keeps its top edge where you put it, and scrolls when a tab doesn't fit on your screen.
   A new tab **Route** has the settings for what the route does (group quests, skip overlevelled steps, bank steps,
-  auction house steps), out of Quests.
+  auction house steps), out of Quests. A setting that only works with the one above it is indented under it with a
+  thin line from it, and its tooltip says what it's part of (*Which quests* and *Escorts wait for your group* under
+  *Accept and hand in*, the pin counts and the line under *Map pins*, *...only worthwhile ones* under *Buy class
+  skills*). *Which quests* says it's about the quests picked up for you; finished ones are handed in either way.
 - The step sound also plays when an objective along the way that takes a while is done (kill or loot objectives,
   items to collect), as for your own step - one sound when both are done at once; not when you abandon or skip it.
 

@@ -691,13 +691,15 @@ The **Quest** button picks a quest from your log (click: next, Shift-click: back
 ## 10. Settings
 
 Open them with the gear in the panel footer, Shift + click on the minimap button, or `/iti settings`.
-Each setting is one line; hover it for what it does. The window is as tall as the tab you're on (it keeps its
-top edge where you put it), and a tab taller than your screen scrolls with the mouse wheel.
+Each setting is one line; hover it for what it does. A setting that only works with the one above it is indented
+under it, hanging from it by a thin line (*Which quests* under *Accept and hand in*), and its tooltip says what it's
+part of. The window is as tall as the tab you're on (it keeps its top edge where you put it), and a tab taller
+than your screen scrolls with the mouse wheel.
 
 | Tab | What's there |
 |---|---|
 | General | Route panel and minimap button, hide them in dungeons, the game's quest tracker, route pack order and the packs' own choices, factory reset, forget this character |
-| Quests | Accept and hand in, which quests (route or all), share quests in a group, escorts wait for your group, quest dialogue, object name tags, quest sparkles, pick gear rewards, best-selling reward coin, sell junk |
+| Quests | Accept and hand in (under it: which quests - route or all, escorts wait for your group), share quests in a group, quest dialogue, object name tags, quest sparkles, pick gear rewards, best-selling reward coin, sell junk |
 | Route | What the route does for you: group quests (or their solo versions), skip overlevelled steps, bank steps, auction house steps (or self-found) |
 | Travel | Take flights, set hearthstone, spirit healer, map pins (on the world map, on the minimap, the line between them) |
 | Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills, buy weapon skills, your class's skill list (worth a visit / auto-buy) |

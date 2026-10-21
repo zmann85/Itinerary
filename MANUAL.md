@@ -511,8 +511,8 @@ type and Abandon.
 
 | Field | What goes in |
 |---|---|
-| **Text** | What the step says (travel and to-do steps; see the table above for the others) |
-| **Hint** | A line under the step (*Fill the phial at the moonwell*) |
+| **Text** | What the step says (travel and to-do steps; see the table above for the others). `\n` starts a new line |
+| **Hint** | A line under the step (*Fill the phial at the moonwell*). `\n` starts a new line: a hint of several lines shows its breaks as `\n` here |
 | **Quest IDs** | The quests, comma separated (the ID is in the quest's Wowhead link). For a Quest step, `12:2` means only objective 2 of quest 12 |
 | **NPC** | Who to talk to. Several, comma separated: the first is the one to talk to, the target button looks for all. *Use target* fills it in |
 | **Mobs** | Mobs for the target button, comma separated |

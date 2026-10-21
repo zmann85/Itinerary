@@ -9,6 +9,11 @@
   quest window waits, chat names who you're waiting for, and it's accepted by itself once they're ready. Solo,
   and contested escorts with nothing to hand in there first, are taken at once as before.
 
+### Fixed
+- Editor: clicking a step showed its Hint (or Text) blank or only its end - a long text opened scrolled to the
+  end, and a hint of several lines showed nothing. The fields now show from the start, with line breaks as `\n`
+  (type `\n` for a new line; it's saved as a real line break).
+
 ## v2.1.13 (2026-10-20)
 
 ### Changed

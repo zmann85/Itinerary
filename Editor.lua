@@ -1012,12 +1012,15 @@ local function build()
         if key == "buffItem" then ITEM_BOXES[e] = { one = true } end
         y = y - 30
     end
-    field("name", "Text", "What the step says (travel and to-do steps). Quest steps show the quest's name. Fly: where to. Flight path: the town. Hearth: your home inn. Home: the inn's place. Dungeon: its name.",
-        function(s) return s.name or "" end,
-        function(s, t) ns.editSet(sid(s), { name = t ~= "" and t or false }) end)
-    field("note", "Hint", "A hint: a line under the step (\"Unequip your shirt so you can sell it\").",
-        function(s) return s.note or "" end,
-        function(s, t) ns.editSet(sid(s), { note = t ~= "" and t or false }) end)
+    -- (a text of several lines shows its line breaks as \n in the one-line box, and \n typed there is one)
+    local function toBox(t) return (t:gsub("\n", "\\n")) end
+    local function fromBox(t) return (t:gsub("\\n", "\n")) end
+    field("name", "Text", "What the step says (travel and to-do steps). Quest steps show the quest's name. Fly: where to. Flight path: the town. Hearth: your home inn. Home: the inn's place. Dungeon: its name. \\n starts a new line.",
+        function(s) return toBox(s.name or "") end,
+        function(s, t) t = fromBox(t); ns.editSet(sid(s), { name = t ~= "" and t or false }) end)
+    field("note", "Hint", "A hint: a line under the step (\"Unequip your shirt so you can sell it\"). \\n starts a new line.",
+        function(s) return toBox(s.note or "") end,
+        function(s, t) t = fromBox(t); ns.editSet(sid(s), { note = t ~= "" and t or false }) end)
     field("q", "Quest IDs", "The quests of an accept / quest / turn in / abandon step, comma separated (the ID is in the quest's Wowhead link). For a Quest step, 12:2 means only objective 2 of quest 12 (12:1, 12:2 for both).",
         function(s)
             if kindOf(s) == "abandon" then return table.concat(s.abandon or {}, ", ") end
@@ -1933,7 +1936,8 @@ local function build()
         local kind = kindOf(s)
         for t, b in pairs(win.d.types) do b:SetActive(kind == t) end
         for _, f in pairs(fields) do
-            if not f.box:HasFocus() then f.box:SetText(f.get(s)) end
+            -- (from the start: the cursor at the end scrolls a long text out of the box)
+            if not f.box:HasFocus() then f.box:SetText(f.get(s)); f.box:SetCursorPosition(0) end
         end
         local qstep = s.t == "accept" or s.t == "turnin" or s.t == "complete"
         fields.q.box:SetAlpha((qstep or kind == "abandon") and 1 or 0.4)

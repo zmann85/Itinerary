@@ -38,11 +38,11 @@ The **brass compass** on the minimap: click shows or hides the panel, right-clic
 Every part can be switched off. Hold **Shift** while talking to an NPC to do things by hand that time.
 
 - **Quests**: accept and hand in the route's quests, click through quest dialogue, a gold coin on the best-selling reward
-- **Vendors**: sell grey items at any vendor
+- **Vendors and bank**: sell grey items at any vendor; on the route's bank steps, opening the bank puts the items in or takes them out
 - **Travel**: take the route's flight, set your hearthstone, resurrect at the spirit healer on death skips
 - **Trainers**: opens the training window where something is waiting; buying class skills (worthwhile ones first, keeping money back) is there when you want it
 - **Professions**: learn your professions at their trainer and buy the gathering tools
-- **Groups**: share every quest you accept with your group (optional)
+- **Groups**: share every quest you accept with your group (optional); an escort that starts right away waits until nobody near you still has the quest before it to hand in
 
 ## Trainers and professions
 

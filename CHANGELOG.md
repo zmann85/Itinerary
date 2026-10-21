@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.14 (2026-10-21)
 
 ### Added
 - Bank steps: on a "Deposit these into your bank" / "Withdraw these" step, opening the bank puts the items in or

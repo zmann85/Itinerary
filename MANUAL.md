@@ -228,11 +228,11 @@ You rarely have to touch anything:
   way there takes over), and one for a home you didn't set ("Hearth to Stormwind City" with your hearth in
   Goldshire) is left out.
 - **Bank steps** ("Deposit these into your bank", "Withdraw these"): open the bank on that step and the items
-  go in or come out by themselves, the next bank step's too (Settings > Quests > *Bank steps*; hold Shift to
+  go in or come out by themselves, the next bank step's too (Settings > Route > *Bank steps*; hold Shift to
   do it yourself). A deposit is done once none of its items are in your bags, a withdrawal once the bank has
   none of its items left - also one you never had.
 - **Group quests**: the routes include the guide's group quests (Tharil'zun, Wanted: Gath'Ilzogg, the Slag Pit
-  chain) and leave out its solo versions of those parts. Playing alone? Settings > Quests > *Group quests* >
+  chain) and leave out its solo versions of those parts. Playing alone? Settings > Route > *Group quests* >
   **Skip** turns that round.
 - Steps that don't apply to you are skipped. This covers another class's quests, quests you already
   did, a quest that isn't offered to you, and a quest you dropped.
@@ -263,7 +263,7 @@ only Murloc Gills is listed.
 part of a chapter the guide skips when you get there too high (Westfall 13-15 at level 15 or above; chat
 says so), and steps marked for below a level. A part you've already begun isn't skipped when you level up in
 the middle of it, and a quest that's done is still handed in. Quests in your log it left out show in the
-skipped line, marked *your level*; going back to one brings its quest back. Settings > Quests > *Skip
+skipped line, marked *your level*; going back to one brings its quest back. Settings > Route > *Skip
 overlevelled steps* (on) switches it off: then you do every step.
 
 **Lost?**
@@ -366,12 +366,12 @@ to do things by hand that time.
 | Accept and hand in quests (only the route's quests, or all) | on | Quests |
 | Share every quest you accept with your group (not the ones shared with you) | off | Quests |
 | In a group, wait with escorts that start on accept until nobody near you still has the quest before them to hand in | on | Quests |
-| Skip steps you're overlevelled for (a part of a chapter you get to too high, steps for below a level) | on | Quests |
+| Skip steps you're overlevelled for (a part of a chapter you get to too high, steps for below a level) | on | Route |
 | Click through quest dialogue | on | Quests |
 | Pick gear rewards (all white/green armor: the best armor type you wear, then the best-selling) | off | Quests |
 | Gold coin on the best-selling reward | on | Quests |
 | Sell grey items at any vendor | on | Quests |
-| Bank steps: put their items in / take them out when you open the bank | on | Quests |
+| Bank steps: put their items in / take them out when you open the bank | on | Route |
 | Take the route's flight when you talk to the flight master | on | Travel |
 | Set your hearthstone on a "make this inn your home" step | on | Travel |
 | Resurrect at the spirit healer (death skips) | on | Travel |
@@ -398,7 +398,7 @@ add-on, and learned when you loot one). **All**: herbs, ore veins, chests and th
 the game's interact settings like *Node icons*; **Off** puts your own values back. While Glimmer
 (NaowhForever QoL) is on, it does this itself and Itinerary leaves it to Glimmer.
 
-**Self-found play**: Settings > Quests > *Auction house steps* > **Skip** leaves out every step that sends you
+**Self-found play**: Settings > Route > *Auction house steps* > **Skip** leaves out every step that sends you
 to the auction house (steps marked *Auction house* in the editor, and any step at an auctioneer), and shows
 the steps marked *Self-found only* instead.
 
@@ -557,7 +557,7 @@ to go).
 | **Undo changes** | The step as the route has it |
 | **Go to step** | Makes it the step you're on |
 | **Along the way** | The step runs alongside the following steps until it's done. A Quest step shows its objectives with live counts (a later step of the same quest takes over from there), a Do step with *Collect* its items, a Do step with only text is an instruction |
-| **For everyone / Auction house / Self-found only** | Who gets the step (click to switch). *Auction house* steps are left out when Settings > Quests > *Auction house steps* is on Skip (self-found play); *Self-found only* steps show only then. Route pack steps can come marked already, and any step at an auctioneer counts as an auction house step |
+| **For everyone / Auction house / Self-found only** | Who gets the step (click to switch). *Auction house* steps are left out when Settings > Route > *Auction house steps* is on Skip (self-found play); *Self-found only* steps show only then. Route pack steps can come marked already, and any step at an auctioneer counts as an auction house step |
 | **Optional** | Shown as OPTIONAL, and passed by itself once you're done with a later quest step |
 | **Death skip** | Makes the step "Die and respawn at the spirit healer": an instruction next to the steps after it, done once you're alive again. With a point, the arrow leads there first (the place to die) |
 
@@ -578,7 +578,7 @@ the route's own steps have show here too, so you can see why a step is left out.
 | **Level jump** | `14 Westfall end`: the steps with this name form a section that's left out when you get to its first step above level 14 (decided once) |
 | **Hearthstone** | `ready` (a hearth step: passed while your Hearthstone is on cooldown), `ready in 5m` (5 minutes or less left; `90s` for seconds). Another item or a spell first: `spell 1259686 ready` |
 | **Hearth set to** | `Stormwind City` (only while your hearth is set there), `not Stormwind City` - the place as the game names your home, or an area ID: `area 1519` |
-| **Group** | `group` (a group quest: only with Settings > Quests > *Group quests* on), `solo` (the version for playing alone: only with it off) |
+| **Group** | `group` (a group quest: only with Settings > Route > *Group quests* on), `solo` (the version for playing alone: only with it off) |
 
 ### The More page
 
@@ -691,11 +691,14 @@ The **Quest** button picks a quest from your log (click: next, Shift-click: back
 ## 10. Settings
 
 Open them with the gear in the panel footer, Shift + click on the minimap button, or `/iti settings`.
+Each setting is one line; hover it for what it does. The window is as tall as the tab you're on (it keeps its
+top edge where you put it), and a tab taller than your screen scrolls with the mouse wheel.
 
 | Tab | What's there |
 |---|---|
 | General | Route panel and minimap button, hide them in dungeons, the game's quest tracker, route pack order and the packs' own choices, factory reset, forget this character |
-| Quests | Accept and hand in, which quests (route or all), share quests in a group, escorts wait for your group, group quests, skip overlevelled steps, quest dialogue, object name tags, quest sparkles, pick gear rewards, best-selling reward coin, sell junk, bank steps, auction house steps |
+| Quests | Accept and hand in, which quests (route or all), share quests in a group, escorts wait for your group, quest dialogue, object name tags, quest sparkles, pick gear rewards, best-selling reward coin, sell junk |
+| Route | What the route does for you: group quests (or their solo versions), skip overlevelled steps, bank steps, auction house steps (or self-found) |
 | Travel | Take flights, set hearthstone, spirit healer, map pins (on the world map, on the minimap, the line between them) |
 | Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills, buy weapon skills, your class's skill list (worth a visit / auto-buy) |
 | Professions | Learn at the trainer, main professions, first profession, secondary professions, gather mode, gather data (shipped, own, both), gathering tracking, node icons, gathering tools |

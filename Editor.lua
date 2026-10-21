@@ -1209,7 +1209,7 @@ local function build()
         if n and ns.setStep then ns.setStep(n) end
         refresh()
     end, "Makes this the step you're on.")
-    -- auction house steps (Settings > Quests > Auction house steps): left out when you play self-found;
+    -- auction house steps (Settings > Route > Auction house steps): left out when you play self-found;
     -- a self-found step is the other way round (only then)
     d.market = act("For everyone", 1, 4, function()
         local s = selected()
@@ -1218,7 +1218,7 @@ local function build()
         elseif s.ssf then ns.editSet(sid(s), { ah = false, ssf = false })
         else ns.editSet(sid(s), { ah = true, ssf = false }) end
         refresh()
-    end, "Who gets this step (click to switch). For everyone. Auction house: left out when Settings > Quests > Auction house steps is on Skip (self-found play). Self-found only: shown only then, e.g. buying a vendor item instead of the auction house one.")
+    end, "Who gets this step (click to switch). For everyone. Auction house: left out when Settings > Route > Auction house steps is on Skip (self-found play). Self-found only: shown only then, e.g. buying a vendor item instead of the auction house one.")
     d.opt = act("Optional", 2, 4, function()
         local s = selected()
         if not s then return end
@@ -1457,7 +1457,7 @@ local function build()
             local v = tonumber(t:lower():match("^area%s+(%d+)$") or t:match("^(%d+)$")) or (t ~= "" and t or nil)
             ns.editSet(sid(s), { bindAt = (v and not neg) and v or false, bindNot = (v and neg) and v or false })
         end)
-    field("grp", "Group", "group: a group quest - only with Settings > Quests > Group quests on. solo: the guide's version for playing alone - only with it off. Empty: always.",
+    field("grp", "Group", "group: a group quest - only with Settings > Route > Group quests on. solo: the guide's version for playing alone - only with it off. Empty: always.",
         function(s) return s.grp and "group" or (s.solo and "solo" or "") end,
         function(s, t)
             local low = (t or ""):lower()

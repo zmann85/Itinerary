@@ -1496,7 +1496,7 @@ local function gateBegun(g)
     return false
 end
 ns.gateBegun = gateBegun
--- Settings > Quests > Skip overlevelled steps (on): a step the route leaves out for your level - the guide's level
+-- Settings > Route > Skip overlevelled steps (on): a step the route leaves out for your level - the guide's level
 -- jump (above), or "skip at level N or above" (lvskip.atleast). Never the hand-in of a quest that's done, and
 -- not the steps of a quest you asked back ("do it anyway" from the skipped list: c.levelKeepQ).
 -- ("skip below level N", lvskip.below, isn't about being overlevelled: it applies either way, as in RestedXP)
@@ -1522,7 +1522,7 @@ local function levelLeftOut(s)
     return true
 end
 ns.levelLeftOut = levelLeftOut
--- Settings > Quests > Group quests (on): the guide's group quests (Tharil'zun, the Slag Pit chain) are in the route
+-- Settings > Route > Group quests (on): the guide's group quests (Tharil'zun, the Slag Pit chain) are in the route
 -- and its solo versions of them out; off: the other way round (RestedXP's "Show group quests")
 function ns.groupQuestsOn()
     local a = ItineraryDB and ItineraryDB.auto
@@ -1571,7 +1571,7 @@ local function cdState(c, done)
 end
 ns.cdState = cdState
 local function notApplicable(s)
-    -- Settings > Quests > "Auction house": playing without it (self-found), its steps are left out
+    -- Settings > Route > "Auction house steps": playing without it (self-found), its steps are left out
     if ItineraryDB and ItineraryDB.skipAH and isAH(s) then return true end
     -- ...and the self-found versions of steps (a vendor stop without the auction house hint) only then
     if s.ssf and not (ItineraryDB and ItineraryDB.skipAH) then return true end
@@ -1607,7 +1607,7 @@ local function notApplicable(s)
         local d = ns.slotDps(s.dps[1])
         if d and d >= s.dps[2] then return true end
     end
-    -- group quests and the guide's solo versions of them (Settings > Quests > Group quests)
+    -- group quests and the guide's solo versions of them (Settings > Route > Group quests)
     if s.grp and not ns.groupQuestsOn() then return true end
     if s.solo and ns.groupQuestsOn() then return true end
     -- only while your hearthstone is set to a place (bindAt: "Hearth to Stormwind" once you set it there) / to
@@ -1889,7 +1889,7 @@ function ns.advance()
                 if c.gates[g] then
                     local _, ch = ns.chapterOf(i)
                     ns.print(string.format("%s: left out - you're level %d, and the route skips this part from level %d on. "
-                        .. "Settings > Quests > Skip overlevelled steps.", ch and ch.name or "this part", lvl, (steps[i].gateMax or 0) + 1))
+                        .. "Settings > Route > Skip overlevelled steps.", ch and ch.name or "this part", lvl, (steps[i].gateMax or 0) + 1))
                 end
             end
         end

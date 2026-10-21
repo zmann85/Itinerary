@@ -6,9 +6,9 @@
 - Bank steps: on a "Deposit these into your bank" / "Withdraw these" step, opening the bank puts the items in or
   takes them out, one after the other, and the next bank step's too (withdraw, then deposit at the same banker).
   Chat says what moved. A deposit is done once none of its items are in your bags, a withdrawal once the bank has
-  none of them left (also one you never had). Settings > Quests > *Bank steps* (on); hold Shift to do it yourself.
+  none of them left (also one you never had). Settings > Route > *Bank steps* (on); hold Shift to do it yourself.
   In the editor: *Deposit* and *Withdraw* on the More page (Shift-click the items).
-- Settings > Quests > *Group quests* (Show): the routes' group quests (Tharil'zun, Wanted: Gath'Ilzogg, the Slag
+- Settings > Route > *Group quests* (Show): the routes' group quests (Tharil'zun, Wanted: Gath'Ilzogg, the Slag
   Pit chain), and with them on, the guide's solo versions of those parts are left out. Skip: for playing alone -
   the group quests are left out and the solo versions are in. Editor: *Group* on the Conditions page.
 - Your Hearthstone in the route: "Grind until your Hearthstone is ready" (or "<5 minutes") is done by itself when
@@ -23,6 +23,11 @@
   and contested escorts with nothing to hand in there first, are taken at once as before.
 
 ### Changed
+- The settings window is shorter: one line per setting, its explanation when you hover it (the window used to
+  grow to its longest tab with every explanation written out, taller than many screens). The window is as tall as
+  the tab you're on, keeps its top edge where you put it, and scrolls when a tab doesn't fit on your screen.
+  A new tab **Route** has the settings for what the route does (group quests, skip overlevelled steps, bank steps,
+  auction house steps), out of Quests.
 - The step sound also plays when an objective along the way that takes a while is done (kill or loot objectives,
   items to collect), as for your own step - one sound when both are done at once; not when you abandon or skip it.
 

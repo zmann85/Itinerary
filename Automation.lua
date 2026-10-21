@@ -1410,7 +1410,7 @@ end
 
 ---------------------------------------------------------------- bank steps
 -- A bank step (bankIn / bankOut: RestedXP's ".bankdeposit" / ".bankwithdraw"): opening the bank while it's your step
--- puts its items in and takes its items out (Settings > Quests > Bank steps), one at a time; the bank steps right
+-- puts its items in and takes its items out (Settings > Route > Bank steps), one at a time; the bank steps right
 -- after it (take these out, put those in) go in the same visit. A withdrawal is done once the open bank has none of
 -- its items left - also one you never had; a deposit once none of its items are in your bags (Core.lua).
 local bankOpen, bankBusy, bankQueued, bankTries = false, false, false, 0

@@ -1042,7 +1042,7 @@ local function buildPanel()
         local lv = false
         for _, e in ipairs(self.list or {}) do if e.level then lv = true end end
         if lv then
-            GameTooltip:AddLine("Your level: left out because you're past the level the route does them at (Settings > Quests > Skip overlevelled steps). Going back to one brings its quest back.", 0.5, 0.5, 0.5, true)
+            GameTooltip:AddLine("Your level: left out because you're past the level the route does them at (Settings > Route > Skip overlevelled steps). Going back to one brings its quest back.", 0.5, 0.5, 0.5, true)
         end
         GameTooltip:AddLine("Right-click: not doing them (the line goes away)", 0.5, 0.5, 0.5)
         GameTooltip:AddLine("Quests of a zone you've left drop off by themselves", 0.5, 0.5, 0.5, true)

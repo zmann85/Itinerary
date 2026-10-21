@@ -5,7 +5,9 @@ local ADDON, ns = ...
 
 local W, PAD, ROW_H = 540, 18, 56
 local SEG_W, SEG_H = 74, 22
-local TAB_NAMES = { "General", "Quests", "Travel", "Trainer", "Professions", "Panel", "Arrow", "Keys", "Sounds" }
+local COMPACT_H = 8 + SEG_H + 9 -- a setting without its explanation underneath
+-- (Route came in as the third tab in v2.2: a saved tab number from before moves with it, ItineraryDB.settingsTabV)
+local TAB_NAMES = { "General", "Quests", "Route", "Travel", "Trainer", "Professions", "Panel", "Arrow", "Keys", "Sounds" }
 
 local win, refresh
 local activeTab = 1
@@ -113,8 +115,8 @@ local OPTIONS = {
       choices = SHOW_HIDE, get = function() return ItineraryDB.hideTracker == false end,
       set = function(v) ItineraryDB.hideTracker = not v; if ns.applyTracker then ns.applyTracker() end end },
     { tab = 1, kind = "packs", label = "Route packs", desc = "When two packs have a route for a new character, the higher one in this list wins. A newly installed pack goes to the bottom. In the route list (the button in the panel footer) you can also make any route your default for a race and class." },
-    { tab = 1, kind = "wipe", factory = true, label = "Factory reset", desc = "Itinerary as if just installed: all settings, your route edits and own routes, and every character's progress (each one the next time it logs in). Reloads the UI." },
-    { tab = 1, kind = "wipe", label = "This character", desc = "Forgets everything Itinerary saved for this character: route progress, trainer prices, professions. For a new character that reuses a deleted one's name (that's also detected on its own). Settings stay." },
+    { tab = 1, kind = "wipe", factory = true, keepDesc = true, label = "Factory reset", desc = "Itinerary as if just installed: all settings, your route edits and own routes, and every character's progress (each one the next time it logs in). Reloads the UI." },
+    { tab = 1, kind = "wipe", keepDesc = true, label = "This character", desc = "Forgets everything Itinerary saved for this character: route progress, trainer prices, professions. For a new character that reuses a deleted one's name (that's also detected on its own). Settings stay." },
     -- Quests
     { tab = 2, label = "Accept and hand in", desc = "Picks up quests and hands in finished ones when you talk to the NPC. With a choice of rewards you pick yourself (except the gathering book for your profession).",
       choices = ON_OFF, get = function() return A().quests end, set = function(v) A().quests = v end },
@@ -126,10 +128,10 @@ local OPTIONS = {
     { tab = 2, label = "Escorts wait for your group", desc = "In a group, an escort that starts as you accept it (Rescue OOX-17/TN!) waits until nobody near you still has the quest before it to hand in; chat says who. Solo and contested escorts: taken at once.",
       choices = ON_OFF, get = function() return A().groupWait ~= false end, set = function(v) A().groupWait = v end,
       enabled = function() return A().quests end },
-    { tab = 2, label = "Group quests", desc = "Show: the guide's group quests (Tharil'zun, the Slag Pit chain) are in the route, its solo versions of those parts out. Skip: for playing alone - the other way round.",
+    { tab = 3, label = "Group quests", desc = "Show: the guide's group quests (Tharil'zun, the Slag Pit chain) are in the route, its solo versions of those parts out. Skip: for playing alone - the other way round.",
       choices = { { "Show", true }, { "Skip", false } }, get = function() return A().groupQuests ~= false end,
       set = function(v) A().groupQuests = v; if ns.update then ns.update() end; if ns.refresh then ns.refresh() end end },
-    { tab = 2, label = "Skip overlevelled steps", desc = "Leaves out what the route only does below a level once you're past it: a part of a chapter the guide skips when you get there too high (Westfall 13-15 at 15 or above), and steps marked for below a level. A part you've already begun isn't skipped, and a quest that's done is still handed in. What it left out of quests in your log shows under the panel with the skipped quests. Off: you do every step.",
+    { tab = 3, label = "Skip overlevelled steps", desc = "Leaves out what the route only does below a level once you're past it: a part of a chapter the guide skips when you get there too high (Westfall 13-15 at 15 or above), and steps marked for below a level. A part you've already begun isn't skipped, and a quest that's done is still handed in. What it left out of quests in your log shows under the panel with the skipped quests. Off: you do every step.",
       choices = ON_OFF, get = function() return A().levelSkip ~= false end,
       set = function(v) A().levelSkip = v; if ns.update then ns.update() end; if ns.refresh then ns.refresh() end end },
     { tab = 2, label = "Quest dialogue", desc = "Chooses dialogue options the game marks as part of a quest, and the ones the route asks for.",
@@ -147,147 +149,148 @@ local OPTIONS = {
       choices = SHOW_HIDE, get = function() return A().rewardCoin ~= false end, set = function(v) A().rewardCoin = v end },
     { tab = 2, label = "Sell junk", desc = "Sells your grey items when you open any vendor, so there's money for spells and tools.",
       choices = ON_OFF, get = function() return A().junk ~= false end, set = function(v) A().junk = v end },
-    { tab = 2, label = "Bank steps", desc = "On a bank step, opening the bank puts its items in or takes them out (the next bank step's too). Hold Shift to do it yourself.",
+    { tab = 3, label = "Bank steps", desc = "On a bank step, opening the bank puts its items in or takes them out (the next bank step's too). Hold Shift to do it yourself.",
       choices = ON_OFF, get = function() return A().bank ~= false end, set = function(v) A().bank = v end },
-    { tab = 2, label = "Auction house steps", desc = "Skip: for playing without the auction house (self-found). Steps that send you to buy something there are left out of the route.",
+    { tab = 3, label = "Auction house steps", desc = "Skip: for playing without the auction house (self-found). Steps that send you to buy something there are left out of the route.",
       choices = { { "Show", false }, { "Skip", true } }, get = function() return ItineraryDB.skipAH and true or false end,
       set = function(v) ItineraryDB.skipAH = v or nil; if ns.update then ns.update() end; if ns.refresh then ns.refresh() end end },
     -- Travel
-    { tab = 3, label = "Take flights", desc = "On a \"Fly to ...\" step, talking to the flight master opens the map and takes the flight to the route's destination.",
+    { tab = 4, label = "Take flights", desc = "On a \"Fly to ...\" step, talking to the flight master opens the map and takes the flight to the route's destination.",
       choices = ON_OFF, get = function() return A().fly ~= false end, set = function(v) A().fly = v end },
-    { tab = 3, label = "Set hearthstone", desc = "Talking to the innkeeper on a \"make this inn your home\" step sets your hearthstone there.",
+    { tab = 4, label = "Set hearthstone", desc = "Talking to the innkeeper on a \"make this inn your home\" step sets your hearthstone there.",
       choices = ON_OFF, get = function() return A().bind ~= false end, set = function(v) A().bind = v end },
-    { tab = 3, label = "Spirit healer", desc = "Talking to a spirit healer as a ghost resurrects you right away (route death skips).",
+    { tab = 4, label = "Spirit healer", desc = "Talking to a spirit healer as a ghost resurrects you right away (route death skips).",
       choices = ON_OFF, get = function() return A().spirit ~= false end, set = function(v) A().spirit = v end },
-    { tab = 3, label = "Map pins", desc = "Your next stops as numbered pins on the world map and minimap (steps at the same place share one: \"2-3\"), and your step's kill-area spots. Also /iti pins.",
+    { tab = 4, label = "Map pins", desc = "Your next stops as numbered pins on the world map and minimap (steps at the same place share one: \"2-3\"), and your step's kill-area spots. Also /iti pins.",
       choices = SHOW_HIDE, get = function() return ItineraryDB.pins ~= false end,
       set = function(v) ItineraryDB.pins = v; if ns.refreshPins then ns.refreshPins() end end },
-    { tab = 3, label = "...on the world map", desc = "How many of your next stops get a pin on the world map.",
+    { tab = 4, label = "...on the world map", desc = "How many of your next stops get a pin on the world map.",
       choices = { { "Off", 0 }, { "Current", 1 }, { "Next 3", 3 }, { "Next 5", 5 } },
       get = function() return ItineraryDB.pinsWorld or 5 end,
       set = function(v) ItineraryDB.pinsWorld = v; if ns.refreshPins then ns.refreshPins() end end,
       enabled = function() return ItineraryDB.pins ~= false end },
-    { tab = 3, label = "...on the minimap", desc = "How many of your next stops get a pin on the minimap. Only the first one stays at the minimap's edge when it's far away; the others show once they're in range.",
+    { tab = 4, label = "...on the minimap", desc = "How many of your next stops get a pin on the minimap. Only the first one stays at the minimap's edge when it's far away; the others show once they're in range.",
       choices = { { "Off", 0 }, { "Current", 1 }, { "Next 3", 3 }, { "Next 5", 5 } },
       get = function() return ItineraryDB.pinsMini or 5 end,
       set = function(v) ItineraryDB.pinsMini = v; if ns.refreshPins then ns.refreshPins() end end,
       enabled = function() return ItineraryDB.pins ~= false end },
-    { tab = 3, label = "Line between the pins", desc = "A dotted line on the world map from one stop to the next, in route order. The stretch to your next stop is the brighter one.",
+    { tab = 4, label = "Line between the pins", desc = "A dotted line on the world map from one stop to the next, in route order. The stretch to your next stop is the brighter one.",
       choices = ON_OFF, get = function() return ItineraryDB.pinsLine ~= false end,
       set = function(v) ItineraryDB.pinsLine = v; if ns.refreshPins then ns.refreshPins() end end,
       enabled = function() return ItineraryDB.pins ~= false and (ItineraryDB.pinsWorld or 5) > 1 end },
     -- Trainer
-    { tab = 4, label = "Buy class skills", desc = "Buys the skills you can afford when you open your class trainer, the worthwhile ones first (which ones: the setting below). From level 6 on it keeps some money: 40c at 6, doubling every other level, at most 5g (from level 28).",
+    { tab = 5, label = "Buy class skills", desc = "Buys the skills you can afford when you open your class trainer, the worthwhile ones first (which ones: the setting below). From level 6 on it keeps some money: 40c at 6, doubling every other level, at most 5g (from level 28).",
       choices = ON_OFF, get = function() return A().train end, set = function(v) A().train = v end },
-    { tab = 4, label = "...only worthwhile ones", desc = "Part of Buy class skills: only the skills marked worthwhile (green, see the list below). Off: the others too, once the worthwhile ones and your gathering tools are paid for (from level 10).",
+    { tab = 5, label = "...only worthwhile ones", desc = "Part of Buy class skills: only the skills marked worthwhile (green, see the list below). Off: the others too, once the worthwhile ones and your gathering tools are paid for (from level 10).",
       choices = ON_OFF, get = function() return A().buyWorthOnly ~= false end, set = function(v) A().buyWorthOnly = v end,
       enabled = function() return A().train end },
-    { tab = 4, label = "Open the training window", desc = "At a trainer you came to train at (the route's trainer stop or a trainer instruction), or one where Itinerary buys or learns something for you, the training window opens when you talk to them - also when the trainer has other dialogue first. Hold Shift to see the dialogue.",
+    { tab = 5, label = "Open the training window", desc = "At a trainer you came to train at (the route's trainer stop or a trainer instruction), or one where Itinerary buys or learns something for you, the training window opens when you talk to them - also when the trainer has other dialogue first. Hold Shift to see the dialogue.",
       choices = ON_OFF, get = function() return A().trainGossip ~= false end, set = function(v) A().trainGossip = v end },
-    { tab = 4, label = "Trainer visits", desc = "Instruction: a trainer visit (with new skills you can afford) shows in the instructions next to your step, and the arrow stays on the route. Step: it becomes the step you're on and the arrow leads there.",
+    { tab = 5, label = "Trainer visits", desc = "Instruction: a trainer visit (with new skills you can afford) shows in the instructions next to your step, and the arrow stays on the route. Step: it becomes the step you're on and the arrow leads there.",
       choices = { { "Instruction", "rec" }, { "Step", "step" } }, get = function() return A().trainerSteps or "rec" end,
       set = function(v) A().trainerSteps = v; if ns.rebuildRoute then ns.rebuildRoute() end; if ns.refresh then ns.refresh() end end },
-    { tab = 4, label = "Weapon skills", desc = "Weapon skills you don't have yet: an instruction (or a step, see Trainer visits) when a weapon master who teaches them is within 400 yards and you have the 10 silver each. Route (default): only the ones the route trains. All: every weapon your class can use.",
+    { tab = 5, label = "Weapon skills", desc = "Weapon skills you don't have yet: an instruction (or a step, see Trainer visits) when a weapon master who teaches them is within 400 yards and you have the 10 silver each. Route (default): only the ones the route trains. All: every weapon your class can use.",
       choices = { { "Route", "route" }, { "All", "all" }, { "Off", "off" } }, get = function() return A().weapons or "route" end,
       set = function(v) A().weapons = v; if ns.refresh then ns.refresh() end end },
-    { tab = 4, label = "Buy weapon skills", desc = "Buys the weapon skills from Weapon skills when you open a weapon master, keeping the money for your next class skills. Off: you pick them yourself.",
+    { tab = 5, label = "Buy weapon skills", desc = "Buys the weapon skills from Weapon skills when you open a weapon master, keeping the money for your next class skills. Off: you pick them yourself.",
       choices = ON_OFF, get = function() return A().buyWeapons == true end, set = function(v) A().buyWeapons = v end },
-    { tab = 4, kind = "skills" },
+    { tab = 5, kind = "skills" },
     -- Professions
-    { tab = 5, label = "Learn at the trainer", desc = "Learns the professions you picked (and their next rank) when you open their trainer, if the money for your next class skills stays. Hold Shift to do it by hand.",
+    { tab = 6, label = "Learn at the trainer", desc = "Learns the professions you picked (and their next rank) when you open their trainer, if the money for your next class skills stays. Hold Shift to do it by hand.",
       choices = ON_OFF, get = function() return A().profLearn ~= false end, set = function(v) A().profLearn = v end },
-    { tab = 5, kind = "prof", label = "Main professions", desc = "Up to two. The route sends you to their trainers when you pass close by; a gathering one is learned from the first quest's reward book." },
-    { tab = 5, kind = "first", label = "First profession" },
-    { tab = 5, kind = "prof", secondary = true, label = "Secondary", desc = "Low priority: learned (and the Fishing Pole bought) only when everything else is paid for and 10 silver are left over. A hint under INSTRUCTIONS when a trainer is close (learned without the 10 silver rule when your next class skills stay paid for); reminders near their trainers every 10 levels." },
-    { tab = 5, label = "Gather mode (experimental)", desc = "A farming route instead of the leveling route (also /iti gather): the arrow leads from one spot where a herb or ore vein of your skill can spawn to the next, and the zone's spots show on the minimap and world map. Needs the Itinerary_Data folder. Your route waits where you left it.",
+    { tab = 6, kind = "prof", label = "Main professions", desc = "Up to two. The route sends you to their trainers when you pass close by; a gathering one is learned from the first quest's reward book." },
+    { tab = 6, kind = "first", label = "First profession" },
+    { tab = 6, kind = "prof", secondary = true, label = "Secondary", desc = "Low priority: learned (and the Fishing Pole bought) only when everything else is paid for and 10 silver are left over. A hint under INSTRUCTIONS when a trainer is close (learned without the 10 silver rule when your next class skills stay paid for); reminders near their trainers every 10 levels." },
+    { tab = 6, label = "Gather mode (experimental)", desc = "A farming route instead of the leveling route (also /iti gather): the arrow leads from one spot where a herb or ore vein of your skill can spawn to the next, and the zone's spots show on the minimap and world map. Needs the Itinerary_Data folder. Your route waits where you left it.",
       choices = ON_OFF, get = function() return ns.gatherOn and ns.gatherOn() or false end,
       set = function(v) if ns.gatherToggle then ns.gatherToggle(v) end end },
-    { tab = 5, label = "Gather data", desc = "Which spots gather mode uses. Shipped: where nodes can spawn from the Itinerary_Data add-on (map dots: herbs green, ore orange). Own: ours, from beta finds plus every node gathered or passed close by on this account (herbs blue, ore pink). Both: all of them; a shipped spot we found too shows in our colours.",
+    { tab = 6, label = "Gather data", desc = "Which spots gather mode uses. Shipped: where nodes can spawn from the Itinerary_Data add-on (map dots: herbs green, ore orange). Own: ours, from beta finds plus every node gathered or passed close by on this account (herbs blue, ore pink). Both: all of them; a shipped spot we found too shows in our colours.",
       choices = { { "Both", "both" }, { "Shipped", "ship" }, { "Own", "own" } }, get = function() return ns.gatherSource and ns.gatherSource() or "both" end,
       set = function(v) if ns.setGatherSource then ns.setGatherSource(v) end end },
-    { tab = 5, label = "Gathering tracking", desc = "When no minimap tracking is on (after logging in or dying), Find Herbs or Find Minerals for your gathering profession is switched on. Tracking you picked yourself is left alone.",
+    { tab = 6, label = "Gathering tracking", desc = "When no minimap tracking is on (after logging in or dying), Find Herbs or Find Minerals for your gathering profession is switched on. Tracking you picked yourself is left alone.",
       choices = ON_OFF, get = function() return A().gatherTrack ~= false end,
       set = function(v) A().gatherTrack = v; if v and ns.applyGatherTracking then pcall(ns.applyGatherTracking) end end },
-    { tab = 5, label = "Node icons", desc = "The game's interact icons: an icon floats over the nearest herb, ore vein or chest within about 20 yards, in any direction (SoftTargetInteract). Off puts your own values back.",
+    { tab = 6, label = "Node icons", desc = "The game's interact icons: an icon floats over the nearest herb, ore vein or chest within about 20 yards, in any direction (SoftTargetInteract). Off puts your own values back.",
       choices = ON_OFF, get = function() return A().nodeIcons ~= false end,
       set = function(v) A().nodeIcons = v; if ns.applyNodeIcons then ns.applyNodeIcons(true) end end },
-    { tab = 5, label = "Gathering tools", desc = "Buys the tools for your professions at vendors. Below level 4 only the first profession's tool; the second profession waits. From level 4: all new damage spells first, then learning the second profession and its tool.",
+    { tab = 6, label = "Gathering tools", desc = "Buys the tools for your professions at vendors. Below level 4 only the first profession's tool; the second profession waits. From level 4: all new damage spells first, then learning the second profession and its tool.",
       choices = ON_OFF, get = function() return A().tools ~= false end, set = function(v) A().tools = v end },
     -- Panel
-    { tab = 6, label = "Color scheme", desc = "The colours of the panel, arrow, instructions card and windows. Itinerary: green and gold (follows EllesmereUI). Amethyst: purple on dark grey. Frost: blue. Ember: orange. Slate: grey and white. Changing it reloads the UI.",
+    { tab = 7, label = "Color scheme", desc = "The colours of the panel, arrow, instructions card and windows. Itinerary: green and gold (follows EllesmereUI). Amethyst: purple on dark grey. Frost: blue. Ember: orange. Slate: grey and white. Changing it reloads the UI.",
       choices = (function() local c = {} for _, t in ipairs(ns.THEMES) do c[#c + 1] = { t.name, t.key } end return c end)(),
       get = function() return ItineraryDB.panel.scheme or "itinerary" end,
       set = function(v) ItineraryDB.panel.scheme = v; ReloadUI() end },
-    { tab = 6, label = "Instructions", desc = "What to do next to your step (sell junk, buy a quest item, learn a profession, die to skip a run back...) in their own card on the route panel, or inside the panel.",
+    { tab = 7, label = "Instructions", desc = "What to do next to your step (sell junk, buy a quest item, learn a profession, die to skip a run back...) in their own card on the route panel, or inside the panel.",
       choices = { { "Own card", true }, { "In the panel", false } }, get = function() return ItineraryDB.panel.recCard ~= false end,
       set = function(v) ItineraryDB.panel.recCard = v; if ns.refresh then ns.refresh() end end },
-    { tab = 6, kind = "hiddenAlong", label = "Hidden along the way" },
-    { tab = 6, label = "Item and spell links", desc = "Items and spells in the step text get their icon and quality colour. Hover one for its tooltip, Shift-click to link it in chat.",
+    { tab = 7, kind = "hiddenAlong", label = "Hidden along the way" },
+    { tab = 7, label = "Item and spell links", desc = "Items and spells in the step text get their icon and quality colour. Hover one for its tooltip, Shift-click to link it in chat.",
       choices = SHOW_HIDE, get = function() return ItineraryDB.panel.links ~= false end,
       set = function(v) ItineraryDB.panel.links = v; if ns.refresh then ns.refresh() end end },
-    { tab = 6, label = "Panel style", desc = "Card: the dark box. Minimal: no box or border, a faint shade with shadowed text that stays readable on snow.",
+    { tab = 7, label = "Panel style", desc = "Card: the dark box. Minimal: no box or border, a faint shade with shadowed text that stays readable on snow.",
       choices = { { "Card", "card" }, { "Minimal", "minimal" } }, get = function() return ItineraryDB.panel.style or "card" end,
       set = function(v) ItineraryDB.panel.style = v; if ns.applyPanelStyle then ns.applyPanelStyle() end end },
-    { tab = 6, kind = "slider", label = "Background opacity", desc = "How dark the panel's background is.", min = 0, max = 100, step = 5,
+    { tab = 7, kind = "slider", label = "Background opacity", desc = "How dark the panel's background is.", min = 0, max = 100, step = 5,
       get = function() return math.floor((ItineraryDB.panel.alpha or 0.92) * 100 + 0.5) end,
       set = function(v) ItineraryDB.panel.alpha = v / 100; if ns.applyPanelStyle then ns.applyPanelStyle() end end },
-    { tab = 6, kind = "slider", label = "Panel size", desc = "Makes the panel (text, icons and the instructions card) bigger or smaller.", min = 80, max = 150, step = 5,
+    { tab = 7, kind = "slider", label = "Panel size", desc = "Makes the panel (text, icons and the instructions card) bigger or smaller.", min = 80, max = 150, step = 5,
       get = function() return math.floor((ItineraryDB.panel.scale or 1) * 100 + 0.5) end,
       set = function(v) ItineraryDB.panel.scale = v / 100; if ns.applyPanelStyle then ns.applyPanelStyle() end end },
-    { tab = 6, label = "Text on a see-through panel", desc = "Below about half opacity (and in Minimal): a sharp drop shadow, or a dark outline around every letter (stronger on bright ground, a bit softer).",
+    { tab = 7, label = "Text on a see-through panel", desc = "Below about half opacity (and in Minimal): a sharp drop shadow, or a dark outline around every letter (stronger on bright ground, a bit softer).",
       choices = { { "Shadow", "shadow" }, { "Outline", "outline" } }, get = function() return ItineraryDB.panel.textEdge or "shadow" end,
       set = function(v) ItineraryDB.panel.textEdge = v; if ns.applyPanelStyle then ns.applyPanelStyle() end end },
-    { tab = 6, label = "Panel grows", desc = "Up: the bottom edge stays where you put it and the panel grows upward. Down: the top edge stays and it grows downward.",
+    { tab = 7, label = "Panel grows", desc = "Up: the bottom edge stays where you put it and the panel grows upward. Down: the top edge stays and it grows downward.",
       choices = { { "Up", "up" }, { "Down", "down" } }, get = function() return ItineraryDB.panel.grow == "down" and "down" or "up" end,
       set = function(v) ItineraryDB.panel.grow = v; if ns.anchorPanel then ns.anchorPanel(true) end; if ns.refresh then ns.refresh() end end },
-    { tab = 6, kind = "anchor", label = "Item & target buttons", desc = "Which corner of the route panel the quest item and target buttons sit at. They stack away from that corner." },
-    { tab = 6, label = "Panel position", desc = "Unlock to drag the route panel, then lock it again. Alt + right-click on the panel does the same.",
+    { tab = 7, kind = "anchor", label = "Item & target buttons", desc = "Which corner of the route panel the quest item and target buttons sit at. They stack away from that corner." },
+    { tab = 7, label = "Panel position", desc = "Unlock to drag the route panel, then lock it again. Alt + right-click on the panel does the same.",
       choices = { { "Locked", true }, { "Unlocked", false } }, get = function() return ItineraryDB.panel.locked and true or false end,
       set = function(v) ns.setLocked(v) end },
     -- Arrow
-    { tab = 7, label = "Waypoint arrow", desc = "Also: right-click the minimap button.",
+    { tab = 8, label = "Waypoint arrow", desc = "Also: right-click the minimap button.",
       choices = SHOW_HIDE, get = function() return ItineraryDB.arrow.shown and true or false end,
       set = function(v) if (ItineraryDB.arrow.shown and true or false) ~= v then ns.toggleArrow() end end },
-    { tab = 7, kind = "arrowskin", label = "Arrow look", desc = "Guide colours the arrow green when you're heading the right way and red when the target is behind you." },
-    { tab = 7, label = "Instructions at the arrow", desc = "The instruction lines (buy this, sell junk, train...) also above the waypoint arrow, without a header.",
+    { tab = 8, kind = "arrowskin", label = "Arrow look", desc = "Guide colours the arrow green when you're heading the right way and red when the target is behind you." },
+    { tab = 8, label = "Instructions at the arrow", desc = "The instruction lines (buy this, sell junk, train...) also above the waypoint arrow, without a header.",
       choices = SHOW_HIDE, get = function() return ItineraryDB.arrow.instr ~= false end,
       set = function(v) ItineraryDB.arrow.instr = v; if ns.refresh then ns.refresh() end end },
-    { tab = 7, label = "Death skips at the arrow", desc = "\"Die and respawn at the spirit healer\" always shows above the waypoint arrow, also when Instructions at the arrow is hidden.",
+    { tab = 8, label = "Death skips at the arrow", desc = "\"Die and respawn at the spirit healer\" always shows above the waypoint arrow, also when Instructions at the arrow is hidden.",
       choices = ON_OFF, get = function() return ItineraryDB.arrow.deathInstr ~= false end,
       set = function(v) ItineraryDB.arrow.deathInstr = v; if ns.refresh then ns.refresh() end end },
-    { tab = 7, kind = "slider", label = "Arrow instruction size", desc = "Font size of the instruction lines above the waypoint arrow.", min = 9, max = 24, step = 1, unit = " pt",
+    { tab = 8, kind = "slider", label = "Arrow instruction size", desc = "Font size of the instruction lines above the waypoint arrow.", min = 9, max = 24, step = 1, unit = " pt",
       get = function() return ItineraryDB.arrow.instrSize or 12 end,
       set = function(v) if ns.setArrowInstrSize then ns.setArrowInstrSize(v) end end },
-    { tab = 7, label = "Arrow tooltip", desc = "The step's name and details when your mouse is over the arrow. Alt + right-click still locks and unlocks it.",
+    { tab = 8, label = "Arrow tooltip", desc = "The step's name and details when your mouse is over the arrow. Alt + right-click still locks and unlocks it.",
       choices = SHOW_HIDE, get = function() return ItineraryDB.arrow.tooltip ~= false end,
       set = function(v) ItineraryDB.arrow.tooltip = v end },
-    { tab = 7, label = "Click through the arrow", desc = "On: your mouse goes through the waypoint arrow to whatever is behind it (no tooltip). Only while it's locked: unlock it under Arrow position to move it.",
+    { tab = 8, label = "Click through the arrow", desc = "On: your mouse goes through the waypoint arrow to whatever is behind it (no tooltip). Only while it's locked: unlock it under Arrow position to move it.",
       choices = ON_OFF, get = function() return ItineraryDB.arrow.clickThrough and true or false end,
       set = function(v) ItineraryDB.arrow.clickThrough = v; if ns.applyArrowMouse then ns.applyArrowMouse() end end },
-    { tab = 7, label = "Arrow position", desc = "Unlock to drag the waypoint arrow, then lock it again. Alt + right-click on the arrow does the same.",
+    { tab = 8, label = "Arrow position", desc = "Unlock to drag the waypoint arrow, then lock it again. Alt + right-click on the arrow does the same.",
       choices = { { "Locked", true }, { "Unlocked", false } }, get = function() return ItineraryDB.arrow.locked and true or false end,
       set = function(v) ns.setArrowLocked(v) end },
     -- Keys
-    { tab = 8, kind = "key", bind = "ItineraryTarget", label = "Target button", desc = "Targets the quest mobs of your step (or the NPC to talk to)." },
-    { tab = 8, label = "Show target button", desc = "Off hides the button next to the panel; its key binding above still works.",
+    { tab = 9, kind = "key", bind = "ItineraryTarget", label = "Target button", desc = "Targets the quest mobs of your step (or the NPC to talk to)." },
+    { tab = 9, label = "Show target button", desc = "Off hides the button next to the panel; its key binding above still works.",
       choices = ON_OFF, get = function() return A().targetBtn ~= false end, set = function(v) A().targetBtn = v; if ns.updateItems then ns.updateItems() end end },
-    { tab = 8, label = "Talk on second press", desc = "When the target button found a friendly NPC, pressing its key again talks to them (Interact with Target) - spam it on a contested escort to take the quest first. Outside combat; back to normal after 8 seconds or once you talk.",
+    { tab = 9, label = "Talk on second press", desc = "When the target button found a friendly NPC, pressing its key again talks to them (Interact with Target) - spam it on a contested escort to take the quest first. Outside combat; back to normal after 8 seconds or once you talk.",
       choices = ON_OFF, get = function() return A().interact ~= false end, set = function(v) A().interact = v end },
-    { tab = 8, label = "Tag with a spell", desc = "The target button also casts an instant spell on the enemy it finds (Judgement, Earth Shock, Shadow Word: Pain, Curse of Agony, Fire Blast, Arcane Shot, Moonfire, Throw, Charge), auto attack until you know one. Spam it on a contested respawn to tag it first.",
+    { tab = 9, label = "Tag with a spell", desc = "The target button also casts an instant spell on the enemy it finds (Judgement, Earth Shock, Shadow Word: Pain, Curse of Agony, Fire Blast, Arcane Shot, Moonfire, Throw, Charge), auto attack until you know one. Spam it on a contested respawn to tag it first.",
       choices = ON_OFF, get = function() return A().tagSpell ~= false end, set = function(v) A().tagSpell = v; if ns.updateItems then ns.updateItems() end end },
-    { tab = 8, label = "Mark the target", desc = "The target button puts a skull on the enemy it finds, and an orange circle on a friendly NPC or player.",
+    { tab = 9, label = "Mark the target", desc = "The target button puts a skull on the enemy it finds, and an orange circle on a friendly NPC or player.",
       choices = ON_OFF, get = function() return A().skull ~= false end, set = function(v) A().skull = v; if ns.updateItems then ns.updateItems() end end },
-    { tab = 8, kind = "key", bind = "ItineraryItem1", label = "Quest item 1", desc = "The top item button (nearest the panel's corner)." },
-    { tab = 8, kind = "key", bind = "ItineraryItem2", label = "Quest item 2" },
-    { tab = 8, kind = "key", bind = "ItineraryItem3", label = "Quest item 3" },
-    { tab = 8, kind = "key", bind = "ItineraryItem4", label = "Quest item 4" },
+    { tab = 9, kind = "key", bind = "ItineraryItem1", label = "Quest item 1", desc = "The top item button (nearest the panel's corner)." },
+    { tab = 9, kind = "key", bind = "ItineraryItem2", label = "Quest item 2" },
+    { tab = 9, kind = "key", bind = "ItineraryItem3", label = "Quest item 3" },
+    { tab = 9, kind = "key", bind = "ItineraryItem4", label = "Quest item 4" },
     -- Sounds
-    { tab = 9, kind = "sound", label = "Sound when a step is done", desc = "Plays when a step that takes a while is done: kill or loot objectives, collecting items, grinding a level - also one along the way. Not for talking to NPCs or travelling, and not when you skip. Click one to hear it - or pick one of your own or of your other add-ons below." },
-    { tab = 9, kind = "ownsound", label = "Your own sounds" },
-    { tab = 9, kind = "sharedsound", label = "From your other add-ons" },
+    { tab = 10, kind = "sound", label = "Sound when a step is done", desc = "Plays when a step that takes a while is done: kill or loot objectives, collecting items, grinding a level - also one along the way. Not for talking to NPCs or travelling, and not when you skip. Click one to hear it - or pick one of your own or of your other add-ons below." },
+    { tab = 10, kind = "ownsound", label = "Your own sounds" },
+    { tab = 10, kind = "sharedsound", label = "From your other add-ons" },
 }
 
 ---------------------------------------------------------------- rows
+local savePos -- (the window's, below)
 local function switchRow(row, opt)
     local segs = {}
     for c = #opt.choices, 1, -1 do
@@ -345,9 +348,10 @@ local function chipRow(row, cols, items, extra)
 end
 
 local function buildRow(opt, i)
-    local row = CreateFrame("Frame", nil, win)
+    local row = CreateFrame("Frame", nil, win.content or win)
     row:SetHeight(ROW_H)
     row.tab = opt.tab
+    row.opt = opt
     row.lbl = text(row, 15, 1, 1, 1, 0.9)
     row.lbl:SetPoint("TOPLEFT", 0, -11)
     row.lbl:SetWidth(W - PAD * 2 - SEG_W * 2 - 12)
@@ -855,12 +859,49 @@ local function buildRow(opt, i)
             return out
         end)
     end
+    -- One line per setting: an explanation that is just the option's own text shows when you hover the row (the
+    -- window used to grow to its longest tab with every explanation written out). Text a row writes itself (the
+    -- skill list's legend, "Pick two main professions...", no route pack installed) stays, and so does a reset's.
+    local inner = row.Refresh
+    if inner then
+        row.Refresh = function(self)
+            inner(self)
+            local d = opt.desc
+            if d and d ~= "" and not opt.keepDesc and self.sub:GetText() == d then
+                local sh = self.sub:GetStringHeight() or 0
+                self.sub:SetText(""); self.sub:Hide()
+                local h = self:GetHeight()
+                if type(h) ~= "number" then h = ROW_H end
+                if type(sh) ~= "number" then sh = 0 end
+                self:SetHeight(math.max(COMPACT_H, math.floor(h - sh - 6 + 0.5)))
+            else
+                self.sub:Show()
+            end
+        end
+    end
+    row:EnableMouse(true)
+    row:RegisterForDrag("LeftButton")
+    row:SetScript("OnDragStart", function() win:StartMoving() end)
+    row:SetScript("OnDragStop", function() win:StopMovingOrSizing(); savePos() end)
+    row:SetScript("OnEnter", function(self)
+        local d = opt.desc
+        if not d or d == "" or not GameTooltip then return end
+        self.lbl:SetTextColor(1, 1, 1, 1)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:SetText(opt.label or "", 1, 1, 1)
+        GameTooltip:AddLine(d, 0.85, 0.85, 0.85, true)
+        GameTooltip:Show()
+    end)
+    row:SetScript("OnLeave", function(self)
+        self.lbl:SetTextColor(1, 1, 1, 0.9)
+        if GameTooltip then GameTooltip:Hide() end
+    end)
     win.rows[i] = row
     return row
 end
 
 ---------------------------------------------------------------- window
-local function savePos()
+function savePos()
     local p, _, rp, x, y = win:GetPoint()
     ItineraryDB.settingsPos = { p, rp, x, y }
 end
@@ -889,7 +930,7 @@ local function build()
     local title = text(win, 19, 1, 1, 1, 1); title:SetPoint("TOPLEFT", eyebrow, "BOTTOMLEFT", 0, -4); title:SetText("Settings")
     local desc = text(win, 12, 1, 1, 1, 0.45)
     desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -6); desc:SetWidth(W - PAD * 2); desc:SetWordWrap(true)
-    desc:SetText("Hold Shift while talking to an NPC, opening a trainer or a vendor to do it by hand.")
+    desc:SetText("Hover a setting to see what it does. Hold Shift while talking to an NPC, opening a trainer or a vendor to do it by hand.")
 
     local close = CreateFrame("Button", nil, win)
     close:SetSize(24, 24); close:SetPoint("TOPRIGHT", -8, -8)
@@ -898,6 +939,11 @@ local function build()
     close:SetScript("OnLeave", function() x:SetTextColor(1, 1, 1, 0.5) end)
     close:SetScript("OnClick", function() win:Hide() end)
 
+    -- (a tab saved before the Route tab: Travel and the ones after it moved one on)
+    if ItineraryDB.settingsTabV ~= 2 then
+        if type(ItineraryDB.settingsTab) == "number" and ItineraryDB.settingsTab >= 3 then ItineraryDB.settingsTab = ItineraryDB.settingsTab + 1 end
+        ItineraryDB.settingsTabV = 2
+    end
     activeTab = math.min(ItineraryDB.settingsTab or 1, #TAB_NAMES)
     -- two rows of five tabs
     local PER = 5
@@ -915,6 +961,42 @@ local function build()
     div:SetColorTexture(1, 1, 1, 0.08); div:SetHeight(1)
     div:SetPoint("TOPLEFT", win.tabs[#TAB_NAMES - ((#TAB_NAMES - 1) % PER)], "BOTTOMLEFT", 0, -10)
     div:SetPoint("RIGHT", win, "RIGHT", -PAD, 0)
+
+    -- the settings scroll when a tab is taller than the screen allows (mouse wheel; a thin bar on the right)
+    local scroll = CreateFrame("ScrollFrame", nil, win)
+    scroll:SetPoint("TOPLEFT", div, "BOTTOMLEFT", 0, -4)
+    scroll:SetPoint("RIGHT", win, "RIGHT", -PAD, 0)
+    local content = CreateFrame("Frame", nil, scroll)
+    content:SetSize(W - PAD * 2, 1)
+    scroll:SetScrollChild(content)
+    win.scroll, win.content = scroll, content
+    local bar = win:CreateTexture(nil, "ARTWORK")
+    bar:SetColorTexture(1, 1, 1, 0.05); bar:SetWidth(3)
+    bar:SetPoint("TOPRIGHT", scroll, "TOPRIGHT", 10, 0); bar:SetPoint("BOTTOMRIGHT", scroll, "BOTTOMRIGHT", 10, 0)
+    local thumb = win:CreateTexture(nil, "OVERLAY")
+    thumb:SetColorTexture(ar, ag, ab, 0.6); thumb:SetWidth(3)
+    win.scrollBar, win.scrollThumb = bar, thumb
+    local function placeThumb()
+        local range, view = win.scrollRange or 0, win.scrollView or 0
+        bar:SetShown(range > 0); thumb:SetShown(range > 0)
+        if range <= 0 or view <= 0 then return end
+        local h = math.max(24, view * view / (view + range))
+        thumb:SetHeight(h)
+        thumb:ClearAllPoints()
+        thumb:SetPoint("TOP", bar, "TOP", 0, -((view - h) * (scroll:GetVerticalScroll() or 0) / range))
+    end
+    win.placeThumb = placeThumb
+    function win.scrollTo(v)
+        v = math.max(0, math.min(win.scrollRange or 0, v))
+        scroll:SetVerticalScroll(v)
+        placeThumb()
+    end
+    scroll:EnableMouseWheel(true)
+    scroll:SetScript("OnMouseWheel", function(_, delta)
+        -- (while a key is being bound, the wheel is the key: the window's handler takes it)
+        if win.capture and win:GetScript("OnMouseWheel") then return win:GetScript("OnMouseWheel")(win, delta) end
+        win.scrollTo((scroll:GetVerticalScroll() or 0) - delta * 48)
+    end)
 
     win.rows = {}
     -- the route packs' own choices go right under Route packs (one row per list a pack registered)
@@ -936,12 +1018,20 @@ local function build()
     fl:SetColorTexture(1, 1, 1, 0.08); fl:SetHeight(1)
     fl:SetPoint("BOTTOMLEFT", hint, "TOPLEFT", 0, 10); fl:SetPoint("RIGHT", win, "RIGHT", -PAD, 0)
 
-    -- one height for all tabs (the tallest), so switching tabs never resizes the window
+    -- the window is as tall as the tab you're on, up to what fits on the screen (a taller tab scrolls); it's held
+    -- by its top edge, so the tabs stay where they are and only the bottom moves when you switch
+    local shownTab
+    local function holdTop()
+        local p = win:GetPoint()
+        local l, t = win:GetLeft(), win:GetTop()
+        if p == "TOPLEFT" or type(l) ~= "number" or type(t) ~= "number" then return end
+        win:ClearAllPoints()
+        win:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", l, t)
+        savePos()
+    end
     local function layout()
         local heights = {}
         for _, r in ipairs(win.rows) do heights[r.tab] = (heights[r.tab] or 0) + (r:GetHeight() or ROW_H) end
-        local tallest = 0
-        for _, h in pairs(heights) do tallest = math.max(tallest, h) end
         local last
         for k, r in ipairs(win.rows) do
             local show = r.tab == activeTab
@@ -949,19 +1039,29 @@ local function build()
             if show then
                 r:ClearAllPoints()
                 if last then r:SetPoint("TOPLEFT", last, "BOTTOMLEFT", 0, 0)
-                else r:SetPoint("TOPLEFT", div, "BOTTOMLEFT", 0, -4) end
-                r:SetPoint("RIGHT", win, "RIGHT", -PAD, 0)
+                else r:SetPoint("TOPLEFT", content, "TOPLEFT", 0, 0) end
+                r:SetPoint("RIGHT", content, "RIGHT", 0, 0)
                 local nxt = win.rows[k + 1]
                 r.line:SetShown(nxt and nxt.tab == r.tab or false)
                 last = r
             end
         end
         for t, b in ipairs(win.tabs) do b:SetActive(t == activeTab) end
-        local header = 16 + eyebrow:GetStringHeight() + 4 + title:GetStringHeight() + 6 + desc:GetStringHeight() + 12 + SEG_H + 4 + 10
+        local header = 16 + eyebrow:GetStringHeight() + 4 + title:GetStringHeight() + 6 + desc:GetStringHeight() + 12 + 2 * SEG_H + 3 + 4 + 10
         local wt, db = win:GetTop(), div:GetBottom()
         if wt and db and wt > db then header = wt - db end
         local footer = 12 + 1 + 10 + hint:GetStringHeight() + 14
-        win:SetHeight(math.floor(header + 4 + tallest + footer + 0.5))
+        local screen = UIParent and UIParent.GetHeight and UIParent:GetHeight()
+        if type(screen) ~= "number" or screen <= 0 then screen = 768 end
+        local mine = heights[activeTab] or 0
+        local view = math.max(120, math.min(mine, math.floor(screen * 0.85 - header - 4 - footer)))
+        holdTop()
+        content:SetHeight(math.max(1, mine))
+        scroll:SetPoint("BOTTOMLEFT", win, "BOTTOMLEFT", PAD, footer)
+        win:SetHeight(math.floor(header + 4 + view + footer + 0.5))
+        win.scrollRange, win.scrollView = math.max(0, math.floor(mine - view + 0.5)), view
+        if shownTab ~= activeTab then shownTab = activeTab; scroll:SetVerticalScroll(0) end
+        win.scrollTo(scroll:GetVerticalScroll() or 0)
     end
 
     refresh = function()

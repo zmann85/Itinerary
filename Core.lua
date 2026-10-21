@@ -937,7 +937,10 @@ function ns.skippedBehind()
             else
                 seen[q] = true
                 local s = steps[i]
-                out[#out + 1] = { step = i, q = q, name = s.n and s.n[k] or ("Quest " .. q), t = s.t, level = e[5] }
+                -- (an objective step has no quest names: the route's name for it, else the game's)
+                local title = C_QuestLog and C_QuestLog.GetTitleForQuestID
+                local name = (s.n and s.n[k]) or ns.routeQuestName(q) or (title and title(q)) or ("Quest " .. q)
+                out[#out + 1] = { step = i, q = q, name = name, t = s.t, level = e[5] }
             end
         end
     end

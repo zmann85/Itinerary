@@ -10,6 +10,8 @@
   and contested escorts with nothing to hand in there first, are taken at once as before.
 
 ### Fixed
+- The skipped quests list showed a quest whose skipped step was an objective step as "Quest 1076": it names it now
+  (Devils in Westfall).
 - Editor: clicking a step showed its Hint (or Text) blank or only its end - a long text opened scrolled to the
   end, and a hint of several lines showed nothing. The fields now show from the start, with line breaks as `\n`
   (type `\n` for a new line; it's saved as a real line break).

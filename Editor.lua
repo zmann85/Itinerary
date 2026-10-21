@@ -41,8 +41,27 @@ local function copy(t)
     for k, v in pairs(t) do o[k] = type(v) == "table" and copy(v) or v end
     return o
 end
+-- The editor's key for each of a route's own steps (what an edit is anchored to: "kind:quests:npc#n"), worked
+-- out the first time the editor or an edit needs one - not at every login for each of the 4,000+ steps (a
+-- string per step that most sessions never use)
+local keyedLists = setmetatable({}, { __mode = "k" })
+local function keyList(base)
+    if not base or keyedLists[base] then return end
+    keyedLists[base] = true
+    local seen = {}
+    for _, s in ipairs(base) do
+        local k = anchorKey(s)
+        seen[k] = (seen[k] or 0) + 1
+        s.edKey = k .. "#" .. seen[k]
+    end
+end
 -- the id the editor uses for a step: "+n" for one you added, its key for one from the route
-local function sid(s) return s and (s.edAdd and ("+" .. s.edAdd) or s.edKey) end
+local function sid(s)
+    if not s then return nil end
+    if s.edAdd then return "+" .. s.edAdd end
+    if not s.edKey then local r = ns.route(); if r then keyList(r.editBase) end end
+    return s.edKey
+end
 ns.editId = sid
 
 local function editsFor(id, create)
@@ -54,17 +73,13 @@ end
 
 function ns.applyEdits(r, base, chapters)
     local id = ItineraryCharDB and ItineraryCharDB.route
-    local seen = {}
-    for _, s in ipairs(base) do
-        local k = anchorKey(s)
-        seen[k] = (seen[k] or 0) + 1
-        s.edKey = k .. "#" .. seen[k]
-    end
+    r.editBase = base
     local E = id and ItineraryDB.edits and ItineraryDB.edits[id]
     if not E or #E.ops == 0 then
         r.editList = base
         return base, chapters
     end
+    keyList(base)
     -- numbers in the route (along "till", chapter starts) become step references while the list changes
     local chapRef = {}
     for n, c in ipairs(chapters) do chapRef[n] = base[c.first] end

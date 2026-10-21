@@ -1541,7 +1541,7 @@ function ns.panelUp()
     return ItineraryDB.panel.shown and not ns.dungeonHidden()
 end
 
-function ns.refresh()
+local function refreshNow()
     ns.arrowDirty = true
     if not panel then return end
     local g = ItineraryDB
@@ -1827,6 +1827,9 @@ function ns.refresh()
     if ns.refreshArrow then ns.refreshArrow() end
     if ns.updateItems then ns.updateItems() end -- target button and quest items follow the step
 end
+-- (the trainer checks, the detour and the recommendations ask about the spending plan and the class skills
+-- many times: answered once per refresh)
+function ns.refresh() return ns.memoRun(refreshNow) end
 
 ---------------------------------------------------------------- waypoint arrow
 -- Map position -> world position. Every conversion makes new vector tables in the game's API, and the
@@ -2202,7 +2205,9 @@ end
 
 ---------------------------------------------------------------- toggles + minimap button
 -- the trainer hint depends on where you are: look again every few seconds
-C_Timer.NewTicker(2, function()
+-- (one memo run: the trainer checks and the profession hint ask the same questions, and a refresh it calls
+-- shares the answers)
+local function detourTick()
     if not panel or not panel:IsShown() or not ns.findDetour then return end
     local ok, key = pcall(function()
         local list = ns.trainerAsRec() and ns.findDetours() or { ns.findDetour() }
@@ -2217,7 +2222,8 @@ C_Timer.NewTicker(2, function()
     if key ~= cur or hint ~= panel.lastHint then panel.lastHint = hint; ns.refresh() end
     -- the arrow hides itself on steps without a place; bring it back when the step has one again
     if arrow and not arrow:IsShown() then ns.refreshArrow() end
-end)
+end
+C_Timer.NewTicker(2, function() ns.memoRun(detourTick) end)
 
 -- Settings > Arrow > Click through the arrow: while it's locked, the mouse goes through it to the world behind
 -- (no tooltip, no Alt + right-click); unlocked, it takes the mouse again so you can drag it

@@ -32,6 +32,9 @@ end
 -- The class skills and trainer places that come with the addon (ClassData.lua, recorded from the game):
 -- every class has its full trainer list before its first visit. What a trainer shows you replaces them
 -- (ItineraryDB.classSpells[CLASS]["name:rank"] = { name, level, cost, rank, true = seen at a trainer}).
+-- The shipped entries are ClassData's own tables (a trainer's replace them, nothing changes them in place),
+-- and they leave the saved variables again before the game writes them (ns.unseedClassData): seeded at
+-- every login, saved only as what trainers showed.
 function ns.seedClassData()
     local D, g = ns.CLASS_DATA, ItineraryDB
     if not (D and g and g.auto) then return end
@@ -44,7 +47,7 @@ function ns.seedClassData()
         for _, e in ipairs(list) do
             local key = e[1] .. ":" .. (e[4] or "")
             local cur = cs[key]
-            if not (cur and cur[5]) then cs[key] = { e[1], e[2], e[3], e[4] } end -- live data wins
+            if not (cur and cur[5]) then cs[key] = e end -- live data wins
             seen[e[1]] = true
         end
     end
@@ -79,6 +82,14 @@ function ns.seedClassData()
             for _, key in ipairs(keys) do cur[key] = true end
             g.profTeach[npc] = cur
         end
+    end
+end
+-- before the game saves (logout, reload): the shipped class skills go out of the saved variables again - they
+-- come back from ClassData.lua at the next login; only what a trainer showed ([5] = true) is kept
+function ns.unseedClassData()
+    local g = ItineraryDB
+    for _, cs in pairs(g and g.classSpells or {}) do
+        for key, e in pairs(cs) do if not e[5] then cs[key] = nil end end
     end
 end
 
@@ -1129,7 +1140,9 @@ end
 
 -- The class skills you could learn now and don't know yet: { name, rank, cost, level, skip } cheapest first
 -- (for the tooltip on the "Train new skills" instruction). Known spells are found by name and rank.
-function ns.learnableSpells()
+local learnableSpells
+function ns.learnableSpells() return ns.memo("learnableSpells", learnableSpells) end
+learnableSpells = function()
     local _, class = UnitClass("player")
     local cs = ItineraryDB.classSpells and ItineraryDB.classSpells[class]
     if not cs then return {} end
@@ -1144,7 +1157,8 @@ function ns.learnableSpells()
     -- knowing Rank 2 must also count for Rank 1)
     -- a skill the game renamed (Blessing of Salvation is Salvation now): the old name's entry has the same
     -- level, price, rank and icon as the new one, and knowing the new one is knowing it
-    local function sig(e) return e[6] and table.concat({ tostring(e[2]), tostring(e[3]), tostring(e[4] or ""), tostring(e[6]) }, ":") end
+    -- (one string per entry, no list to join: this runs for every class skill at each refresh)
+    local function sig(e) return e[6] and (tostring(e[2]) .. ":" .. tostring(e[3]) .. ":" .. tostring(e[4] or "") .. ":" .. tostring(e[6])) end
     local top, low, knownSig = {}, {}, {}
     for _, e in pairs(cs) do
         local name, rank = e[1], e[4]
@@ -1163,7 +1177,8 @@ function ns.learnableSpells()
         -- a spell whose first rank no trainer teaches comes from a talent (Seal of Command, Holy Shock, Mortal
         -- Strike) or a quest: its higher ranks only once you have it
         local gated = name and low[name] and low[name] > 1 and not top[name] and not known(name)
-        local renamed = sig(e) and knownSig[sig(e)]
+        local g = sig(e)
+        local renamed = g and knownSig[g]
         if name and req and req <= lvl and not gated and not renamed and not (top[name] and top[name] >= n) then
             local icon = e[6]
             if not icon and C_Spell and C_Spell.GetSpellTexture then icon = C_Spell.GetSpellTexture(name) end -- a rank you know

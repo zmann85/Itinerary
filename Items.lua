@@ -875,7 +875,8 @@ local function update()
     row:SetShown((#items > 0 or #names > 0) and up and true or false)
     updateCooldowns()
 end
-ns.updateItems = update
+-- (what the buttons ask about the plan and the class skills: worked out once per update)
+ns.updateItems = function() return ns.memoRun(update) end
 
 function ns.buildItems(panel)
     local ar, ag, ab = accent()

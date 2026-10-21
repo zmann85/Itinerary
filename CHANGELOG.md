@@ -10,6 +10,17 @@
   When it's unclear, the place where the route goes on in the zone you're in wins, then a chapter for your level.
   Quests in your log whose steps are behind it show in the skipped line. A new character starts at the beginning
   as before; at login it waits until the quest log is complete.
+- Lighter in game. The route you switch away from is let go at once instead of staying in memory until the next
+  reload; going back to a route pack's route then takes a reload (it already did for any other one). On a route
+  of your own, the route packs' step pools aren't kept either. The other routes' chapter lists, the second copy
+  of every waypoint list and kill area, the editor's keys for each step (made when the editor first needs them)
+  and a copy of the shipped class skills are gone: about 1.3 MB less with a route pack route. The shipped class
+  skills no longer go into the saved variables (only what trainers showed you), so the file is smaller too.
+- Faster panel updates with professions picked: the spending plan, the class skills you could learn and whether
+  a gathering book is still ahead on the route are worked out once per update instead of up to 17 times (each
+  walked the class's skill list, the book check the rest of the route): an update takes about 1 ms instead of
+  10-16 ms in our tests, the trainer check every 2 seconds 0.4 ms instead of 3-5 ms, with a sixteenth of the
+  garbage.
 
 ### Fixed
 - Share quests in a group: taking several quests from one NPC, the second share reached a group member while the

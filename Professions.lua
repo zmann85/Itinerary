@@ -269,22 +269,38 @@ end
 -- it's assumed to be ahead.
 local bookQuestAhead
 function ns.bookQuestAhead() return bookQuestAhead() end
-bookQuestAhead = function()
-    local c = C()
-    local steps, i = ns.steps(), c.step
-    local seen = ItineraryDB.bookQuests or {}
-    for j = i, #steps do
-        local s = steps[j]
-        if s.t == "turnin" and s.q then
-            for _, q in ipairs(s.q) do
-                if (BOOK_QUESTS[q] or seen[q]) and not ns.quest.flaggedDone(q) then return true end
+-- (where the route hands those quests in, worked out once per step list - and again when a book reward
+-- turns up on a quest we didn't know: each look then only checks those hand-ins, not the rest of the route)
+local bookTurnins = setmetatable({}, { __mode = "k" })
+local function bookQuestsOn(steps, seen)
+    local n = 0
+    for _ in pairs(seen) do n = n + 1 end
+    local e = bookTurnins[steps]
+    if not (e and e.seen == n) then
+        e = { seen = n }
+        for j, s in ipairs(steps) do
+            if s.t == "turnin" and s.q then
+                for _, q in ipairs(s.q) do
+                    if BOOK_QUESTS[q] or seen[q] then e[#e + 1] = j; e[#e + 1] = q end
+                end
             end
         end
+        bookTurnins[steps] = e
+    end
+    return e
+end
+local function bookAhead()
+    local c = C()
+    local steps, i = ns.steps(), c.step
+    local list = bookQuestsOn(steps, ItineraryDB.bookQuests or {})
+    for k = 1, #list, 2 do
+        if list[k] >= i and not ns.quest.flaggedDone(list[k + 1]) then return true end
     end
     if c.prof and c.prof.bookSeen then return false end
     local ch = ns.chapters and ns.chapters() or {}
     return ch[2] ~= nil and i < ch[2].first
 end
+bookQuestAhead = function() return ns.memo("bookAhead:" .. tostring(C().step), bookAhead) end
 -- the gathering profession the book reward is for: with two gathering professions the second one (the first
 -- is learned at the trainer right away), else the one you picked
 local function bookProf()
@@ -310,7 +326,10 @@ end
 local function learnCost(k)
     return (ItineraryDB.profLearnCost and ItineraryDB.profLearnCost[k]) or 10
 end
-function ns.spendPlan()
+local spendPlan
+-- (the same table for everything that asks within one refresh: read it, don't change it)
+function ns.spendPlan() return ns.memo("spendPlan", spendPlan) end
+spendPlan = function()
     local c = C()
     local lvl = UnitLevel("player") or 1
     local plan = {}

@@ -312,11 +312,69 @@ ns.decodeRoute = decodeRoute
 
 -- Memory: the route you use is built once (r.base); after that the faction's step pool and the other
 -- routes' step lists are let go. Switching to another generated route therefore reloads the UI.
+-- (keep = nil: the route you're on isn't from a route pack - all of the packs' routes go)
 local function releasePools(keep)
+    local any = false
     for _, rr in pairs(ns.routes) do
-        if rr ~= keep and rr.seq then rr.seq = nil; rr.needsReload = true end
+        if rr ~= keep and rr.seq then
+            -- (its chapters too: the reload that brings the route back reads them from the pack file again)
+            rr.seq, rr.chapters, rr.baseChapters, rr.needsReload = nil, nil, nil, true
+            any = true
+        end
     end
-    if ns.pools then for k in pairs(ns.pools) do ns.pools[k] = nil end end
+    if ns.pools then for k in pairs(ns.pools) do ns.pools[k] = nil; any = true end end
+    if any then collectgarbage("collect") end
+end
+
+-- One refresh asks the same questions many times (the spending plan 8 times, the class skills you could
+-- learn 13, whether a gathering book is still ahead on the route 8): inside ns.memoRun each is worked out
+-- once. Only while that run lasts and within the frame it started in (GetTime is the frame's time), so
+-- nothing outside it - a trainer window buying skills, an event - ever gets an old answer.
+local memo, memoDepth, memoAt, MEMO_NIL = {}, 0, nil, {}
+local function clearMemo() for k in pairs(memo) do memo[k] = nil end end
+function ns.memoRun(fn, ...)
+    local now = GetTime()
+    if memoAt ~= now then memoDepth = 0 end -- (a run that stopped on an error doesn't leave it on)
+    if memoDepth == 0 then clearMemo(); memoAt = now end
+    memoDepth = memoDepth + 1
+    local a, b, c, d = fn(...)
+    memoDepth = memoDepth - 1
+    if memoDepth == 0 then clearMemo() end
+    return a, b, c, d
+end
+-- fn(...)'s answer, once per run (key: names the question, with anything it depends on that can change
+-- within a run)
+function ns.memo(key, fn, ...)
+    if memoDepth == 0 or memoAt ~= GetTime() then return fn(...) end
+    local v = memo[key]
+    if v == nil then
+        v = fn(...)
+        memo[key] = v == nil and MEMO_NIL or v
+        return v
+    end
+    if v == MEMO_NIL then return nil end
+    return v
+end
+
+-- The route you leave is let go as well (the user: "if a switchback is wanted we can live with another
+-- reload"): its step list with your edits on top, and its own steps unless the route you're on now is built
+-- from the same ones (your copy of it, or the original of your copy). A route pack's route then comes back
+-- with a reload (its step pool went when it was built); your own routes are built again from your edits.
+local function sourceOf(r) return r and r.from and ns.routes[r.from] or r end
+local function releaseRoute(old, new)
+    old.steps, old.editList, old.editBase, old.built, old.prepared = nil, nil, nil, nil, nil
+    if old.baseChapters then old.chapters = old.baseChapters end
+    local src = sourceOf(old)
+    if not src or src == sourceOf(new) then return end
+    local base = src.base
+    if base then
+        for _, rr in pairs(ns.routes) do if rr.base == base then rr.base = nil end end
+    end
+    if not src.custom then
+        src.seq, src.needsReload = nil, true
+        src.steps, src.editList, src.editBase, src.built, src.prepared = nil, nil, nil, nil, nil
+        src.chapters, src.baseChapters = nil, nil
+    end
     collectgarbage("collect")
 end
 
@@ -369,9 +427,15 @@ baseSteps = function(r)
     return r.base
 end
 
+local builtFor -- the route whose steps are built: the one this character is on
 function ns.route()
     local r = ItineraryCharDB and ns.routes[ItineraryCharDB.route]
     if not r then return nil end
+    -- (another route than before - a switch, a pick after a wipe, the editor's copy: the old one is let go)
+    if builtFor ~= r then
+        if builtFor then releaseRoute(builtFor, r) end
+        builtFor = r
+    end
     -- big generated routes build their step list on first use (only the route this character follows)
     if r.steps and not r.built then r.staticSteps, r.steps = r.steps, nil end
     if not r.steps then
@@ -379,6 +443,13 @@ function ns.route()
         local steps, chapters = baseSteps(r), r.baseChapters
         if ns.applyEdits then steps, chapters = ns.applyEdits(r, steps, chapters) end
         r.steps, r.chapters, r.built = steps, chapters, true
+    end
+    -- a route of your own (not a copy: no route pack's steps in it): the packs' step pools aren't needed
+    -- either. Only once the login has settled (the route a character gets is picked by then, and a copy is
+    -- linked to its original - a copy is never "your own" here, even with its original missing).
+    if r.custom and not r.from and ns.loginSettled and ns.pools and next(ns.pools) then
+        local def = ItineraryDB.customRoutes and ItineraryDB.customRoutes[ItineraryCharDB.route]
+        if def and not def.from then releasePools(nil) end
     end
     return r
 end
@@ -420,7 +491,7 @@ end
 function ns.rebuildRoute()
     local c, r = ItineraryCharDB, ns.route()
     if not r then return end
-    local function id(s) return s and (s.edAdd and ("+" .. s.edAdd) or s.edKey) end
+    local function id(s) return ns.editId and ns.editId(s) or (s and (s.edAdd and ("+" .. s.edAdd) or s.edKey)) end
     local cur = id(r.steps[c.step])
     -- per-step notes (done by hand, not available, arrived) follow their step, not its number
     local keep = {}
@@ -799,13 +870,21 @@ function ns.prepareRoute(r)
 
     local HBD = LibStub and LibStub("HereBeDragons-2.0", true)
     if not HBD then return end
+    local function zoneOnly(list)
+        for _, p in ipairs(list) do if p[4] == 1 then return false end end
+        return true
+    end
     for _, s in ipairs(r.steps) do
         if s.wx and s.m and not s.x then
             local x, y = HBD:GetZoneCoordinatesFromWorld(s.wx, s.wy, s.m, true)
             if x and y then s.x, s.y = x * 100, y * 100 end
         end
-        -- the way to the target: { {map, x, y, radius}, ... } in zone coordinates
-        if s.path and not s.way then
+        -- the way to the target: { {map, x, y, radius}, ... } in zone coordinates (a path that's in zone
+        -- coordinates already is its own way - { map, x, y, 0, radius }: way.rad says where the radius is - so
+        -- it isn't kept twice; the same for a kill area)
+        if s.path and not s.way and zoneOnly(s.path) then
+            if #s.path >= 1 then s.path.rad = 5; s.way = s.path end
+        elseif s.path and not s.way then
             local way = {}
             for _, p in ipairs(s.path) do
                 local m, a, b = p[1], p[2], p[3]
@@ -819,7 +898,9 @@ function ns.prepareRoute(r)
             if #way >= 1 then s.way = way end
         end
         -- the area to walk for kill/loot steps: { {map, x, y}, ... } in zone coordinates
-        if s.wp and not s.area then
+        if s.wp and not s.area and zoneOnly(s.wp) then
+            if #s.wp >= 2 then s.area = s.wp end
+        elseif s.wp and not s.area then
             local area = {}
             for _, p in ipairs(s.wp) do
                 local m, a, b = p[1], p[2], p[3]
@@ -2414,8 +2495,9 @@ function ns.arrowRoute(i)
     local function add(j, s, final, stop)
         local way = s.way or (s.x and { { s.m, s.x, s.y, s.r or 0 } }) or nil
         if not way then return end
+        local R = way.rad or 4
         for k, p in ipairs(way) do
-            seq[#seq + 1] = { p[1], p[2], p[3], p[4] or 0, step = j, last = (k == #way), final = final and k == #way,
+            seq[#seq + 1] = { p[1], p[2], p[3], p[R] or 0, step = j, last = (k == #way), final = final and k == #way,
                               stop = stop and k == #way or nil }
         end
     end
@@ -3306,8 +3388,11 @@ function ns.update()
         local on = ItineraryDB.stepSound and ItineraryDB.stepSound ~= "Off"
         alongWas = on and alongOpen(c.step) or nil
         ns.sawStep = true
-        if ns.refresh then ns.refresh() end
-        if ns.updateItems then ns.updateItems() end
+        -- (the panel and the buttons next to it ask the same questions: answered once for both)
+        ns.memoRun(function()
+            if ns.refresh then ns.refresh() end
+            if ns.updateItems then ns.updateItems() end
+        end)
     end)
 end
 
@@ -3362,6 +3447,7 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
     elseif event == "PLAYER_LOGOUT" then
         -- (saved with the step numbers: what those steps are, for the next build of the route)
         if resynced then keepKeys(ItineraryCharDB, ns.steps(), true) end
+        if ns.unseedClassData then ns.unseedClassData() end
     elseif event == "TIME_PLAYED_MSG" then
         played.total, played.at = a1, GetTime()
         local lvl = UnitLevel("player")

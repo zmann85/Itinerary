@@ -1522,6 +1522,54 @@ local function levelLeftOut(s)
     return true
 end
 ns.levelLeftOut = levelLeftOut
+-- Settings > Quests > Group quests (on): the guide's group quests (Tharil'zun, the Slag Pit chain) are in the route
+-- and its solo versions of them out; off: the other way round (RestedXP's "Show group quests")
+function ns.groupQuestsOn()
+    local a = ItineraryDB and ItineraryDB.auto
+    return not (a and a.groupQuests == false)
+end
+-- Seconds left on an item's or a spell's cooldown (0: ready); nil while the game won't say (a secret value)
+local function secret(v) return issecretvalue and issecretvalue(v) or false end
+function ns.cooldownLeft(kind, id)
+    local start, dur
+    if kind == "item" then
+        local f = (C_Container and C_Container.GetItemCooldown) or GetItemCooldown
+        if f then start, dur = f(id) end
+    elseif kind == "spell" then
+        if C_Spell and C_Spell.GetSpellCooldown then
+            local info = C_Spell.GetSpellCooldown(id)
+            if type(info) == "table" then start, dur = info.startTime, info.duration end
+        elseif GetSpellCooldown then
+            start, dur = GetSpellCooldown(id)
+        end
+    else
+        return nil
+    end
+    if start == nil or dur == nil or secret(start) or secret(dur) then return nil end
+    -- (the global cooldown isn't one)
+    local left = (start > 0 and dur > 1.5) and math.max(0, start + dur - GetTime()) or 0
+    -- a shaman's Astral Recall takes you home too: the sooner of the two (as RestedXP counts it)
+    local known = IsPlayerSpell or (C_SpellBook and C_SpellBook.IsSpellKnown)
+    if kind == "item" and id == 6948 and known and known(556) then
+        local ar = ns.cooldownLeft("spell", 556)
+        if ar and ar < left then left = ar end
+    end
+    return left
+end
+-- A step's cooldown (RestedXP's ".cooldown", the hearthstone's): cdDone {kind, id, s} is met once less than s seconds
+-- are left ("grind until your Hearthstone is ready"), cdSkip once more than s are left (a hearth step while it's on
+-- cooldown is passed). Also: in how many seconds that changes (nil: it won't by itself)
+local function cdState(c, done)
+    local left = ns.cooldownLeft(c[1], c[2])
+    if not left then return false, nil end
+    if done then
+        if left < c[3] then return true, nil end
+        return false, left - c[3]
+    end
+    if left > c[3] then return true, left - c[3] end
+    return false, nil
+end
+ns.cdState = cdState
 local function notApplicable(s)
     -- Settings > Quests > "Auction house": playing without it (self-found), its steps are left out
     if ItineraryDB and ItineraryDB.skipAH and isAH(s) then return true end
@@ -1558,6 +1606,22 @@ local function notApplicable(s)
     if s.dps and ns.slotDps then
         local d = ns.slotDps(s.dps[1])
         if d and d >= s.dps[2] then return true end
+    end
+    -- group quests and the guide's solo versions of them (Settings > Quests > Group quests)
+    if s.grp and not ns.groupQuestsOn() then return true end
+    if s.solo and ns.groupQuestsOn() then return true end
+    -- only while your hearthstone is set to a place (bindAt: "Hearth to Stormwind" once you set it there) / to
+    -- anywhere else (bindNot)
+    if s.bindAt or s.bindNot then
+        local bind = GetBindLocation and GetBindLocation()
+        if bind and bind ~= "" then
+            -- (a place by its area ID, or - written in the editor - by its name)
+            local function place(v) if type(v) == "number" then return areaName(v) end return v end
+            local at = s.bindAt and place(s.bindAt)
+            if at and at ~= bind and not (s.t == "hearth" and s.name == bind) then return true end
+            local nt = s.bindNot and place(s.bindNot)
+            if nt and nt == bind then return true end
+        end
     end
     if s.cond then
         -- getting back (hearth, "Return to ...") is still needed when the quest it waits for was skipped
@@ -1655,6 +1719,10 @@ function ns.stepDone(i)
     if not s then return true end
     if ItineraryCharDB.manual[i] or ItineraryCharDB.unavail[i] then return true end
     if notApplicable(s) then return true end
+    -- the hearthstone's cooldown: grinding until it's (nearly) ready is done then; a hearth step is passed while
+    -- it's on cooldown (the guide's other way there takes over)
+    if s.cdDone and (cdState(s.cdDone, true)) then return true end
+    if s.cdSkip and (cdState(s.cdSkip, false)) then return true end
     -- "Equip the [Ironwood Maul]": done once it's on you, and not for you if you don't have it (another
     -- reward picked, or it didn't drop)
     if s.t == "do" and s.item and s.name and s.name:find("^Equip") then
@@ -1738,6 +1806,12 @@ function ns.stepDone(i)
         for _, q in ipairs(s.abandon) do
             if onQuest(q) and not (s.keepIfReady and s.keepIfReady[q] and readyToTurnIn(q)) then return false end
         end
+        return true
+    elseif s.t == "do" and (s.bankIn or s.bankOut) then
+        -- a bank step: what it takes out is out once the open bank has none of it left (Automation.lua marks
+        -- it then); what it puts in is in once none of it is in your bags - also when you never had it
+        if s.bankOut then return false end
+        for _, id in ipairs(s.bankIn) do if itemCount(id) > 0 then return false end end
         return true
     elseif s.t == "do" and s.r and not s.col then
         return ItineraryCharDB.arrived[i] and true or false
@@ -2835,11 +2909,17 @@ end
 -- c.nearKeys (the steps around yours) where you were, c.markKeys the marked steps.
 local resynced = false -- (until the login resync ran, the saved keys are the old build's: nothing overwrites them)
 local MARKS = { "manual", "unavail", "arrived" }
+-- (from the route's own steps as built - the pack's choices applied, your edits not: what the numbers count)
 local function routeSig(id, r)
-    if not (r and r.seq) then return nil end
-    local seq, h = r.seq, 0
-    for k = 1, #seq do h = (h * 31 + seq:byte(k)) % 2147483629 end
-    return id .. "#" .. #seq .. ":" .. h
+    local base = r and r.base
+    if not base then return nil end
+    local h = 0
+    for _, s in ipairs(base) do
+        local k = stepKey(s) or "-"
+        for b = 1, #k do h = (h * 31 + k:byte(b)) % 2147483629 end
+        h = (h * 31 + 10) % 2147483629
+    end
+    return id .. "#" .. #base .. ":" .. h
 end
 -- the keys of the step you're on, the ones around it and the marked ones (fresh: only the marks there are now)
 local function keepKeys(c, steps, fresh)
@@ -2859,18 +2939,26 @@ end
 function ns.resyncRoute()
     resynced = true
     local c, r = ItineraryCharDB, ns.route()
-    if not (c and r and r.steps) then return end
+    if not (c and r and r.steps) then ns.resyncWhy = "no route" return end
     local sig, steps = routeSig(c.route, r), r.steps
-    if not sig then return end
+    if not sig then ns.resyncWhy = "no route signature" return end
     local old = c.routeSig
     c.routeSig = sig
     local oldId = old and old:match("^(.*)#")
-    -- the same build; no saved place yet; another route's (you're on a new one); saved before the keys were
-    -- (the route's length alone): only the length tells
-    if old == sig or not old or (oldId and oldId ~= c.route) or (not oldId and sig:match("#(%d+):") == old) then
+    -- the same build, or another route's (you're on a new one): nothing to find
+    if old == sig or (oldId and oldId ~= c.route) then
+        ns.resyncWhy = old == sig and "same build" or "another route's"
         keepKeys(c, steps, true)
         return
     end
+    -- saved without the build (by an older Itinerary: the route's length alone, or nothing): the step you were on
+    -- still being there, or the same length, says it's the same one
+    if not oldId and (not c.stepKey or stepKey(steps[c.step or 1]) == c.stepKey or (r.seq and old == tostring(#r.seq))) then
+        ns.resyncWhy = "no build saved, your step is where it was"
+        keepKeys(c, steps, true)
+        return
+    end
+    ns.resyncWhy = "a new build"
     local where = {}
     for j, s in ipairs(steps) do
         local k = stepKey(s)
@@ -2927,6 +3015,44 @@ function ns.resyncRoute()
     ns.resyncInfo = { from = from, at = at, marks = #olds, gone = gone } -- (for /iti debug and the tests)
 end
 
+-- Steps waiting on a cooldown (cdDone / cdSkip): your step and the instructions running along with it. One along
+-- the way is done for good once its cooldown is met (the hearth you use next doesn't bring "grind until your
+-- Hearthstone is ready" back), and the route looks again when a cooldown gets to where it changes something.
+-- True when it marked one.
+local cdTimerAt, cdWatching = nil, false
+local function cdWatch()
+    local c, steps = ItineraryCharDB, ns.steps()
+    local i = c.step
+    local _, _, first = ns.chapterOf(i)
+    local soonest, marked, any = nil, false, false
+    local function wait(w) if w and (not soonest or w < soonest) then soonest = w end end
+    for j = (first or i), math.min(i, #steps) do
+        local s = steps[j]
+        if (s.cdDone or s.cdSkip) and not c.manual[j] and (j == i or (s.along and (not s.till or s.till >= i))) then
+            any = true
+            if s.cdDone then
+                local met, w = cdState(s.cdDone, true)
+                if met and s.along and not notApplicable(s) then c.manual[j] = true; marked = true end
+                wait(w)
+            end
+            if s.cdSkip then wait(select(2, cdState(s.cdSkip, false))) end
+        end
+    end
+    -- (the next step too: a hearth step coming up next counts its cooldown from now)
+    local nx = steps[i + 1]
+    if nx and (nx.cdDone or nx.cdSkip) then any = true end
+    cdWatching = any
+    if soonest then
+        local now = GetTime()
+        local at = now + soonest + 0.5
+        if not cdTimerAt or cdTimerAt <= now or at < cdTimerAt - 0.1 then
+            cdTimerAt = at
+            C_Timer.After(soonest + 0.5, function() if cdTimerAt == at then cdTimerAt = nil; ns.update() end end)
+        end
+    end
+    return marked
+end
+ns.cdWatching = function() return cdWatching end
 function ns.update()
     if pending then return end
     pending = true
@@ -2935,6 +3061,7 @@ function ns.update()
         dropCache = nil -- quest log changes: work the dropped chains out again
         local c, before = ItineraryCharDB, ItineraryCharDB.step
         ns.advance()
+        if cdWatch() then ns.advance() end
         if resynced then keepKeys(c, ns.steps()) end
         if ns.refreshEditor then ns.refreshEditor() end
         -- a sound when the step you were on got done (not when skipping, not on the first look after login),
@@ -2952,7 +3079,7 @@ local f = CreateFrame("Frame")
 local events = {
     "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_LOGOUT", "PLAYER_ENTERING_WORLD", "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED",
     "QUEST_LOG_UPDATE", "UNIT_QUEST_LOG_CHANGED", "PLAYER_LEVEL_UP", "TIME_PLAYED_MSG", "PLAYER_CONTROL_LOST",
-    "UNIT_SPELLCAST_SUCCEEDED", "HEARTHSTONE_BOUND", "TRAINER_CLOSED", "SKILL_LINES_CHANGED", "LEARNED_SPELL_IN_TAB", "TAXIMAP_OPENED", "UI_INFO_MESSAGE", "BAG_UPDATE_DELAYED", "PLAYER_XP_UPDATE", "GOSSIP_SHOW", "QUEST_GREETING", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS",
+    "UNIT_SPELLCAST_SUCCEEDED", "HEARTHSTONE_BOUND", "BAG_UPDATE_COOLDOWN", "SPELL_UPDATE_COOLDOWN", "TRAINER_CLOSED", "SKILL_LINES_CHANGED", "LEARNED_SPELL_IN_TAB", "TAXIMAP_OPENED", "UI_INFO_MESSAGE", "BAG_UPDATE_DELAYED", "PLAYER_XP_UPDATE", "GOSSIP_SHOW", "QUEST_GREETING", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS",
 }
 for _, e in ipairs(events) do pcall(f.RegisterEvent, f, e) end
 
@@ -3043,6 +3170,9 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
         if a1 == "player" and a3 == 8690 then eventDone("hearth") end
     elseif event == "HEARTHSTONE_BOUND" then
         eventDone("sethearth")
+    elseif event == "BAG_UPDATE_COOLDOWN" or event == "SPELL_UPDATE_COOLDOWN" then
+        -- (they come often: only when a step waits on a cooldown)
+        if cdWatching then ns.update() end
     elseif event == "TRAINER_CLOSED" then
         eventDone("train")
     elseif event == "SKILL_LINES_CHANGED" or event == "LEARNED_SPELL_IN_TAB" then
@@ -3116,6 +3246,9 @@ SlashCmdList.ITINERARY = function(input)
         ns.print(string.format("  showing: %s %s  map %s  %.1f, %.1f%s", tostring(cur and cur.t), tostring(cur and (cur.name or cur.npc) or ""),
             tostring(cur and cur.m), cur and cur.x or 0, cur and cur.y or 0, cur and cur.detour and "  (detour)" or ""))
         local c = ItineraryCharDB
+        local ri = ns.resyncInfo
+        ns.print(string.format("  route build %s; at login: %s%s", tostring(c.routeSig), tostring(ns.resyncWhy or "not checked"),
+            ri and string.format(" (step %d -> %d, %d marks, %d gone)", ri.from, ri.at, ri.marks, ri.gone) or ""))
         local costs = {}
         for l, v in pairs(c.trainCosts or {}) do costs[#costs + 1] = l .. "=" .. v .. "/" .. ((c.trainTotals or {})[l] or "?") end
         ns.print(string.format("  trainer: visited at %s, owed %s (all %s), next %s, costs %s, pending %s/%s, money %d, waiting %s",

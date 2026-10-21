@@ -356,6 +356,14 @@ function ns.money(c)
     if cp > 0 or #t == 0 then t[#t + 1] = cp .. C end
     return table.concat(t, " ")
 end
+-- a step waiting on a cooldown ("grind until your Hearthstone is ready"): how long until it's done
+function ns.cdWaitText(st)
+    if not (st and st.cdDone and ns.cdState) then return nil end
+    local met, w = ns.cdState(st.cdDone, true)
+    if met or not w then return nil end
+    local what = (st.cdDone[1] == "item" and st.cdDone[2] == 6948) and "Hearthstone" or "Cooldown"
+    return "|cffffd100" .. what .. ": done in " .. ns.timeText(w) .. "|r"
+end
 -- seconds until your Hearthstone is ready (0 = ready)
 function ns.hearthCooldown()
     local cd = (C_Container and C_Container.GetItemCooldown) or GetItemCooldown
@@ -1605,6 +1613,11 @@ function ns.refresh()
             ns.timerTick, ns.timerOnStep = true, true
             dt = "|cffff9933Time left " .. ns.timeText(left) .. "|r" .. ((dt and dt ~= "") and ("\n" .. dt) or "")
         end
+        local cw = not detour and ns.cdWaitText and ns.cdWaitText(s)
+        if cw then
+            ns.timerTick = true
+            dt = cw .. ((dt and dt ~= "") and ("\n" .. dt) or "")
+        end
         panel.detail:SetText(dt)
     end
     if panel.titleHover then
@@ -1690,6 +1703,11 @@ function ns.refresh()
             ns.timerTick = true
             local t = "|cffff9933Time left " .. ns.timeText(left) .. "|r"
             desc = (desc and desc ~= "") and (t .. "\n" .. desc) or t
+        end
+        local cw = ns.cdWaitText and ns.cdWaitText(st)
+        if cw then
+            ns.timerTick = true
+            desc = (desc and desc ~= "") and (cw .. "\n" .. desc) or cw
         end
         -- the same thing twice (two guide steps collecting the same items): once
         if label and seenLabel[label] then label = nil end

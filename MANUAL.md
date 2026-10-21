@@ -222,6 +222,17 @@ You rarely have to touch anything:
   steps: they're done when you open that vendor (optional buys: when you have the items or close the vendor or
   auction house), or left behind after a few steps.
 - **Trainer steps** tick off when you've trained. **Grind steps** tick off at the XP they ask for.
+- **Your Hearthstone**: "Grind until your Hearthstone is ready" (or has less than 5 minutes left) ticks off by
+  itself when it gets there. A hearth step is passed while your Hearthstone is on cooldown (the route's other
+  way there takes over), and one for a home you didn't set ("Hearth to Stormwind City" with your hearth in
+  Goldshire) is left out.
+- **Bank steps** ("Deposit these into your bank", "Withdraw these"): open the bank on that step and the items
+  go in or come out by themselves, the next bank step's too (Settings > Quests > *Bank steps*; hold Shift to
+  do it yourself). A deposit is done once none of its items are in your bags, a withdrawal once the bank has
+  none of its items left - also one you never had.
+- **Group quests**: the routes include the guide's group quests (Tharil'zun, Wanted: Gath'Ilzogg, the Slag Pit
+  chain) and leave out its solo versions of those parts. Playing alone? Settings > Quests > *Group quests* >
+  **Skip** turns that round.
 - Steps that don't apply to you are skipped. This covers another class's quests, quests you already
   did, a quest that isn't offered to you, and a quest you dropped.
 - **Death skips** ("Die and respawn at the spirit healer") are always an instruction next to your step,
@@ -359,6 +370,7 @@ to do things by hand that time.
 | Pick gear rewards (all white/green armor: the best armor type you wear, then the best-selling) | off | Quests |
 | Gold coin on the best-selling reward | on | Quests |
 | Sell grey items at any vendor | on | Quests |
+| Bank steps: put their items in / take them out when you open the bank | on | Quests |
 | Take the route's flight when you talk to the flight master | on | Travel |
 | Set your hearthstone on a "make this inn your home" step | on | Travel |
 | Resurrect at the spirit healer (death skips) | on | Travel |
@@ -492,7 +504,7 @@ opens again). Otherwise that happens when you log out, and a game crash before t
 | **Quest** | (the quest's name) | the quests' objectives are done |
 | **Turn in** | (the quest's name) | the quests are handed in |
 | **Go** | where you go | you get to the step's point (or the zone, see *More*) |
-| **Do** | what to do | you have its *Collect* items, open its NPC as a vendor, get to its point (with *More > Done in* set), or skip it |
+| **Do** | what to do | you have its *Collect* items, open its NPC as a vendor, get to its point (with *More > Done in* set), or skip it. A bank step (*More > Deposit / Withdraw*): see the More page |
 | **Train** | | you've trained (a class trainer: nothing new is waiting) |
 | **XP** | | you reach the *Level* |
 | **Fly** | where to (*Menethil Harbor*) | you're in the air; talking to the flight master takes that flight for you |
@@ -563,6 +575,9 @@ the route's own steps have show here too, so you can see why a step is left out.
 | **Money** | `1g 50s+` (at least that much), `<50s` (less than that) |
 | **Weapon** | `<10.5` (main hand DPS below 10.5), `ranged <8`, `off hand <6` |
 | **Level jump** | `14 Westfall end`: the steps with this name form a section that's left out when you get to its first step above level 14 (decided once) |
+| **Hearthstone** | `ready` (a hearth step: passed while your Hearthstone is on cooldown), `ready in 5m` (5 minutes or less left; `90s` for seconds). Another item or a spell first: `spell 1259686 ready` |
+| **Hearth set to** | `Stormwind City` (only while your hearth is set there), `not Stormwind City` - the place as the game names your home, or an area ID: `area 1519` |
+| **Group** | `group` (a group quest: only with Settings > Quests > *Group quests* on), `solo` (the version for playing alone: only with it off) |
 
 ### The More page
 
@@ -571,9 +586,15 @@ the route's own steps have show here too, so you can see why a step is left out.
 | Field | You type |
 |---|---|
 | **Trainer** (train steps) | `class` (your class trainer), `weapons 202, 196` (a weapon master; the skills' spell IDs), `any of 202, 196` (one is enough). Empty: another trainer (a profession, riding) |
-| **Done in** (go and do steps) | A zone (`Redridge Mountains`: done once you're in it), a subzone by its area ID (`area 150`), or how close counts as there (`20 yd`; 15 when not set) |
+| **Done in** (go and do steps) | A zone (`Redridge Mountains`: done once you're in it), a subzone by its area ID (`area 150`), how close counts as there (`20 yd`; 15 when not set), or your Hearthstone: `hearthstone ready`, `hearthstone <25m` (a "grind until your Hearthstone is ready" step) |
 | **Dialogue** | What to say to the NPC: `talk` (when there's just the one option), or the dialogue options' IDs |
 | **Macro** | A button next to the panel that runs it while the step is up (`/sit`); lines separated by `;` |
+| **Deposit** (do steps) | A bank step: items to put into your bank. Shift-click them in your bags while the field is active, or type item IDs. Opening the bank on the step puts them in; done once none of them is in your bags |
+| **Withdraw** (do steps) | Items to take out of your bank: Shift-click them in the open bank, or type item IDs. Done once the bank has none of them left |
+
+**A bank step**: insert a step (it's a Do step), point it at the banker with *Use target*, and put the items in
+*Deposit* and/or *Withdraw* on the More page. With its Text left empty, it fills itself in ("Deposit [Musquash
+Root] into your bank").
 
 
 **Waypoints and kill area** (under the fields): two lists, switched with **Waypoints** and **Kill area** (with how
@@ -673,7 +694,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | Tab | What's there |
 |---|---|
 | General | Route panel and minimap button, hide them in dungeons, the game's quest tracker, route pack order and the packs' own choices, factory reset, forget this character |
-| Quests | Accept and hand in, which quests (route or all), share quests in a group, escorts wait for your group, skip overlevelled steps, quest dialogue, object name tags, quest sparkles, pick gear rewards, best-selling reward coin, sell junk, auction house steps |
+| Quests | Accept and hand in, which quests (route or all), share quests in a group, escorts wait for your group, group quests, skip overlevelled steps, quest dialogue, object name tags, quest sparkles, pick gear rewards, best-selling reward coin, sell junk, bank steps, auction house steps |
 | Travel | Take flights, set hearthstone, spirit healer, map pins (on the world map, on the minimap, the line between them) |
 | Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills, buy weapon skills, your class's skill list (worth a visit / auto-buy) |
 | Professions | Learn at the trainer, main professions, first profession, secondary professions, gather mode, gather data (shipped, own, both), gathering tracking, node icons, gathering tools |

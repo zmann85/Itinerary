@@ -3,6 +3,19 @@
 ## Unreleased
 
 ### Added
+- Bank steps: on a "Deposit these into your bank" / "Withdraw these" step, opening the bank puts the items in or
+  takes them out, one after the other, and the next bank step's too (withdraw, then deposit at the same banker).
+  Chat says what moved. A deposit is done once none of its items are in your bags, a withdrawal once the bank has
+  none of them left (also one you never had). Settings > Quests > *Bank steps* (on); hold Shift to do it yourself.
+  In the editor: *Deposit* and *Withdraw* on the More page (Shift-click the items).
+- Settings > Quests > *Group quests* (Show): the routes' group quests (Tharil'zun, Wanted: Gath'Ilzogg, the Slag
+  Pit chain), and with them on, the guide's solo versions of those parts are left out. Skip: for playing alone -
+  the group quests are left out and the solo versions are in. Editor: *Group* on the Conditions page.
+- Your Hearthstone in the route: "Grind until your Hearthstone is ready" (or "<5 minutes") is done by itself when
+  it is, and stays done after you hearth; a hearth step is passed while your Hearthstone is on cooldown, and one
+  to a home you didn't set (Stormwind with your hearth in Goldshire) is left out. A shaman's Astral Recall counts.
+  Editor: *Hearthstone* and *Hearth set to* on the Conditions page, `hearthstone ready` / `hearthstone <25m` in
+  *Done in*.
 - Escorts wait for your group (Settings > Quests, on): an escort or fight that starts the moment you accept it,
   from the NPC who also takes the quest before it (Rescue OOX-17/TN!, The Absent Minded Prospector, Jail Break!),
   is only accepted in a group once nobody near you still has that quest to hand in - nobody gets left out. The
@@ -14,7 +27,9 @@
   (the check that should find it again never got to run), and your hand skips stayed on the old numbers - on
   other steps now. Your step is found again by what it is (and by the steps around it, if it changed itself),
   and the skips, "not offered" marks and places reached move with their steps; one whose step the update took
-  out goes. Itinerary keeps what those steps are from now on, so this works from the next update.
+  out goes. Itinerary keeps what those steps are from now on, so this works from the next update. (Which build
+  your place belongs to is told from the route's steps as built, so changing the route pack's choices counts as
+  well; a place saved without it is checked by whether your step is still where it was.)
 - The arrow pointed at an instruction you clicked (a trainer) stayed there after you dismissed that
   instruction with its ×, with nothing left to click to get it back: it's back on the route now, also when
   the instruction goes away by itself.

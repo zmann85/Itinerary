@@ -14,7 +14,7 @@ local TYPE_TIP = {
     complete = "Quest: the quests' objectives (kill, loot, use an item). Mobs go on the target button.",
     turnin = "Turn in: hand in the quests in Quest IDs at the NPC.",
     go = "Go: travel to the step's point. Done when you get there.",
-    ["do"] = "Do: anything else - the Text says what. Done when you have its Collect items, open its NPC as a vendor, get to its point, or skip it.",
+    ["do"] = "Do: anything else - the Text says what. Done when you have its Collect items, open its NPC as a vendor, get to its point, or skip it. A bank step: its Deposit / Withdraw items (More).",
     train = "Train: visit a trainer (NPC). A class trainer visit is done when nothing new is waiting.",
     xp = "XP: grind to the Level.",
     fly = "Fly: take a flight at the NPC (the flight master). Text = where to (\"Menethil Harbor\"): talking to the flight master takes that flight for you (Settings > Travel). Done when you're in the air or there.",
@@ -943,8 +943,8 @@ local function build()
         b:SetScript("OnClick", function() page = k; refresh() end)
         d.tabs[k] = b
     end
-    d.tabs[2].tip = "When the step is for you: quests in your log, your level, where you are, items, professions, money, your weapon, level jumps. Empty: always."
-    d.tabs[3].tip = "The trainer kind, when a travel step counts as done, dialogue, a macro button, and waypoints / kill-area spots."
+    d.tabs[2].tip = "When the step is for you: quests in your log, your level, where you are, items, professions, money, your weapon, level jumps, your Hearthstone, group quests. Empty: always."
+    d.tabs[3].tip = "The trainer kind, when a travel step counts as done, dialogue, a macro button, bank items, and waypoints / kill-area spots."
     d.head = ui.text(d, 12, 1, 1, 1, 0.55); d.head:SetPoint("TOPLEFT", 0, 0); d.head:SetPoint("RIGHT", d.tabs[1], "LEFT", -8, 0)
     d.head:SetWordWrap(false)
     local P1, P2, P3 = d.pages[1], d.pages[2], d.pages[3]
@@ -1010,6 +1010,7 @@ local function build()
         if key == "col" then colBox = e; ITEM_BOXES[e] = { count = " x1" } end
         if key == "need" then ITEM_BOXES[e] = { count = " x1", one = true } end
         if key == "buffItem" then ITEM_BOXES[e] = { one = true } end
+        if key == "bankIn" or key == "bankOut" then ITEM_BOXES[e] = {} end
         y = y - 30
     end
     -- (a text of several lines shows its line breaks as \n in the one-line box, and \n typed there is one)
@@ -1243,6 +1244,30 @@ local function build()
     fparent, y = P2, -66
     local COND_WORD = { has = "on", nothas = "not on", ready = "ready", notready = "not ready", done = "done", open = "not done" }
     local function trim(x) return (tostring(x or ""):gsub("^%s+", ""):gsub("%s+$", "")) end
+    local cdText, cdParse
+    -- a cooldown condition { kind, id, seconds } as text: "ready", "ready in 5m" (the Hearthstone; another item
+    -- or a spell goes first: "spell 1259686 ready")
+    function cdText(c, lead)
+        local who = (c[1] == "item" and c[2] == 6948) and "" or (c[1] .. " " .. c[2] .. " ")
+        local secs = c[3] or 2
+        if secs <= 2 then return who .. "ready" end
+        local d = (secs % 60 == 0) and ((secs / 60) .. "m") or (secs .. "s")
+        return who .. lead .. d
+    end
+    -- and back: "ready", "ready in 5m", "<25m", "90s", "spell 1259686 ready" (a number alone: minutes)
+    function cdParse(t)
+        local low = trim(t):lower()
+        if low == "" then return nil end
+        local kind, id = "item", 6948
+        local k2, n2 = low:match("^(%a+)%s+(%d+)")
+        if (k2 == "item" or k2 == "spell") and n2 then kind, id, low = k2, tonumber(n2), low:gsub("^%a+%s+%d+", "") end
+        low = low:gsub("hearthstone", ""):gsub("hearth", "")
+        local v, unit = low:match("(%d+%.?%d*)%s*([ms]?)")
+        local secs = 2
+        if v then secs = tonumber(v) * ((unit == "s") and 1 or 60) end
+        secs = math.max(2, math.floor(secs + 0.5))
+        return { kind, id, secs }
+    end
     local function itemName(id)
         return (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)) or (GetItemInfo and GetItemInfo(id)) or nil
     end
@@ -1414,6 +1439,32 @@ local function build()
             if n and label ~= "" then ns.editSet(sid(s), { gateMax = tonumber(n), gateL = label })
             else ns.editSet(sid(s), { gateMax = false, gateL = false }) end
         end)
+    field("cdSkip", "Hearthstone", "Only while your Hearthstone is ready: ready (a hearth step: passed while it's on cooldown), or ready in 5m (5 minutes or less left; m minutes, s seconds). A step that waits for it: Done in, on More.",
+        function(s) return s.cdSkip and cdText(s.cdSkip, "ready in ") or "" end,
+        function(s, t) ns.editSet(sid(s), { cdSkip = cdParse(t) or false }) end)
+    field("bind", "Hearth set to", "Where your Hearthstone is set: Stormwind City (only while it's set there), not Stormwind City (only while it isn't) - the place as the game names your home. A place by its area ID: area 1519.",
+        function(s)
+            local v = s.bindAt or s.bindNot
+            if not v then return "" end
+            local name = type(v) == "number" and (C_Map and C_Map.GetAreaInfo and C_Map.GetAreaInfo(v)) or nil
+            local txt = type(v) == "number" and (name or ("area " .. v)) or tostring(v)
+            return (s.bindNot and "not " or "") .. txt
+        end,
+        function(s, t)
+            t = trim(t)
+            local neg = t:lower():match("^not%s+") ~= nil
+            if neg then t = trim(t:gsub("^[Nn][Oo][Tt]%s+", "")) end
+            local v = tonumber(t:lower():match("^area%s+(%d+)$") or t:match("^(%d+)$")) or (t ~= "" and t or nil)
+            ns.editSet(sid(s), { bindAt = (v and not neg) and v or false, bindNot = (v and neg) and v or false })
+        end)
+    field("grp", "Group", "group: a group quest - only with Settings > Quests > Group quests on. solo: the guide's version for playing alone - only with it off. Empty: always.",
+        function(s) return s.grp and "group" or (s.solo and "solo" or "") end,
+        function(s, t)
+            local low = (t or ""):lower()
+            local solo = low:find("solo") ~= nil
+            local grp = not solo and low:find("group") ~= nil
+            ns.editSet(sid(s), { grp = grp or false, solo = solo or false })
+        end)
 
     ---------------------------------------------------------------- page 3: the rest
     fparent, y = P3, -40
@@ -1430,20 +1481,26 @@ local function build()
             elseif #ids > 0 then ns.editSet(sid(s), { cls = false, wpn = ids, wany = low:find("any") and true or false })
             else ns.editSet(sid(s), { cls = false, wpn = false, wany = false }) end
         end)
-    field("arrive", "Done in", "When a Go or Do step counts as done: a zone (Redridge Mountains - once you're in it), a subzone by its area ID (area 150), or how close to its point counts as there (20 yd; 15 when not set). Comma separated for more than one.",
+    field("arrive", "Done in", "When a Go or Do step counts as done: a zone (Redridge Mountains - once you're in it), a subzone by its area ID (area 150), how close to its point counts as there (20 yd; 15 when not set), or your Hearthstone: hearthstone ready, hearthstone <25m (\"grind until your Hearthstone is ready\"). Comma separated for more than one.",
         function(s)
             local out = {}
             if s.zone then out[#out + 1] = s.zone end
             if s.sub then out[#out + 1] = "area " .. s.sub end
             if s.r then out[#out + 1] = s.r .. " yd" end
+            if s.cdDone then
+                local c = s.cdDone
+                local who = (c[1] == "item" and c[2] == 6948) and "hearthstone " or (c[1] .. " " .. c[2] .. " ")
+                out[#out + 1] = (c[3] or 2) <= 2 and (who .. "ready") or (who .. "<" .. cdText(c, ""):match("(%d+[ms])$"))
+            end
             return table.concat(out, ", ")
         end,
         function(s, t)
-            local set = { zone = false, sub = false, r = false }
+            local set = { zone = false, sub = false, r = false, cdDone = false }
             for part in (t or ""):gmatch("[^,]+") do
                 local x = trim(part)
                 local low = x:lower()
-                if low:match("^%d+%s*y") or low:match("^%d+$") then set.r = tonumber(low:match("(%d+)"))
+                if low:find("hearth") or low:match("^item%s+%d+") or low:match("^spell%s+%d+") then set.cdDone = cdParse(low) or false
+                elseif low:match("^%d+%s*y") or low:match("^%d+$") then set.r = tonumber(low:match("(%d+)"))
                 elseif low:match("^area%s+%d+$") then set.sub = tonumber(low:match("(%d+)"))
                 elseif x ~= "" then set.zone = x end
             end
@@ -1468,6 +1525,48 @@ local function build()
             local first = text:match("^[^\n]+")
             ns.editSet(sid(s), { macro = { first, (s.macro and s.macro[2]) or 134400, text } })
         end)
+    -- a bank step: a Do step whose items go into the bank / come out of it when you open it there
+    local function itemList(ids)
+        local out = {}
+        for _, id in ipairs(ids or {}) do
+            local n = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)) or (GetItemInfo and GetItemInfo(id))
+            out[#out + 1] = n and (id .. " " .. n) or tostring(id)
+        end
+        return table.concat(out, ", ")
+    end
+    local function bankSet(s, key, t)
+        local ids, seen = {}, {}
+        for part in (t or ""):gmatch("[^,]+") do
+            local id = tonumber(part:match("item:(%d+)") or part:match("^%s*(%d+)"))
+            if id and not seen[id] then seen[id] = true; ids[#ids + 1] = id end
+        end
+        local set = { [key] = #ids > 0 and ids or false }
+        -- a new step's text says what to do: "Withdraw [Musquash Root] from your bank, then deposit [Turtle Meat]"
+        local auto = not s.name or s.name == "" or s.name == "New step" or s.name:find("^Deposit ") or s.name:find("^Withdraw ")
+        if auto then
+            local function list(x)
+                local nm = {}
+                for _, id in ipairs(x or {}) do
+                    local n = (C_Item and C_Item.GetItemNameByID and C_Item.GetItemNameByID(id)) or (GetItemInfo and GetItemInfo(id))
+                    nm[#nm + 1] = "[" .. (n or ("item " .. id)) .. "]"
+                end
+                return #nm > 0 and table.concat(nm, ", ") or nil
+            end
+            local inL = list(key == "bankIn" and ids or s.bankIn)
+            local outL = list(key == "bankOut" and ids or s.bankOut)
+            if outL and inL then set.name = "Withdraw " .. outL .. " from your bank, then deposit " .. inL
+            elseif outL then set.name = "Withdraw " .. outL .. " from your bank"
+            elseif inL then set.name = "Deposit " .. inL .. " into your bank"
+            elseif s.name and s.name ~= "New step" then set.name = false end
+        end
+        ns.editSet(sid(s), set)
+    end
+    field("bankIn", "Deposit", "A bank step (a Do step at the banker): items to put into your bank - Shift-click them in your bags while this field is active, or type item IDs. Opening the bank on this step puts them in (Settings > Quests > Bank steps); the step is done once none of them is in your bags.",
+        function(s) return itemList(s.bankIn) end,
+        function(s, t) bankSet(s, "bankIn", t) end)
+    field("bankOut", "Withdraw", "A bank step: items to take out of your bank - Shift-click them in the open bank while this field is active, or type item IDs. Opening the bank on this step takes them out; the step is done once the bank has none of them left (also the ones you never had).",
+        function(s) return itemList(s.bankOut) end,
+        function(s, t) bankSet(s, "bankOut", t) end)
     ---------------------------------------------------------------- waypoints and kill-area spots
     -- The step's point, the waypoints on the way to it and its kill-area spots, as an editable list here and as
     -- pins on the world map (Pins.lua: drag to move, right-click to remove, "Add on map" to click new ones in).
@@ -1947,10 +2046,12 @@ local function build()
         fields.arrive.box:SetAlpha((s.t == "go" or s.t == "do") and 1 or 0.4)
         -- the pages, and how much is set on the other two
         local nc = #(s.cond or {}) + #(s.zskip or {})
-        for _, f in ipairs({ "lvskip", "need", "buffItem", "money", "dps", "gateL" }) do if s[f] then nc = nc + 1 end end
+        for _, f in ipairs({ "lvskip", "need", "buffItem", "money", "dps", "gateL", "cdSkip" }) do if s[f] then nc = nc + 1 end end
+        if s.bindAt or s.bindNot then nc = nc + 1 end
+        if s.grp or s.solo then nc = nc + 1 end
         if s.needProf or s.skill then nc = nc + 1 end
         local nm = 0
-        for _, f in ipairs({ "zone", "sub", "r", "gossip", "macro", "path", "wp" }) do if s[f] then nm = nm + 1 end end
+        for _, f in ipairs({ "zone", "sub", "r", "gossip", "macro", "path", "wp", "cdDone", "bankIn", "bankOut" }) do if s[f] then nm = nm + 1 end end
         if s.cls or s.wpn then nm = nm + 1 end
         local counts = { nil, nc, nm }
         for k, pg in ipairs(win.d.pages) do

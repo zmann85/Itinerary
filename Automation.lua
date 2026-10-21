@@ -22,6 +22,8 @@ function ns.autoDefaults()
     if a.spirit == nil then a.spirit = true end     -- resurrect at the spirit healer when you talk to it as a ghost
     if a.bind == nil then a.bind = true end         -- set your hearthstone where the route says
     if a.share == nil then a.share = false end      -- share the quests you accept with your group
+    if a.bank == nil then a.bank = true end         -- bank steps: put their items in / take them out at the bank
+    if a.groupQuests == nil then a.groupQuests = true end -- the guide's group quests in the route (off: its solo versions)
     a.trainSkip = a.trainSkip or {}
     a.trainSeen = a.trainSeen or {} -- [CLASS][spell] = true: spells this class has seen at a trainer (for the filter list)
     if ns.seedClassData then ns.seedClassData() end
@@ -1406,6 +1408,180 @@ local function acceptBind(tries)
     if ns.update then ns.update() end
 end
 
+---------------------------------------------------------------- bank steps
+-- A bank step (bankIn / bankOut: RestedXP's ".bankdeposit" / ".bankwithdraw"): opening the bank while it's your step
+-- puts its items in and takes its items out (Settings > Quests > Bank steps), one at a time; the bank steps right
+-- after it (take these out, put those in) go in the same visit. A withdrawal is done once the open bank has none of
+-- its items left - also one you never had; a deposit once none of its items are in your bags (Core.lua).
+local bankOpen, bankBusy, bankQueued, bankTries = false, false, false, 0
+local bankStart
+local bankTaken, bankMoved = {}, nil
+local function numSlots(bag)
+    local f = (C_Container and C_Container.GetContainerNumSlots) or GetContainerNumSlots
+    return f and f(bag) or 0
+end
+local function pickup(bag, slot)
+    local f = (C_Container and C_Container.PickupContainerItem) or PickupContainerItem
+    if f then f(bag, slot) end
+end
+-- the character bank: its tabs (WoW Forever), or the old bank and its bags
+local function bankBags()
+    local out = {}
+    if C_Bank and C_Bank.FetchPurchasedBankTabIDs and Enum and Enum.BankType then
+        local ok, ids = pcall(C_Bank.FetchPurchasedBankTabIDs, Enum.BankType.Character)
+        if ok and type(ids) == "table" then for _, b in ipairs(ids) do out[#out + 1] = b end end
+        if #out > 0 then return out end
+    end
+    if Enum and Enum.BagIndex and Enum.BagIndex.CharacterBankTab_1 then
+        for k = 1, 9 do local b = Enum.BagIndex["CharacterBankTab_" .. k]; if b then out[#out + 1] = b end end
+        return out
+    end
+    if BANK_CONTAINER then out[#out + 1] = BANK_CONTAINER end
+    local n = NUM_BAG_SLOTS or 4
+    for b = n + 1, n + (NUM_BANKBAGSLOTS or 6) do out[#out + 1] = b end
+    return out
+end
+local function playerBags()
+    local out = {}
+    for b = 0, (NUM_BAG_SLOTS or 4) do out[#out + 1] = b end
+    return out
+end
+-- an empty slot to put something (not one a move of this visit is filling; in your bags not a quiver, soul or
+-- herb bag)
+local function emptySlot(bags, mine)
+    local free = (C_Container and C_Container.GetContainerNumFreeSlots) or GetContainerNumFreeSlots
+    for _, bag in ipairs(bags) do
+        local family = 0
+        if mine and free then family = select(2, free(bag)) or 0 end
+        if family == 0 then
+            for slot = 1, numSlots(bag) do
+                if not containerInfo(bag, slot) and not bankTaken[bag * 1000 + slot] then return bag, slot end
+            end
+        end
+    end
+end
+local function inBags(bags, id)
+    for _, bag in ipairs(bags) do
+        for slot = 1, numSlots(bag) do
+            local info = containerInfo(bag, slot)
+            if info and info.itemID == id then return true end
+        end
+    end
+    return false
+end
+-- one item of a set from these bags to those: "moved", "wait" (one is still on its way), "full" or nil (none left)
+local function moveOne(set, from, to, mine)
+    local wait = false
+    for _, bag in ipairs(from) do
+        for slot = 1, numSlots(bag) do
+            local info = containerInfo(bag, slot)
+            if info and info.itemID and set[info.itemID] then
+                if info.isLocked then
+                    wait = true
+                else
+                    local tb, ts = emptySlot(to, mine)
+                    if not tb then return "full" end
+                    pickup(bag, slot)
+                    pickup(tb, ts)
+                    if CursorHasItem and CursorHasItem() and ClearCursor then ClearCursor() return "full" end
+                    bankTaken[tb * 1000 + ts] = true
+                    local m = bankMoved[mine and "out" or "in"]
+                    m[info.itemID] = (m[info.itemID] or 0) + (info.stackCount or 1)
+                    return "moved"
+                end
+            end
+        end
+    end
+    return wait and "wait" or nil
+end
+-- your step and the bank steps right after it that aren't done
+local function bankSteps()
+    local c = ItineraryCharDB
+    local out = {}
+    if not (c and ns.steps) then return out end
+    local steps, j = ns.steps(), c.step
+    while steps[j] and steps[j].t == "do" and (steps[j].bankIn or steps[j].bankOut) do
+        if not ns.stepDone(j) then out[#out + 1] = j end
+        j = j + 1
+    end
+    return out
+end
+local function itemText(id, n)
+    local info = (C_Item and C_Item.GetItemInfo) or GetItemInfo
+    local link = info and select(2, info(id))
+    return (link or ("item " .. id)) .. ((n or 1) > 1 and (" x" .. n) or "")
+end
+local function bankSay(full)
+    if not bankMoved then return end
+    for _, k in ipairs({ "in", "out" }) do
+        local t = {}
+        for id, n in pairs(bankMoved[k]) do t[#t + 1] = itemText(id, n) end
+        if #t > 0 then ns.print((k == "in" and "put in the bank: " or "taken out of the bank: ") .. table.concat(t, ", ")) end
+    end
+    if full == "full" then ns.print("no room left for the rest - make some space and open the bank again") end
+    bankMoved = { ["in"] = {}, out = {} }
+end
+local function bankWork()
+    bankQueued = false
+    if not bankOpen then bankBusy = false return end
+    local c, steps = ItineraryCharDB, ns.steps()
+    local list = bankSteps()
+    if #list == 0 then bankBusy = false; bankSay() return end
+    -- (the bank's slots not there yet: nothing can be told about what's in it - look again in a moment)
+    local loaded = false
+    for _, b in ipairs(bankBags()) do if numSlots(b) > 0 then loaded = true break end end
+    if not loaded then
+        bankBusy = false
+        bankTries = (bankTries or 0) + 1
+        if bankTries <= 10 then bankStart(0.5) end
+        return
+    end
+    local put, take = {}, {}
+    for _, j in ipairs(list) do
+        for _, id in ipairs(steps[j].bankIn or {}) do put[id] = true end
+        for _, id in ipairs(steps[j].bankOut or {}) do take[id] = true end
+    end
+    -- (in one step and out in another: leave it where it is)
+    for id in pairs(put) do if take[id] then put[id], take[id] = nil, nil end end
+    local a = A()
+    local state
+    if a and a.bank ~= false and not paused() and not (CursorHasItem and CursorHasItem()) then
+        bankBusy = true
+        bankMoved = bankMoved or { ["in"] = {}, out = {} }
+        state = moveOne(put, playerBags(), bankBags(), false)
+        if state ~= "moved" and state ~= "full" then
+            local s2 = moveOne(take, bankBags(), playerBags(), true)
+            if s2 then state = s2 end
+        end
+        if state == "moved" or state == "wait" then
+            C_Timer.After(state == "moved" and 0.15 or 0.3, bankWork)
+            return
+        end
+    end
+    bankBusy = false
+    bankSay(state)
+    -- nothing (more) to move: a withdrawal is done when the bank has none of its items left (and what the step
+    -- puts in is in)
+    local hit = false
+    local bank, bags = bankBags(), playerBags()
+    for _, j in ipairs(list) do
+        local s = steps[j]
+        if s.bankOut and not c.manual[j] then
+            local left = false
+            for _, id in ipairs(s.bankOut) do if inBags(bank, id) then left = true break end end
+            for _, id in ipairs(s.bankIn or {}) do if not left and inBags(bags, id) then left = true end end
+            if not left then c.manual[j] = true; hit = true end
+        end
+    end
+    if hit and ns.update then ns.update() end
+end
+function bankStart(delay)
+    if bankQueued or bankBusy then return end
+    bankQueued = true
+    C_Timer.After(delay or 0.2, bankWork)
+end
+ns.bankStart = bankStart
+
 ---------------------------------------------------------------- sharing quests in a group
 -- Settings > Quests > Share quests in a group (off): every quest you accept is shared with your group right away,
 -- when it can be shared, so whoever is behind (skilling a profession, say) doesn't have to run to the quest giver.
@@ -1454,7 +1630,8 @@ local f = CreateFrame("Frame")
 for _, e in ipairs({ "UNIT_QUEST_LOG_CHANGED", "GROUP_ROSTER_UPDATE",
                      "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED",
                      "TRAINER_SHOW", "TRAINER_UPDATE", "TRAINER_CLOSED", "QUEST_ACCEPTED", "MERCHANT_SHOW", "MERCHANT_CLOSED",
-                     "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "CONFIRM_BINDER", "CONFIRM_XP_LOSS", "TAXIMAP_OPENED" }) do
+                     "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "CONFIRM_BINDER", "CONFIRM_XP_LOSS", "TAXIMAP_OPENED",
+                     "BANKFRAME_OPENED", "BANKFRAME_CLOSED", "PLAYERBANKSLOTS_CHANGED", "BAG_UPDATE_DELAYED" }) do
     pcall(f.RegisterEvent, f, e)
 end
 local trainQueued = false
@@ -1504,6 +1681,16 @@ f:SetScript("OnEvent", function(_, event, a1, a2)
     elseif event == "MERCHANT_CLOSED" then
         if lastShop then buyErrandsDone(lastShop, false) end
         lastShop = false
+    elseif event == "BANKFRAME_OPENED" then
+        bankOpen, bankTaken, bankMoved, bankTries = true, {}, nil, 0
+        -- (the bank's contents come a moment after it opens)
+        bankStart(0.4)
+    elseif event == "BANKFRAME_CLOSED" then
+        bankOpen = false
+        bankSay()
+    elseif event == "PLAYERBANKSLOTS_CHANGED" or event == "BAG_UPDATE_DELAYED" then
+        -- items moved by hand while the bank is open: a withdrawal may be done now
+        if bankOpen then bankStart(0.3) end
     elseif event == "AUCTION_HOUSE_SHOW" then
         lastShop = false
     elseif event == "AUCTION_HOUSE_CLOSED" then

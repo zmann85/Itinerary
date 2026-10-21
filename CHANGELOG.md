@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- Share quests in a group: taking several quests from one NPC, the second share reached a group member while the
+  quest window of the first was still open ("Bob is busy.") and they never got it. Quests are shared one after the
+  other now, a few seconds apart, and someone who was busy gets it again a moment later, someone too far away once
+  they're near you. Every 10 seconds the quests shared this way are checked against your group: whoever near you
+  still hasn't got one gets it again - not after they declined it, can't take it, have done it or have a full quest
+  log; at most 5 times, for 30 minutes after you took it. The repeats' chat lines are left out (but "... has
+  accepted your quest").
+
 ## v2.1.14 (2026-10-21)
 
 ### Added

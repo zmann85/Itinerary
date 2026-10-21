@@ -364,7 +364,7 @@ to do things by hand that time.
 | What | Default | Where |
 |---|---|---|
 | Accept and hand in quests (only the route's quests, or all) | on | Quests |
-| Share every quest you accept with your group (not the ones shared with you) | off | Quests |
+| Share every quest you accept with your group, one after the other; again for someone who was busy or too far away, until they have it or decline it (not the quests shared with you) | off | Quests |
 | In a group, wait with escorts that start on accept until nobody near you still has the quest before them to hand in | on | Quests |
 | Skip steps you're overlevelled for (a part of a chapter you get to too high, steps for below a level) | on | Route |
 | Click through quest dialogue | on | Quests |

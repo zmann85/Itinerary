@@ -1606,24 +1606,176 @@ local function questLogIndex(q)
         if GetQuestLogTitle and select(8, GetQuestLogTitle(i)) == q then return i end
     end
 end
-local function shareQuest(q, tries)
+-- Shares go out one at a time, a few seconds apart: a group member whose quest window is still open for the one before
+-- (their auto-accept takes a moment) is "busy" and gets nothing. How a share went the game only says in chat ("Bob is
+-- busy.", "Bob has accepted your quest."): a busy member gets it again a moment later, one too far away once near
+-- you. And every 10 seconds the quests shared this way are held against the group (C_QuestLog.IsUnitOnQuest): someone
+-- near you who still hasn't got one gets it again - not one who declined it, can't take it, has done it or has a
+-- full quest log. At most 5 shares of a quest, for 30 minutes after you took it; the repeats' chat lines (but
+-- "accepted") are left out.
+local SHARE_GAP, SHARE_TRIES, SHARE_FOR, SHARE_EVERY, SHARE_BUSY = 2.5, 5, 1800, 10, 3
+local shared = {}     -- quest id -> { at = when you took it, tries = shares, last = last share, final = {[name] = result}, far = {} }
+local shareOrder = {} -- quest ids waiting to be shared, in order
+local lastPush, lastPushQ, lastPushRepeat = -100, nil, false
+local pumping = false
+local FINAL = { accepted = true, has = true, done = true, cant = true, full = true, declined = true, gone = true }
+local RESULT_STRINGS = {
+    { "ERR_QUEST_PUSH_ACCEPTED_S", "accepted", "%s has accepted your quest." },
+    { "ERR_QUEST_PUSH_BUSY_S", "busy", "%s is busy." },
+    { "ERR_QUEST_PUSH_TOO_FAR_S", "far", "%s is too far away to receive your quest." },
+    { "ERR_QUEST_PUSH_DECLINED_S", "declined", "%s has declined your quest." },
+    { "ERR_QUEST_PUSH_ONQUEST_S", "has", "%s is already on that quest." },
+    { "ERR_QUEST_PUSH_ALREADY_DONE_S", "done", "%s has completed that quest." },
+    { "ERR_QUEST_PUSH_INVALID_S", "cant", "%s is not eligible for that quest." },
+    { "ERR_QUEST_PUSH_LOG_FULL_S", "full", "%s's quest log is full." },
+    { "ERR_QUEST_PUSH_NOT_IN_PARTY_S", "gone", "%s is not in your party." },
+    { "ERR_QUEST_PUSH_TIMER_EXPIRED_S", "cant" },
+    { "ERR_QUEST_PUSH_NOT_DAILY_S", "cant" },
+    { "ERR_QUEST_PUSH_DIFFERENT_SERVER_DAILY_S", "cant" },
+    { "ERR_QUEST_PUSH_INVALID_TO_RECIPIENT_S", "cant" },
+    { "ERR_QUEST_PUSH_NEW_PLAYER_EXPERIENCE_S", "cant" },
+    { "ERR_QUEST_PUSH_NOT_ALLOWED_S", "cant" },
+    { "ERR_QUEST_PUSH_SUCCESS_S", "sent", "Sharing quest with %s..." },
+}
+local resultPatterns
+local function shareResult(msg)
+    if type(msg) ~= "string" then return end
+    if not resultPatterns then
+        resultPatterns = {}
+        for _, e in ipairs(RESULT_STRINGS) do
+            local fmt = _G[e[1]]
+            if type(fmt) ~= "string" then fmt = e[3] end
+            if fmt then
+                -- the game's text with the player's name for its %s ("%1$s" in some languages)
+                local pat = fmt:gsub("%%%d?%$?s", "\1")
+                pat = pat:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+                pat = pat:gsub("\1", "(.-)")
+                resultPatterns[#resultPatterns + 1] = { "^" .. pat .. "$", e[2] }
+            end
+        end
+    end
+    for _, p in ipairs(resultPatterns) do
+        local name = msg:match(p[1])
+        if name then return p[2], (name:gsub("%-.*$", "")) end
+    end
+end
+ns.shareResult = shareResult
+local function memberName(u)
+    local n = ns.unitName and ns.unitName(u) or (UnitName and UnitName(u))
+    return type(n) == "string" and (n:gsub("%-.*$", "")) or nil
+end
+local queueShare
+local function pushShare(q)
     local a = A()
-    if not (a and a.share and q and q > 0) or not (IsInGroup and IsInGroup()) or not QuestLogPushQuest then return end
-    if fromPlayer[q] then fromPlayer[q] = nil return end
+    local e = shared[q]
+    if not (a and a.share and e) or not (IsInGroup and IsInGroup()) or not QuestLogPushQuest then return end
     local idx = questLogIndex(q)
     if not idx then
         -- (the quest log may not list it yet)
-        if (tries or 0) < 5 then C_Timer.After(0.5, function() shareQuest(q, (tries or 0) + 1) end) end
+        e.waits = (e.waits or 0) + 1
+        if e.waits <= 5 and e.tries == 0 then C_Timer.After(0.5, function() queueShare(q) end) end
         return
     end
     -- the quest log's selection is what gets shared: select it, share, put your selection back
     local before = GetQuestLogSelection and GetQuestLogSelection()
     if SelectQuestLogEntry then SelectQuestLogEntry(idx)
     elseif C_QuestLog and C_QuestLog.SetSelectedQuest then C_QuestLog.SetSelectedQuest(q) end
-    if not GetQuestLogPushable or GetQuestLogPushable() then QuestLogPushQuest() end
+    if not GetQuestLogPushable or GetQuestLogPushable() then
+        QuestLogPushQuest()
+        lastPush, lastPushQ, lastPushRepeat = GetTime(), q, e.tries > 0
+        e.tries, e.last = e.tries + 1, GetTime()
+    else
+        shared[q] = nil -- (not one that can be shared)
+    end
     if before and before > 0 and before ~= idx and SelectQuestLogEntry then SelectQuestLogEntry(before) end
 end
+local function pumpShares()
+    if #shareOrder == 0 then return end
+    local wait = lastPush + SHARE_GAP - GetTime()
+    if wait > 0 then
+        if not pumping then
+            pumping = true
+            C_Timer.After(wait, function() pumping = false; pumpShares() end)
+        end
+        return
+    end
+    pushShare(table.remove(shareOrder, 1))
+    if #shareOrder > 0 then pumpShares() end
+end
+function queueShare(q)
+    for _, x in ipairs(shareOrder) do if x == q then return end end
+    shareOrder[#shareOrder + 1] = q
+    pumpShares()
+end
+-- a quest you took: shared with the group (not one a group member shared with you)
+local function shareQuest(q)
+    local a = A()
+    if not (a and a.share and q and q > 0) or not (IsInGroup and IsInGroup()) or not QuestLogPushQuest then return end
+    if fromPlayer[q] then fromPlayer[q] = nil return end
+    shared[q] = { at = GetTime(), tries = 0, final = {}, far = {} }
+    queueShare(q)
+end
 ns.shareQuest = shareQuest
+-- the game's answer to a share, per group member
+local function onShareResult(msg)
+    if not lastPushQ or GetTime() - lastPush > 8 then return end
+    local r, name = shareResult(msg)
+    local e = shared[lastPushQ]
+    if not (r and name and e) then return end
+    local q = lastPushQ
+    if FINAL[r] then
+        e.final[name] = r; e.far[name] = nil
+    elseif r == "busy" and e.tries < SHARE_TRIES then
+        C_Timer.After(SHARE_BUSY, function() if shared[q] then queueShare(q) end end)
+    elseif r == "far" then
+        e.far[name] = true
+    end
+end
+ns.onShareResult = onShareResult
+-- the repeats' chat lines ("Bob is already on that quest.") are left out; "accepted" stays
+if ChatFrame_AddMessageEventFilter then
+    ChatFrame_AddMessageEventFilter("CHAT_MSG_SYSTEM", function(_, _, msg)
+        if lastPushRepeat and GetTime() - lastPush <= 8 then
+            local r = shareResult(msg)
+            if r and r ~= "accepted" then return true end
+        end
+        return false
+    end)
+end
+-- someone near you in your group who doesn't have quest q and hasn't answered it for good
+local function shareNeeded(q, e)
+    local f = C_QuestLog and C_QuestLog.IsUnitOnQuest
+    if not f then return false end
+    for k = 1, 4 do
+        local u = "party" .. k
+        if UnitExists and UnitExists(u) then
+            local name = memberName(u)
+            local near = not UnitIsVisible or UnitIsVisible(u)
+            local fight = UnitAffectingCombat and UnitAffectingCombat(u)
+            if name and not e.final[name] and near and not fight and (not UnitIsConnected or UnitIsConnected(u)) then
+                local okc, on = pcall(f, u, q)
+                if okc and on == false then return true end
+            end
+        end
+    end
+    return false
+end
+-- every 10 seconds: the quests shared this way that someone near you still hasn't got
+function ns.shareCheck()
+    local a = A()
+    if not (a and a.share) or not (IsInGroup and IsInGroup()) then return end
+    if (InCombatLockdown and InCombatLockdown()) or (UnitAffectingCombat and UnitAffectingCombat("player")) then return end
+    local now = GetTime()
+    for q, e in pairs(shared) do
+        if now - e.at > SHARE_FOR or e.tries >= SHARE_TRIES or (e.tries > 0 and not questLogIndex(q)) then
+            shared[q] = nil
+        elseif e.tries > 0 and now - (e.last or 0) >= SHARE_EVERY and shareNeeded(q, e) then
+            queueShare(q)
+        end
+    end
+end
+function ns.shareState(q) return shared[q] end
+if C_Timer and C_Timer.NewTicker then C_Timer.NewTicker(SHARE_EVERY, function() pcall(ns.shareCheck) end) end
 
 ---------------------------------------------------------------- events
 local f = CreateFrame("Frame")
@@ -1631,13 +1783,17 @@ for _, e in ipairs({ "UNIT_QUEST_LOG_CHANGED", "GROUP_ROSTER_UPDATE",
                      "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED",
                      "TRAINER_SHOW", "TRAINER_UPDATE", "TRAINER_CLOSED", "QUEST_ACCEPTED", "MERCHANT_SHOW", "MERCHANT_CLOSED",
                      "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "CONFIRM_BINDER", "CONFIRM_XP_LOSS", "TAXIMAP_OPENED",
-                     "BANKFRAME_OPENED", "BANKFRAME_CLOSED", "PLAYERBANKSLOTS_CHANGED", "BAG_UPDATE_DELAYED" }) do
+                     "BANKFRAME_OPENED", "BANKFRAME_CLOSED", "PLAYERBANKSLOTS_CHANGED", "BAG_UPDATE_DELAYED",
+                     "CHAT_MSG_SYSTEM" }) do
     pcall(f.RegisterEvent, f, e)
 end
 local trainQueued = false
 f:SetScript("OnEvent", function(_, event, a1, a2)
     if not ItineraryDB or not ItineraryDB.auto then return end
-    if event == "CONFIRM_BINDER" then
+    if event == "CHAT_MSG_SYSTEM" then
+        onShareResult(a1)
+        return
+    elseif event == "CONFIRM_BINDER" then
         -- only the bind we asked for (not one you clicked yourself)
         if confirmBind then C_Timer.After(0.1, acceptBind) end
         return

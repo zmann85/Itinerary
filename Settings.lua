@@ -127,7 +127,7 @@ local OPTIONS = {
     { tab = 2, label = "Escorts wait for your group", parent = "Accept and hand in", desc = "In a group, an escort it would pick up that starts as you accept it (Rescue OOX-17/TN!) waits until nobody near you still has the quest before it to hand in; chat says who. Solo and contested escorts: taken at once.",
       choices = ON_OFF, get = function() return A().groupWait ~= false end, set = function(v) A().groupWait = v end,
       enabled = function() return A().quests end },
-    { tab = 2, label = "Share quests in a group", desc = "In a group, every quest you accept is shared with the others right away (when it can be shared), so whoever is behind - skilling a profession, say - doesn't have to run to the quest giver. Not the quests someone shared with you.",
+    { tab = 2, label = "Share quests in a group", desc = "In a group, every quest you accept is shared with the others (when it can be shared), one after the other, so whoever is behind - skilling a profession, say - doesn't have to run to the quest giver. Someone who couldn't take it then (busy with the one before, too far away) gets it again once they can - not after they declined it. Not the quests someone shared with you.",
       choices = ON_OFF, get = function() return A().share == true end, set = function(v) A().share = v end },
     { tab = 3, label = "Group quests", desc = "Show: the guide's group quests (Tharil'zun, the Slag Pit chain) are in the route, its solo versions of those parts out. Skip: for playing alone - the other way round.",
       choices = { { "Show", true }, { "Skip", false } }, get = function() return A().groupQuests ~= false end,

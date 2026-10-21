@@ -477,6 +477,86 @@ local function routeQuestByTitle(title)
         end
     end
 end
+-- Escorts and fights that start the moment you accept them, from the NPC who also takes the quest before them
+-- (quest = { that quest before it, ... }). In a group, a member who hasn't handed that one in yet can't join
+-- and is left out - so these wait until nobody near you still has it in their log. Not here: escorts with
+-- nothing to hand in at that NPC first (contested respawns: Protect Kaya, Tooga's Quest) - those are taken as
+-- fast as ever. From the game's quest data (QuestieDB's WoW Forever quests: a scripted quest whose giver takes
+-- one of its previous quests, the event starting on accept); the escorts RestedXP holds back are in it.
+ns.GROUP_WAIT = {
+    [434] = { 2746 },   -- The Attack! (Tyrion)
+    [648] = { 351 },    -- Rescue OOX-17/TN!
+    [660] = { 657 },    -- Hints of a New Plague? (Kinelory)
+    [731] = { 729 },    -- The Absent Minded Prospector (Prospector Remtravel)
+    [836] = { 485 },    -- Rescue OOX-09/HL!
+    [863] = { 858 },    -- The Escape (Wizzlecrank's Shredder)
+    [994] = { 993 },    -- Escape Through Force (Volcor)
+    [995] = { 993 },    -- Escape Through Stealth (Volcor)
+    [1249] = { 1248 },  -- The Missing Diplomat (Mikhail: Tapoke Jahn)
+    [1324] = { 1266 },  -- The Missing Diplomat (Private Hendel)
+    [1440] = { 1439 },  -- Return to Vahlarriel (Dalinda Malem)
+    [1447] = { 1246 },  -- The Missing Diplomat (Dashel Stonefist)
+    [1640] = { 1639 },  -- Beat Bartleby
+    [1651] = { 1650 },  -- The Tome of Valor (Daphne Stilwell)
+    [2767] = { 2766 },  -- Rescue OOX-22/FE!
+    [2845] = { 2844 },  -- Wandering Shay
+    [3525] = { 3523 },  -- Extinguishing the Idol (Belnistrasz)
+    [3982] = { 3981 },  -- What Is Going On? (Commander Gor'shak)
+    [4245] = { 4244 },  -- Chasing A-Me 01
+    [4322] = { 4282 },  -- Jail Break! (Marshal Windsor)
+    [4491] = { 4492 },  -- A Little Help From My Friends (Ringo)
+    [4901] = { 979 },   -- Guardians of the Altar (Ranshalla)
+    [4966] = { 4881 },  -- Protect Kanati Greycloud
+    [5203] = { 5202 },  -- Rescue From Jaedenar (Captured Arko'narin)
+    [6403] = { 6402 },  -- The Great Masquerade (Reginald Windsor)
+    [7046] = { 7044 },  -- The Scepter of Celebras
+}
+-- the group members near you (in sight) who still have one of those quests in their log: their names
+local function groupUnits()
+    local out = {}
+    if IsInRaid and IsInRaid() then
+        for k = 1, 40 do local u = "raid" .. k; if UnitExists(u) and not UnitIsUnit(u, "player") then out[#out + 1] = u end end
+    elseif IsInGroup and IsInGroup() then
+        for k = 1, 4 do local u = "party" .. k; if UnitExists(u) then out[#out + 1] = u end end
+    end
+    return out
+end
+function ns.groupStillOn(prev)
+    local names = {}
+    local on = C_QuestLog and C_QuestLog.IsUnitOnQuest
+    for _, u in ipairs(groupUnits()) do
+        if (not UnitIsConnected or UnitIsConnected(u)) and (not UnitIsVisible or UnitIsVisible(u)) then
+            for _, p in ipairs(prev) do
+                local ok, yes = pcall(on, u, p)
+                if ok and ns.plain(yes) then names[#names + 1] = ns.unitName(u) or "a group member" break end
+            end
+        end
+    end
+    return names, on ~= nil
+end
+local waitFor -- the quest the open quest window waits with: { q = id, said = text }
+local startTicking -- (below)
+local function groupWaits(id)
+    local a = A()
+    local prev = id and ns.GROUP_WAIT[id]
+    if not prev or (a and a.groupWait == false) or not (IsInGroup and IsInGroup()) then return false end
+    local names, can = ns.groupStillOn(prev)
+    if not can then
+        -- (no way to see the others' quests: you accept it yourself)
+        if not (waitFor and waitFor.q == id) then ns.print("in a group: accept this escort yourself when everyone is ready") end
+        waitFor = { q = id, manual = true }
+        return true
+    end
+    if #names == 0 then return false end
+    local title = (ns.routeQuestName and ns.routeQuestName(prev[1]))
+        or (C_QuestLog and C_QuestLog.GetTitleForQuestID and C_QuestLog.GetTitleForQuestID(prev[1]))
+    local text = table.concat(names, ", ") .. " still " .. (#names == 1 and "has " or "have ") .. (title or "the quest before it")
+        .. " to hand in - accepting once " .. (#names == 1 and "it's" or "they're") .. " in (or click Accept)"
+    if not (waitFor and waitFor.q == id and waitFor.said == text) then ns.print("waiting for your group: " .. text) end
+    local ticking = waitFor and waitFor.q == id and waitFor.ticking
+    waitFor = { q = id, said = text, ticking = ticking }
+    return true
+end
 local function onDetail(retry)
     local id = GetQuestID and GetQuestID()
     local title = GetTitleText and GetTitleText()
@@ -489,12 +569,39 @@ local function onDetail(retry)
         end
     end
     if wanted(id, title) then
+        -- an escort your group has to be ready for: the window stays open until they are
+        if groupWaits(id) then startTicking() return end
+        waitFor = nil
         if QuestGetAutoAccept and QuestGetAutoAccept() then
             if AcknowledgeAutoAcceptQuest then AcknowledgeAutoAcceptQuest() end
         else
             AcceptQuest()
         end
     end
+end
+-- while a quest window waits for the group: look again when a member's quest log changes, and every second
+local function recheckWait()
+    if not waitFor or waitFor.manual then return end
+    local id = GetQuestID and GetQuestID()
+    if not (QuestFrame and QuestFrame:IsShown()) or id ~= waitFor.q then waitFor = nil return end
+    if not groupWaits(id) then
+        waitFor = nil
+        ns.print("your group is ready: accepting")
+        if QuestGetAutoAccept and QuestGetAutoAccept() then
+            if AcknowledgeAutoAcceptQuest then AcknowledgeAutoAcceptQuest() end
+        else
+            AcceptQuest()
+        end
+    end
+end
+ns.recheckGroupWait = recheckWait
+local function tick()
+    if not (waitFor and not waitFor.manual) then return end
+    recheckWait()
+    if waitFor and not waitFor.manual then C_Timer.After(1, tick) else if waitFor then waitFor.ticking = nil end end
+end
+function startTicking()
+    if waitFor and not waitFor.manual and not waitFor.ticking then waitFor.ticking = true; C_Timer.After(1, tick) end
 end
 
 local function onProgress()
@@ -1344,7 +1451,8 @@ ns.shareQuest = shareQuest
 
 ---------------------------------------------------------------- events
 local f = CreateFrame("Frame")
-for _, e in ipairs({ "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED",
+for _, e in ipairs({ "UNIT_QUEST_LOG_CHANGED", "GROUP_ROSTER_UPDATE",
+                     "GOSSIP_SHOW", "QUEST_GREETING", "QUEST_DETAIL", "QUEST_PROGRESS", "QUEST_COMPLETE", "QUEST_FINISHED",
                      "TRAINER_SHOW", "TRAINER_UPDATE", "TRAINER_CLOSED", "QUEST_ACCEPTED", "MERCHANT_SHOW", "MERCHANT_CLOSED",
                      "AUCTION_HOUSE_SHOW", "AUCTION_HOUSE_CLOSED", "CONFIRM_BINDER", "CONFIRM_XP_LOSS", "TAXIMAP_OPENED" }) do
     pcall(f.RegisterEvent, f, e)
@@ -1369,7 +1477,9 @@ f:SetScript("OnEvent", function(_, event, a1, a2)
     elseif event == "QUEST_DETAIL" then noteSharer(); onDetail(false)
     elseif event == "QUEST_PROGRESS" then onProgress()
     elseif event == "QUEST_COMPLETE" then onComplete()
-    elseif event == "QUEST_FINISHED" then hideCoins()
+    elseif event == "QUEST_FINISHED" then hideCoins(); waitFor = nil
+    elseif event == "UNIT_QUEST_LOG_CHANGED" or event == "GROUP_ROSTER_UPDATE" then
+        if waitFor then C_Timer.After(0.2, recheckWait) end
     elseif event == "TRAINER_SHOW" or (event == "TRAINER_UPDATE" and buying) then
         if trainQueued then return end
         trainQueued = true

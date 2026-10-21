@@ -353,6 +353,7 @@ to do things by hand that time.
 |---|---|---|
 | Accept and hand in quests (only the route's quests, or all) | on | Quests |
 | Share every quest you accept with your group (not the ones shared with you) | off | Quests |
+| In a group, wait with escorts that start on accept until nobody near you still has the quest before them to hand in | on | Quests |
 | Skip steps you're overlevelled for (a part of a chapter you get to too high, steps for below a level) | on | Quests |
 | Click through quest dialogue | on | Quests |
 | Pick gear rewards (all white/green armor: the best armor type you wear, then the best-selling) | off | Quests |
@@ -367,6 +368,14 @@ to do things by hand that time.
 | Buy weapon skills at a weapon master | off | Trainer |
 | Learn your professions at their trainer | on | Professions |
 | Buy gathering tools | on | Professions |
+
+**Escorts wait for your group**: some escorts and fights start the moment you accept them, from the NPC you
+just handed the quest before them to (Find OOX-17/TN! then Rescue OOX-17/TN!, The Absent Minded Prospector,
+The Missing Diplomat's fights, Jail Break!). A group member who hasn't handed that quest in yet can't join and is
+left out. In a group, Itinerary waits with these: the quest window stays open, chat names who still has the
+quest before it, and it accepts by itself once they've handed it in (click Accept to go anyway). Group members
+out of sight don't hold you up. Solo, and escorts with nothing to hand in there first (contested respawns like
+Protect Kaya or Tooga's Quest), are taken as fast as ever. Settings > Quests > *Escorts wait for your group*.
 
 **Object name tags**: Settings > Quests > *Object name tags* names an object you can click close by (the game
 picks one at a time, within about 15 yards, in any direction) with a nameplate of its own. **Quest** (the default): only
@@ -664,7 +673,7 @@ Open them with the gear in the panel footer, Shift + click on the minimap button
 | Tab | What's there |
 |---|---|
 | General | Route panel and minimap button, hide them in dungeons, the game's quest tracker, route pack order and the packs' own choices, factory reset, forget this character |
-| Quests | Accept and hand in, which quests (route or all), share quests in a group, skip overlevelled steps, quest dialogue, object name tags, quest sparkles, pick gear rewards, best-selling reward coin, sell junk, auction house steps |
+| Quests | Accept and hand in, which quests (route or all), share quests in a group, escorts wait for your group, skip overlevelled steps, quest dialogue, object name tags, quest sparkles, pick gear rewards, best-selling reward coin, sell junk, auction house steps |
 | Travel | Take flights, set hearthstone, spirit healer, map pins (on the world map, on the minimap, the line between them) |
 | Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills, buy weapon skills, your class's skill list (worth a visit / auto-buy) |
 | Professions | Learn at the trainer, main professions, first profession, secondary professions, gather mode, gather data (shipped, own, both), gathering tracking, node icons, gathering tools |

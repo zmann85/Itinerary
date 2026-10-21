@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Escorts wait for your group (Settings > Quests, on): an escort or fight that starts the moment you accept it,
+  from the NPC who also takes the quest before it (Rescue OOX-17/TN!, The Absent Minded Prospector, Jail Break!),
+  is only accepted in a group once nobody near you still has that quest to hand in - nobody gets left out. The
+  quest window waits, chat names who you're waiting for, and it's accepted by itself once they're ready. Solo,
+  and contested escorts with nothing to hand in there first, are taken at once as before.
+
 ## v2.1.13 (2026-10-20)
 
 ### Changed

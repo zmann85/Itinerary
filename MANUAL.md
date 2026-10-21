@@ -418,9 +418,10 @@ Click the **route button** in the panel footer. The list shows:
 - routes for other races of your class.
 
 Pick one to switch. `/iti routes` lists them in chat. Your place on each route is kept per character.
-Only the route you're on is kept in memory: switching to a route pack's route takes a quick reload of the
-interface (the popup's button), also when you go back to one you were on before; switching between a route and
-your copy of it, or to a route of your own, needs none.
+Only the route you're on is kept in memory, so switching routes takes a quick reload of the interface (the
+popup's button), also when you go back to one you were on before. Your own routes are kept packed and are
+unpacked by that reload. No reload is needed for a route you made in this session, or to go from your copy of
+a route back to the route itself.
 
 **Which route a new character gets**: the one made for its race and class. When several fit:
 1. **Your default** for that race and class: click **make default** next to a route in the list (on any

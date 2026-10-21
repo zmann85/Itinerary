@@ -427,14 +427,18 @@ baseSteps = function(r)
     return r.base
 end
 
-local builtFor -- the route whose steps are built: the one this character is on
+local builtFor, builtForId -- the route whose steps are built: the one this character is on
 function ns.route()
     local r = ItineraryCharDB and ns.routes[ItineraryCharDB.route]
     if not r then return nil end
-    -- (another route than before - a switch, a pick after a wipe, the editor's copy: the old one is let go)
+    -- (another route than before - a switch, a pick after a wipe, the editor's copy: the old one is let go,
+    -- and the edits of a route of your own are packed again)
     if builtFor ~= r then
-        if builtFor then releaseRoute(builtFor, r) end
-        builtFor = r
+        if builtFor then
+            releaseRoute(builtFor, r)
+            if builtFor.custom and builtForId and builtForId ~= ItineraryCharDB.route and ns.packEdits then ns.packEdits(builtForId) end
+        end
+        builtFor, builtForId = r, ItineraryCharDB.route
     end
     -- big generated routes build their step list on first use (only the route this character follows)
     if r.steps and not r.built then r.staticSteps, r.steps = r.steps, nil end
@@ -470,7 +474,9 @@ function ns.switchRoute(id, chosen)
         -- (your place on it from the quests you've done; not a copy the editor keeps you where you were on)
         c.findPlace = not ns.editorKeepSelection or nil
     end
-    if (r.needsReload and not r.base) or (src and src.needsReload and not src.base) then
+    -- (a route of your own whose edits are packed: unpacked with the reload, like a route pack's route)
+    local packed = ns.editsPacked and ns.editsPacked(id)
+    if (r.needsReload and not r.base) or (src and src.needsReload and not src.base) or packed then
         -- the route you're on stays until the reload actually happens (nothing breaks if you say "Not now")
         local reopen = ItineraryEditorWindow and ItineraryEditorWindow:IsShown()
         ns.askReload("Switching to " .. (r.name or id) .. (r.version and (" " .. r.version) or "") .. ".", function()
@@ -3448,6 +3454,7 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
         -- (saved with the step numbers: what those steps are, for the next build of the route)
         if resynced then keepKeys(ItineraryCharDB, ns.steps(), true) end
         if ns.unseedClassData then ns.unseedClassData() end
+        if ns.packAllEdits then ns.packAllEdits() end -- (your own routes' edits go into the file packed)
     elseif event == "TIME_PLAYED_MSG" then
         played.total, played.at = a1, GetTime()
         local lvl = UnitLevel("player")

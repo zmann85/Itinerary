@@ -64,6 +64,81 @@ local function sid(s)
 end
 ns.editId = sid
 
+-- Your own routes' edits (recorded routes are hundreds of added steps with their trails: a recorded 1-30 run is
+-- ~650 KB of tables) are kept packed - one compact string each, ItineraryDB.editsPacked[id] - except the route
+-- you're on. Only that one is unpacked (the first time something reads ItineraryDB.edits[id]); switching to
+-- another of your routes reloads the interface, like switching to a route pack's route. Before the game saves
+-- (logout, reload) every unpacked one is packed again; a route you leave is packed at once.
+local LibSerialize = LibStub and LibStub("LibSerialize", true)
+local LibDeflate = LibStub and LibStub("LibDeflate", true)
+local PACK_V = "1:"
+local function unpackEdits(str)
+    if not (LibSerialize and LibDeflate and type(str) == "string" and str:sub(1, #PACK_V) == PACK_V) then return nil end
+    local z = LibDeflate:DecodeForPrint(str:sub(#PACK_V + 1))
+    local ser = z and LibDeflate:DecompressDeflate(z)
+    if not ser then return nil end
+    local ok, E = LibSerialize:Deserialize(ser)
+    if ok and type(E) == "table" and type(E.ops) == "table" then return E end
+    return nil
+end
+local function same(a, b)
+    if type(a) ~= type(b) then return false end
+    if type(a) ~= "table" then return a == b end
+    for k, v in pairs(a) do if not same(v, b[k]) then return false end end
+    for k in pairs(b) do if a[k] == nil then return false end end
+    return true
+end
+local function packStore()
+    ItineraryDB.editsPacked = ItineraryDB.editsPacked or {}
+    return ItineraryDB.editsPacked
+end
+-- (an own route's edits only, and only when the packed string unpacks to exactly the same: else they stay
+-- as they are)
+function ns.packEdits(id)
+    local E = ItineraryDB and ItineraryDB.edits and rawget(ItineraryDB.edits, id)
+    if not (E and type(E.ops) == "table" and ItineraryDB.customRoutes and ItineraryDB.customRoutes[id]) then return false end
+    if not (LibSerialize and LibDeflate) then return false end
+    local ok, str = pcall(function()
+        return PACK_V .. LibDeflate:EncodeForPrint(LibDeflate:CompressDeflate(LibSerialize:Serialize(E), { level = 1 }))
+    end)
+    if not ok or not str then return false end
+    local back = unpackEdits(str)
+    if not (back and same(back, E)) then return false end
+    packStore()[id] = str
+    rawset(ItineraryDB.edits, id, nil)
+    return true
+end
+function ns.packAllEdits(except)
+    for _, id in ipairs((function() local l = {} for k in pairs(ItineraryDB.edits or {}) do l[#l + 1] = k end return l end)()) do
+        if id ~= except then ns.packEdits(id) end
+    end
+end
+-- packed and not unpacked yet (switching to it reloads)
+function ns.editsPacked(id)
+    local P = ItineraryDB and ItineraryDB.editsPacked
+    return P and P[id] ~= nil and not (ItineraryDB.edits and rawget(ItineraryDB.edits, id)) or false
+end
+-- reading ItineraryDB.edits[id] unpacks that route's edits (the string goes: the tables are the one copy until
+-- they're packed again)
+local function unpackOnRead()
+    ItineraryDB.edits = ItineraryDB.edits or {}
+    setmetatable(ItineraryDB.edits, { __index = function(t, id)
+        local P = ItineraryDB.editsPacked
+        local str = P and P[id]
+        if not str then return nil end
+        local E = unpackEdits(str)
+        if not E then return nil end -- (a string this version can't read stays as it is)
+        rawset(t, id, E)
+        P[id] = nil
+        return E
+    end })
+end
+-- your route's edits are gone for good (reset, deleted route): the packed copy too
+local function dropEdits(id)
+    if ItineraryDB.edits then rawset(ItineraryDB.edits, id, nil) end
+    if ItineraryDB.editsPacked then ItineraryDB.editsPacked[id] = nil end
+end
+
 local function editsFor(id, create)
     ItineraryDB.edits = ItineraryDB.edits or {}
     local e = ItineraryDB.edits[id]
@@ -253,7 +328,7 @@ function ns.editMove(key, dir)
     rebuild()
 end
 function ns.editReset()
-    if ItineraryDB.edits then ItineraryDB.edits[ItineraryCharDB.route] = nil end
+    dropEdits(ItineraryCharDB.route)
     rebuild()
 end
 
@@ -393,7 +468,7 @@ end
 function ns.deleteCustomRoute(id)
     if not (ItineraryDB.customRoutes and ItineraryDB.customRoutes[id]) then return end
     ItineraryDB.customRoutes[id] = nil
-    if ItineraryDB.edits then ItineraryDB.edits[id] = nil end
+    dropEdits(id)
     if ItineraryCharDB.route == id then ItineraryCharDB.route = nil; ItineraryCharDB.picked = nil end
     ns.routes[id] = nil
     ns.print("route deleted")
@@ -459,7 +534,12 @@ for _, e in ipairs({ "ADDON_LOADED", "PLAYER_LOGIN", "GOSSIP_SHOW", "QUEST_DETAI
                      "QUEST_ACCEPTED", "QUEST_TURNED_IN" }) do pcall(ev.RegisterEvent, ev, e) end
 ev:SetScript("OnEvent", function(_, event, a1, a2)
     if event == "ADDON_LOADED" then
-        if a1 == ADDON and ItineraryDB then migrateShippedEdits(); fixRecordedChapters(); registerCustom() end
+        if a1 == ADDON and ItineraryDB then
+            unpackOnRead()
+            migrateShippedEdits(); fixRecordedChapters(); registerCustom()
+            -- (saved before this came in: your other routes' edits are packed now)
+            ns.packAllEdits(ItineraryCharDB and ItineraryCharDB.route)
+        end
     elseif event == "PLAYER_LOGIN" then
         if ItineraryDB and ItineraryDB.reopenEditor then
             ItineraryDB.reopenEditor = nil

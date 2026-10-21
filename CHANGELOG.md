@@ -16,6 +16,10 @@
   of every waypoint list and kill area, the editor's keys for each step (made when the editor first needs them)
   and a copy of the shipped class skills are gone: about 1.3 MB less with a route pack route. The shipped class
   skills no longer go into the saved variables (only what trainers showed you), so the file is smaller too.
+- Your own routes are kept packed - one short string each, in memory and in the saved variables - except the one
+  you're on: a recorded 1-30 run took ~650 KB of memory on every character of the account, packed it's ~30 KB.
+  Switching to one of them takes a reload, like switching to a route pack's route (not for a route you made in
+  this session). The first login with this version packs them; nothing about them changes.
 - Faster panel updates with professions picked: the spending plan, the class skills you could learn and whether
   a gathering book is still ahead on the route are worked out once per update instead of up to 17 times (each
   walked the class's skill list, the book check the rest of the route): an update takes about 1 ms instead of

@@ -10,6 +10,14 @@
   and contested escorts with nothing to hand in there first, are taken at once as before.
 
 ### Fixed
+- After a route pack update moved the step numbers, you kept your old step *number* rather than your step
+  (the check that should find it again never got to run), and your hand skips stayed on the old numbers - on
+  other steps now. Your step is found again by what it is (and by the steps around it, if it changed itself),
+  and the skips, "not offered" marks and places reached move with their steps; one whose step the update took
+  out goes. Itinerary keeps what those steps are from now on, so this works from the next update.
+- The arrow pointed at an instruction you clicked (a trainer) stayed there after you dismissed that
+  instruction with its ×, with nothing left to click to get it back: it's back on the route now, also when
+  the instruction goes away by itself.
 - The skipped quests list showed a quest whose skipped step was an objective step as "Quest 1076": it names it now
   (Devils in Westfall).
 - Editor: clicking a step showed its Hint (or Text) blank or only its end - a long text opened scrolled to the

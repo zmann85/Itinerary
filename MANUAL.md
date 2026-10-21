@@ -105,7 +105,7 @@ From top to bottom:
   - The small **×** at an instruction's right dismisses it: one from the route is done, a trainer, weapon
     master or profession one waits for your next level.
   - **Click** an instruction that has a place (*Click to point the arrow here*), and the arrow points there.
-    Click it again to go back to the route.
+    Click it again, or dismiss it with its **×**, to go back to the route.
   - A timed quest's time left counts down on the instruction that runs until its turn-in (or on your step).
   - A "turn in / accept it if you pass by" that the route does as one of the next steps anyway isn't listed.
 
@@ -414,7 +414,7 @@ Pick one to switch. `/iti routes` lists them in chat. Your place on each route i
 
 Characters you already play stay on their route; switch them in the list. When a route pack is updated and
 its steps move, Itinerary finds the step you were on again ("the routes were updated - picked up again at
-step …").
+step …"), and the steps you skipped by hand stay skipped. A step the update took out takes its skip with it.
 
 ### A route pack's own choices
 A route pack can offer choices of its own, for example which dungeons your route includes. They show in

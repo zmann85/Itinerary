@@ -383,6 +383,9 @@ function ns.route()
     return r
 end
 
+-- what you were on and what you marked, kept by what those steps are (ns.resyncRoute): gone when your place on
+-- the route starts over
+local function forgetKeys(c) c.routeSig, c.stepKey, c.nearKeys, c.markKeys = nil, nil, nil, nil end
 -- switch this character to another route (a reload when its steps aren't in memory any more)
 function ns.switchRoute(id, chosen)
     local c, r = ItineraryCharDB, ns.routes[id]
@@ -392,7 +395,7 @@ function ns.switchRoute(id, chosen)
         c.routeChosen = chosen and true or c.routeChosen
         c.parked, c.gates = nil, nil -- you picked another route: a missing one isn't brought back over it
         c.route, c.step, c.manual, c.unavail, c.unavailQ, c.arrived = id, 1, {}, {}, {}, {}
-        c.routeSig = nil
+        forgetKeys(c)
     end
     if (r.needsReload and not r.base) or (src and src.needsReload and not src.base) then
         -- the route you're on stays until the reload actually happens (nothing breaks if you say "Not now")
@@ -601,6 +604,7 @@ function ns.pickRoute()
     if c.parked and ns.routes[c.parked.route] then
         local p = c.parked
         c.route, c.step, c.manual, c.unavail, c.unavailQ, c.arrived = p.route, p.step, p.manual or {}, p.unavail or {}, p.unavailQ or {}, p.arrived or {}
+        c.routeSig, c.stepKey, c.nearKeys, c.markKeys = p.routeSig, p.stepKey, p.nearKeys, p.markKeys
         c.parked = nil
         ns.print("route pack found: back on " .. (ns.routes[c.route].name or c.route) .. " at step " .. (c.step or 1))
     end
@@ -609,7 +613,8 @@ function ns.pickRoute()
     local best, bestFit = nil, 0
     -- a route that isn't loaded (its route pack is missing): keep where you were on it for when it's back
     if c.route and c.route ~= "none" and not ns.routes[c.route] and not c.parked then
-        c.parked = { route = c.route, step = c.step, manual = c.manual, unavail = c.unavail, unavailQ = c.unavailQ, arrived = c.arrived }
+        c.parked = { route = c.route, step = c.step, manual = c.manual, unavail = c.unavail, unavailQ = c.unavailQ, arrived = c.arrived,
+                     routeSig = c.routeSig, stepKey = c.stepKey, nearKeys = c.nearKeys, markKeys = c.markKeys }
         local route = c.route
         C_Timer.After(5, function()
             ns.print("your route (" .. route .. ") isn't installed - it comes in a route pack. Your place on it is kept for when it's back.")
@@ -630,6 +635,7 @@ function ns.pickRoute()
     local wrong = cur and best and not c.routeChosen and routeFit(cur, race, class) == 0
     if best and (not c.picked or wrong or not cur) and c.route ~= best and not c.parked then
         c.route, c.step, c.manual, c.unavail, c.unavailQ, c.arrived = best, 1, {}, {}, {}, {}
+        forgetKeys(c)
         local r = ns.routes[best]
         ns.print("using the route for your character: " .. (r.name or best) .. (bestFit == 4 and " (your default for this race and class)" or ""))
         if math.floor(bestFit) == 2 then
@@ -642,6 +648,7 @@ function ns.pickRoute()
     if not ns.routes[c.route or ""] then
         c.route = best or "none"
         c.step, c.manual, c.unavail, c.unavailQ, c.arrived = 1, {}, {}, {}, {}
+        forgetKeys(c)
     end
 end
 
@@ -2822,38 +2829,102 @@ local function stepKey(s)
     return s.t .. ":" .. (s.q and table.concat(s.q, ",") or (s.name or "")) .. ":" .. (s.npc or "")
 end
 
--- After an update of the routes the step numbers move: find the step you were on (by what it is), or else
--- the step after the last quest step you've done
+-- After an update of a route pack the step numbers of its routes move. What you were on and what you marked
+-- (skipped by hand, not offered, arrived at a place) is kept by what those steps are - their keys - and found
+-- again in the new build: c.routeSig says which route and which build of it the numbers belong to, c.stepKey and
+-- c.nearKeys (the steps around yours) where you were, c.markKeys the marked steps.
+local resynced = false -- (until the login resync ran, the saved keys are the old build's: nothing overwrites them)
+local MARKS = { "manual", "unavail", "arrived" }
+local function routeSig(id, r)
+    if not (r and r.seq) then return nil end
+    local seq, h = r.seq, 0
+    for k = 1, #seq do h = (h * 31 + seq:byte(k)) % 2147483629 end
+    return id .. "#" .. #seq .. ":" .. h
+end
+-- the keys of the step you're on, the ones around it and the marked ones (fresh: only the marks there are now)
+local function keepKeys(c, steps, fresh)
+    if not (c and steps) then return end
+    local i = c.step or 1
+    c.stepKey = stepKey(steps[i])
+    c.nearKeys = c.nearKeys or {}
+    for o = -3, 3 do c.nearKeys[o + 4] = stepKey(steps[i + o]) or false end
+    if fresh or not c.markKeys then c.markKeys = {} end
+    for _, f in ipairs(MARKS) do
+        for j in pairs(c[f] or EMPTY) do
+            if type(j) == "number" and steps[j] and not c.markKeys[j] then c.markKeys[j] = stepKey(steps[j]) end
+        end
+    end
+end
+-- once at login, with the route built (before anything moves you on)
 function ns.resyncRoute()
+    resynced = true
     local c, r = ItineraryCharDB, ns.route()
-    if not (c and r and r.seq and r.steps) then return end
-    local sig = tostring(#r.seq)
-    if c.routeSig == sig then return end
-    local old, known = c.routeSig, (c.step or 1) > 1
+    if not (c and r and r.steps) then return end
+    local sig, steps = routeSig(c.route, r), r.steps
+    if not sig then return end
+    local old = c.routeSig
     c.routeSig = sig
-    if not old and not known then return end
-    local steps, at = r.steps, nil
-    if c.stepKey then
+    local oldId = old and old:match("^(.*)#")
+    -- the same build; no saved place yet; another route's (you're on a new one); saved before the keys were
+    -- (the route's length alone): only the length tells
+    if old == sig or not old or (oldId and oldId ~= c.route) or (not oldId and sig:match("#(%d+):") == old) then
+        keepKeys(c, steps, true)
+        return
+    end
+    local where = {}
+    for j, s in ipairs(steps) do
+        local k = stepKey(s)
+        if k then local l = where[k] or {}; where[k] = l; l[#l + 1] = j end
+    end
+    -- the copy of that step nearest to where it's expected (a step can be there twice), not further than window
+    local function nearest(k, want, window, used)
         local best
-        for j = 1, #steps do
-            if stepKey(steps[j]) == c.stepKey and (not best or math.abs(j - c.step) < math.abs(best - c.step)) then best = j end
+        for _, j in ipairs(where[k] or EMPTY) do
+            if not (used and used[j]) and (not best or math.abs(j - want) < math.abs(best - want)) then best = j end
         end
-        at = best
+        if best and math.abs(best - want) <= window then return best end
     end
-    if not at then
-        local last = 0
-        for j = 1, #steps do
-            local s = steps[j]
-            if (s.t == "accept" or s.t == "turnin" or s.t == "complete") and not s.along and not s.opt and ns.stepDone(j) then last = j end
+    -- your step: where most of the steps around it say it is (one of them may have changed); else its number
+    local from, near = c.step or 1, c.nearKeys or EMPTY
+    local votes, at, most = {}, nil, 0
+    for o = -3, 3 do
+        local k = near[o + 4] or (o == 0 and c.stepKey) or nil
+        local j = k and nearest(k, from + o, 300)
+        if j then votes[j - o] = (votes[j - o] or 0) + 1 end
+    end
+    for cand, n in pairs(votes) do
+        if not at or n > most or (n == most and math.abs(cand - from) < math.abs(at - from)) then at, most = cand, n end
+    end
+    at = math.max(1, math.min(at or from, #steps))
+    -- the marks, in route order: each to its step, looked for by how far the steps around it moved; one whose
+    -- step is gone goes, one saved without its key moves with the steps around it
+    local olds, seen = {}, {}
+    for _, f in ipairs(MARKS) do
+        for j in pairs(c[f] or EMPTY) do
+            if type(j) == "number" and not seen[j] then seen[j] = true; olds[#olds + 1] = j end
         end
-        at = last + 1
     end
-    if at ~= c.step then
-        c.step, c.manual = at, {}
-        ns.print("the routes were updated - picked up again at step " .. at)
+    table.sort(olds)
+    local move, used, shift, passed, gone = {}, {}, 0, false, 0
+    local keys = c.markKeys or EMPTY
+    for _, j in ipairs(olds) do
+        if not passed and j >= from then shift, passed = at - from, true end
+        local want, to = j + shift, nil
+        if keys[j] then to = nearest(keys[j], want, 40, used)
+        elseif want >= 1 and want <= #steps and not used[want] then to = want end
+        if to then move[j], used[to], shift = to, true, to - j else gone = gone + 1 end
     end
-    ns.advance()
-    if ns.refresh then ns.refresh() end
+    for _, f in ipairs(MARKS) do
+        local t = {}
+        for j, v in pairs(c[f] or EMPTY) do
+            if type(j) ~= "number" then t[j] = v elseif move[j] then t[move[j]] = v end
+        end
+        c[f] = t
+    end
+    c.step = at
+    keepKeys(c, steps, true)
+    if at ~= from then ns.print("the routes were updated - picked up again at step " .. at) end
+    ns.resyncInfo = { from = from, at = at, marks = #olds, gone = gone } -- (for /iti debug and the tests)
 end
 
 function ns.update()
@@ -2864,7 +2935,7 @@ function ns.update()
         dropCache = nil -- quest log changes: work the dropped chains out again
         local c, before = ItineraryCharDB, ItineraryCharDB.step
         ns.advance()
-        c.stepKey = stepKey(ns.steps()[c.step])
+        if resynced then keepKeys(c, ns.steps()) end
         if ns.refreshEditor then ns.refreshEditor() end
         -- a sound when the step you were on got done (not when skipping, not on the first look after login),
         -- only for the ones that take a while: kill / loot objectives, collecting items, grinding a level
@@ -2879,7 +2950,7 @@ end
 
 local f = CreateFrame("Frame")
 local events = {
-    "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_ENTERING_WORLD", "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED",
+    "ADDON_LOADED", "PLAYER_LOGIN", "PLAYER_LOGOUT", "PLAYER_ENTERING_WORLD", "QUEST_ACCEPTED", "QUEST_TURNED_IN", "QUEST_REMOVED",
     "QUEST_LOG_UPDATE", "UNIT_QUEST_LOG_CHANGED", "PLAYER_LEVEL_UP", "TIME_PLAYED_MSG", "PLAYER_CONTROL_LOST",
     "UNIT_SPELLCAST_SUCCEEDED", "HEARTHSTONE_BOUND", "TRAINER_CLOSED", "SKILL_LINES_CHANGED", "LEARNED_SPELL_IN_TAB", "TAXIMAP_OPENED", "UI_INFO_MESSAGE", "BAG_UPDATE_DELAYED", "PLAYER_XP_UPDATE", "GOSSIP_SHOW", "QUEST_GREETING", "ZONE_CHANGED_NEW_AREA", "ZONE_CHANGED", "ZONE_CHANGED_INDOORS",
 }
@@ -2909,15 +2980,20 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
         ItineraryCharDB.guid = guid
         ns.pickRoute()
         ns.prepareRoute(ns.route())
+        -- (a route pack update moved the step numbers: your place and marks by what the steps are)
+        ns.resyncRoute()
         if ns.buildUI then ns.buildUI() end
         if ns.refreshRecStatus then ns.refreshRecStatus() end
         -- the quest log is complete a moment after login
-        C_Timer.After(3, function() ns.resyncRoute(); ns.restoreQuests() end)
+        C_Timer.After(3, function() ns.restoreQuests() end)
         -- another addon (our logger) usually asks for /played at login; ask ourselves if nobody did
         C_Timer.After(15, function()
             if not played.total and not askedPlayed and RequestTimePlayed then askedPlayed = true; RequestTimePlayed() end
         end)
         ns.update()
+    elseif event == "PLAYER_LOGOUT" then
+        -- (saved with the step numbers: what those steps are, for the next build of the route)
+        if resynced then keepKeys(ItineraryCharDB, ns.steps(), true) end
     elseif event == "TIME_PLAYED_MSG" then
         played.total, played.at = a1, GetTime()
         local lvl = UnitLevel("player")
@@ -3010,6 +3086,7 @@ SlashCmdList.ITINERARY = function(input)
     elseif cmd == "reset" then
         ItineraryCharDB.step, ItineraryCharDB.manual, ItineraryCharDB.unavail, ItineraryCharDB.unavailQ, ItineraryCharDB.arrived = 1, {}, {}, {}, {}
         ItineraryCharDB.gates = nil
+        forgetKeys(ItineraryCharDB)
         ns.advance(); if ns.refresh then ns.refresh() end
         ns.print("route progress reset; moved to the first unfinished step (" .. ItineraryCharDB.step .. ")")
     elseif cmd == "factoryreset" then

@@ -1735,6 +1735,19 @@ function ns.refresh()
     block(panel.secSide, side, 0.55, 0.92, 0.5) -- side objectives in a bright green, apart from their text
     ns.showRecCard(useCard and rec or {})
     if ns.setArrowInstructions then ns.setArrowInstructions(rec) end
+    -- the arrow goes to a clicked instruction's place only while that instruction is there: hidden with its x
+    -- (or gone by itself), the arrow is back on the route
+    local mt = ns.manualTarget
+    if mt then
+        local still = false
+        for _, l in ipairs({ rec, side }) do
+            for _, e in ipairs(l) do
+                local go = e.go
+                if go and go.npc == mt.npc and go.x == mt.x and go.y == mt.y then still = true break end
+            end
+        end
+        if not still then ns.manualTarget = nil; ns.arrowDirty = true end
+    end
     for k = used + 1, #panel.rows do panel.rows[k]:Hide() end
     if used > 0 then y = y - 2 end
     -- next few steps

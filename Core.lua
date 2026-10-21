@@ -2897,6 +2897,39 @@ end
 
 ---------------------------------------------------------------- updates (throttled)
 local pending = false
+-- The along-the-way objectives of step i that take a while (kill or loot objectives, items to collect - the
+-- same kinds as for your own step's sound) and aren't done yet, with their numbers: checked at the next update.
+local function alongOpen(i)
+    local steps, out = ns.steps(), {}
+    for _, j in ipairs(ns.alongActive(i)) do
+        local s = steps[j]
+        if (s.t == "complete" and s.q and #s.q > 0 or s.t == "do" and s.col) and ns.longStep(s) then out[#out + 1] = { s, j } end
+    end
+    return out
+end
+-- That along objective got done now: every quest's part of it done while the quest is still in your log (not by
+-- abandoning or skipping it), or the items it collects in your bags.
+local function alongFinished(s, j, c)
+    if c.manual[j] or c.unavail[j] or ns.steps()[j] ~= s then return false end
+    if s.t == "complete" then
+        for k, q in ipairs(s.q) do
+            if not (onQuest(q) and partDone(s, k, q)) then return false end
+        end
+        return true
+    end
+    local count = (C_Item and C_Item.GetItemCount) or GetItemCount
+    for _, col in ipairs(s.col) do
+        if (count(col[1]) or 0) < (col[2] or 1) then return false end
+    end
+    return true
+end
+local alongWas -- (alongOpen at the end of the last update: the quest log has changed by the next one)
+-- (where that step is now: the same number, unless the route was built again meanwhile)
+local function indexOf(e)
+    local steps = ns.steps()
+    if steps[e[2]] == e[1] then return e[2] end
+    for j, x in ipairs(steps) do if x == e[1] then return j end end
+end
 -- What a step is, independent of its number (to find it again when the route is rebuilt)
 local function stepKey(s)
     if not s then return nil end
@@ -3068,7 +3101,17 @@ function ns.update()
         -- only for the ones that take a while: kill / loot objectives, collecting items, grinding a level
         local sb = ns.steps()[before]
         local long = sb and ns.longStep(sb)
-        if long and ns.sawStep and c.step > before and not c.manual[before] and ns.stepDone(before) then ns.stepSound() end
+        local sound = long and ns.sawStep and c.step > before and not c.manual[before] and ns.stepDone(before)
+        -- and when an along-the-way objective of that kind got done (one sound for both)
+        if not sound and alongWas and ns.sawStep then
+            for _, e in ipairs(alongWas) do
+                local j = indexOf(e)
+                if j and alongFinished(e[1], j, c) then sound = true break end
+            end
+        end
+        if sound then ns.stepSound() end
+        local on = ItineraryDB.stepSound and ItineraryDB.stepSound ~= "Off"
+        alongWas = on and alongOpen(c.step) or nil
         ns.sawStep = true
         if ns.refresh then ns.refresh() end
         if ns.updateItems then ns.updateItems() end

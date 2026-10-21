@@ -111,7 +111,8 @@ From top to bottom:
 
 **A sound when a step is done**: Settings > Sounds > *Sound when a step is done* plays one of nine sounds
 (from a quest chime to a meow) when a step that takes a while is done: kill or loot objectives, collecting
-items, grinding a level. Not for talking to NPCs, travelling or skipping. Off by default. It can also be:
+items, grinding a level - your own step, or one of those along the way (one sound when both are done at once).
+Not for talking to NPCs, travelling, skipping or abandoning. Off by default. It can also be:
 - **Your own sound**: put .ogg or .mp3 files in `Interface\AddOns\Itinerary_Sounds\` (a folder you make next
   to Itinerary; an update of Itinerary doesn't touch it) and type their names under *Your own sounds*,
   separated by commas (*done.ogg, ding.mp3*). Each one becomes a pick. The game only finds files that were

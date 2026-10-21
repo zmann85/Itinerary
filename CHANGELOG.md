@@ -22,6 +22,10 @@
   quest window waits, chat names who you're waiting for, and it's accepted by itself once they're ready. Solo,
   and contested escorts with nothing to hand in there first, are taken at once as before.
 
+### Changed
+- The step sound also plays when an objective along the way that takes a while is done (kill or loot objectives,
+  items to collect), as for your own step - one sound when both are done at once; not when you abandon or skip it.
+
 ### Fixed
 - After a route pack update moved the step numbers, you kept your old step *number* rather than your step
   (the check that should find it again never got to run), and your hand skips stayed on the old numbers - on

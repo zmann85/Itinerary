@@ -282,7 +282,7 @@ local OPTIONS = {
     { tab = 8, kind = "key", bind = "ItineraryItem3", label = "Quest item 3" },
     { tab = 8, kind = "key", bind = "ItineraryItem4", label = "Quest item 4" },
     -- Sounds
-    { tab = 9, kind = "sound", label = "Sound when a step is done", desc = "Plays when a step that takes a while is done: kill or loot objectives, collecting items, grinding a level. Not for talking to NPCs or travelling, and not when you skip. Click one to hear it - or pick one of your own or of your other add-ons below." },
+    { tab = 9, kind = "sound", label = "Sound when a step is done", desc = "Plays when a step that takes a while is done: kill or loot objectives, collecting items, grinding a level - also one along the way. Not for talking to NPCs or travelling, and not when you skip. Click one to hear it - or pick one of your own or of your other add-ons below." },
     { tab = 9, kind = "ownsound", label = "Your own sounds" },
     { tab = 9, kind = "sharedsound", label = "From your other add-ons" },
 }

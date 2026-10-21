@@ -267,7 +267,12 @@ skipped line, marked *your level*; going back to one brings its quest back. Sett
 overlevelled steps* (on) switches it off: then you do every step.
 
 **Lost?**
-- `/iti find` goes to the first step you haven't done.
+- `/iti find` finds your place from the quests you've done: where the steps you've done stop and the open ones
+  begin, as the game knows it (your quest log and the quests you've handed in). Quests you skipped here and
+  there, trips, hearths and flights don't hold it up. When it's unclear, the place where the route goes on in
+  your zone wins, then a chapter for your level. Quests in your log from steps behind it show in the skipped
+  line. The same happens by itself when your place starts over: a new route, *This character* reset, or a
+  route that's no longer installed.
 - `/iti goto <number>` jumps to a step.
 - `/iti chapter <number>` jumps to a chapter. You can also click the panel header for the chapter list.
 
@@ -734,7 +739,7 @@ than your screen scrolls with the mouse wheel.
 | `/iti settings` | Settings |
 | `/iti next` / `/iti back` | One step forward / back |
 | `/iti goto <n>` | Jump to step n |
-| `/iti find` | Go to the first step you haven't done |
+| `/iti find` | Find your place from the quests you've done |
 | `/iti chapters`, `/iti chapter <n>` | Chapter list / jump to chapter n |
 | `/iti routes`, `/iti routes all`, `/iti route <id>` | List routes / all routes / switch |
 | `/iti edit` | Route editor |
@@ -745,7 +750,7 @@ than your screen scrolls with the mouse wheel.
 | `/iti gather` | Gather mode on/off |
 | `/iti arrow`, `/iti pins`, `/iti minimap` | Toggle the arrow, map pins, minimap button |
 | `/iti lock`, `/iti unlock` | Lock or unlock panel and arrow |
-| `/iti reset` | Start this route over from its first unfinished step |
+| `/iti reset` | Forget your marks on this route and find your place again |
 | `/iti wipe yes` | Forget everything saved for this character (settings stay) |
 | `/iti factoryreset yes` | Itinerary as if just installed (all settings, routes and progress) |
 | `/iti debug` | Details about the current step, trainers and weapons (for bug reports) |
@@ -761,8 +766,9 @@ than your screen scrolls with the mouse wheel.
 - **The panel says "No route loaded".** You have no route for this character yet. Record one, import
   one, or install a route pack. If you were on a route from a pack that's no longer installed, your place
   on it is kept. Install the pack again and you continue where you were.
-- **The route jumped ahead or seems wrong.** `/iti find` goes back to the first step you haven't done.
-  `/iti back` undoes a skip.
+- **The route jumped ahead or seems wrong.** `/iti find` finds your place from the quests you've done.
+  `/iti back` undoes a skip. If you left out a whole zone and only just started the next, it may put you at the
+  start of the zone you left out: `/iti chapter <number>` (or the panel header) takes you on.
 - **"The routes were updated - picked up again at step …"**: a route pack update moved the steps; Itinerary
   found the step you were on. Check the step and use `/iti find` if it's off.
 - **A quest step doesn't tick off.** Quests the giver doesn't offer you (a missing pre-quest, too low

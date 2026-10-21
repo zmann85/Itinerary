@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+### Changed
+- Your place on a route you start fresh (a new route, *This character* reset, `/iti reset`, a route that's no
+  longer installed) and `/iti find` come from the quests you've done: Itinerary looks for where the steps you've
+  done (your quest log, the quests you've handed in) stop and the open ones begin, and takes you there - trips,
+  hearth settings and flights in between, and quests you skipped here and there, no longer stop it one by one.
+  When it's unclear, the place where the route goes on in the zone you're in wins, then a chapter for your level.
+  Quests in your log whose steps are behind it show in the skipped line. A new character starts at the beginning
+  as before; at login it waits until the quest log is complete.
+
 ### Fixed
 - Share quests in a group: taking several quests from one NPC, the second share reached a group member while the
   quest window of the first was still open ("Bob is busy.") and they never got it. Quests are shared one after the

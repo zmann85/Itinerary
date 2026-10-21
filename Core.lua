@@ -126,7 +126,7 @@ function ns.wipeCharacter(why)
     if ns.routes and next(ns.routes) and ns.pickRoute then
         ns.pickRoute()
         ns.prepareRoute(ns.route())
-        if ns.advance then ns.advance() end
+        if ns.findPlace then ns.findPlace(true) elseif ns.advance then ns.advance() end
     end
     if ns.refresh then ns.refresh() end
     if ns.updateItems then ns.updateItems() end
@@ -396,6 +396,8 @@ function ns.switchRoute(id, chosen)
         c.parked, c.gates = nil, nil -- you picked another route: a missing one isn't brought back over it
         c.route, c.step, c.manual, c.unavail, c.unavailQ, c.arrived = id, 1, {}, {}, {}, {}
         forgetKeys(c)
+        -- (your place on it from the quests you've done; not a copy the editor keeps you where you were on)
+        c.findPlace = not ns.editorKeepSelection or nil
     end
     if (r.needsReload and not r.base) or (src and src.needsReload and not src.base) then
         -- the route you're on stays until the reload actually happens (nothing breaks if you say "Not now")
@@ -408,7 +410,7 @@ function ns.switchRoute(id, chosen)
     end
     take()
     ns.prepareRoute(ns.route())
-    ns.advance()
+    if c.findPlace and ns.findPlace then ns.findPlace(true) else ns.advance() end
     if ns.refresh then ns.refresh() end
     if ns.editorRouteChanged then ns.editorRouteChanged() end
     return true
@@ -636,6 +638,7 @@ function ns.pickRoute()
     if best and (not c.picked or wrong or not cur) and c.route ~= best and not c.parked then
         c.route, c.step, c.manual, c.unavail, c.unavailQ, c.arrived = best, 1, {}, {}, {}, {}
         forgetKeys(c)
+        c.findPlace = true
         local r = ns.routes[best]
         ns.print("using the route for your character: " .. (r.name or best) .. (bestFit == 4 and " (your default for this race and class)" or ""))
         if math.floor(bestFit) == 2 then
@@ -649,6 +652,7 @@ function ns.pickRoute()
         c.route = best or "none"
         c.step, c.manual, c.unavail, c.unavailQ, c.arrived = 1, {}, {}, {}, {}
         forgetKeys(c)
+        c.findPlace = true
     end
 end
 
@@ -1940,6 +1944,195 @@ function ns.advance()
     return moved
 end
 
+---------------------------------------------------------------- finding your place from what you've done
+-- After a reset, on a new route or with /iti find. Walked from step 1, the route stopped at every quest you never took
+-- and at every trip, hearth or flight in front of one, all of them to skip by hand. Instead, the route's quest steps
+-- say how far you are, as the game knows it (your quest log and the quests you've handed in, not your marks; an
+-- optional step only when it's done):
+-- - Your place is just after an edge: a done quest step with mostly done ones before it (half or more of the 16
+--   before, over a third of the 48 before) and mostly open ones after it (a third or less of the 16 after). Quests you
+--   skipped here and there don't make an edge, nor do a few done out of order far ahead; a zone you left out makes
+--   one in front of it.
+-- - A short stretch of a chapter after one you left out (a dungeon after a skipped zone) is an edge too when its start
+--   is mostly done (60%) - but only where you are: in its zone, at its level.
+-- - Of the edges: the furthest where the route goes on in the zone you're in, else the furthest in a chapter for your
+--   level, else the furthest; a further one in the same chapter wins over it (quests skipped together make an edge in
+--   the middle of what you've done). Then back to an open hand-in or objective of a quest in your log among the 16
+--   before it.
+-- The trips and hearth settings in between are passed with it; quests of yours still in your log whose steps are all
+-- behind it are marked skipped (the skipped list shows them). With hardly anything done (a new character) the route
+-- starts at its beginning as before. Measured on six routes (tfind.lua: every 7th or every 3rd quest skipped, a zone
+-- left out whole): next to no quest passed that you hadn't skipped, a few steps to skip by hand - most of them where
+-- a whole zone was left out (you land at its start).
+-- (back: also back to any open step among the last few before the edge; once: a step the route repeats for the same
+-- quests counted once - both off: they passed no fewer quests and left more steps to skip by hand)
+local FIND = { window = 16, before = 0.5, after = 1 / 3, min = 4, back = 0, once = false, weak = 0.6, long = 48, longMin = 0.35 }
+ns.placeTuning = FIND -- (for the tests)
+-- a quest step done as far as the game says: 1 all of its quests, 0 none (nil: none of them for you)
+local function gameDone(s)
+    local n, d = 0, 0
+    for k, q in ipairs(s.q) do
+        local c = ItineraryCharDB
+        if not (c.unavailQ[q] and not onQuest(q)) then
+            n = n + 1
+            local ok
+            if s.t == "accept" then ok = onQuest(q) or flaggedDone(q)
+            elseif s.t == "turnin" then ok = flaggedDone(q)
+            else
+                local oi = s.qo and s.qo[k] or 0
+                ok = flaggedDone(q) or (onQuest(q) and (oi > 0 and objectiveDone(q, oi) or (oi == 0 and readyToTurnIn(q))))
+            end
+            if ok then d = d + 1 end
+        end
+    end
+    if n == 0 then return nil end
+    return d / n
+end
+local function chapterLevels(i)
+    local _, ch = ns.chapterOf(i)
+    local nm = ch and ch.name or ""
+    local a, b = nm:match("(%d+)%s*%-%s*(%d+)%s*$")
+    if a then return tonumber(a), tonumber(b) end
+    a = nm:match("(%d+)%s*$")
+    if a then return tonumber(a), tonumber(a) end
+end
+-- the step to go on from (nil with hardly anything done), how much was found done, and why that place
+function ns.placeFromQuests()
+    local steps = ns.steps()
+    local idx, frac, done, seen = {}, {}, 0, {}
+    for i, s in ipairs(steps) do
+        if QUEST_STEP[s.t] and not s.along and s.q and #s.q > 0 and not notApplicable(s) then
+            -- (FIND.once: a step the route repeats for the same quests counted once)
+            local new = false
+            for _, q in ipairs(s.q) do
+                local k = s.t .. q
+                if not seen[k] then seen[k], new = true, true end
+            end
+            local f = (new or not FIND.once) and gameDone(s)
+            if f and not (s.opt and f == 0) then
+                idx[#idx + 1], frac[#frac + 1], done = i, f, done + f
+            end
+        end
+    end
+    if done < 2 then return nil, done end
+    local n, P = #idx, { [0] = 0 }
+    for m = 1, n do P[m] = P[m - 1] + frac[m] end
+    local function window(a, b)
+        a, b = math.max(1, a), math.min(n, b)
+        if b < a then return nil, 0 end
+        return (P[b] - P[a - 1]) / (b - a + 1), P[b] - P[a - 1]
+    end
+    local lvl = UnitLevel and UnitLevel("player") or 1
+    -- each counted step's chapter, and the first counted step of each chapter
+    local chOf, firstIn = {}, {}
+    do
+        local chs, k = ns.chapters(), 1
+        for m = 1, n do
+            while chs[k + 1] and chs[k + 1].first <= idx[m] do k = k + 1 end
+            chOf[m] = k
+            firstIn[k] = firstIn[k] or m
+        end
+    end
+    local best = {}
+    for m = 1, n do
+        if frac[m] >= 0.5 then
+            local before, got = window(m - FIND.window + 1, m)
+            local after = window(m + 1, m + FIND.window)
+            -- (and over the 48 before: a few quests done out of order after a long gap aren't where you are)
+            local strong = before >= FIND.before and got >= math.min(FIND.min, done)
+                and (window(m - FIND.long + 1, m)) >= FIND.longMin
+            -- a short stretch of a chapter after one you left out (a dungeon after a skipped zone): its start mostly
+            -- done is an edge too, but only where you are: in its zone, at its level
+            local a = math.max(firstIn[chOf[m]], m - FIND.window + 1)
+            local weak = not strong and m - a + 1 >= 2 and (window(a, m)) >= FIND.weak
+            if (strong or weak) and (not after or after <= FIND.after) then
+                local i = idx[m]
+                -- where the route goes on from there: the zone you're in, a chapter for your level
+                local zone = false
+                for j = i + 1, math.min(#steps, i + 80) do
+                    local sj = steps[j]
+                    if QUEST_STEP[sj.t] and not sj.along and sj.z and sj.z ~= "" and not notApplicable(sj) then
+                        zone = inZone(sj.z) and true or false
+                        break
+                    end
+                end
+                local lo, hi = chapterLevels(math.min(i + 1, #steps))
+                local level = lo and lvl >= lo - 1 and lvl <= hi + 1 or false
+                if ns.placeDebug then ns.placeDebug[#ns.placeDebug + 1] = { step = i, strong = strong, zone = zone, level = level, before = before, after = after } end
+                -- (a weak one needs both: a zone the route comes back to later, or a few quests done out of order in
+                -- a chapter for your level, don't do)
+                if strong then best.any = m end
+                if zone and (strong or level) then best.zone = m end
+                if level and (strong or zone) then best.level = m end
+            end
+        end
+    end
+    -- the zone's (else the level's) edge - but a further one in the same chapter is still where you are (quests
+    -- skipped together make an edge in the middle of what you've done)
+    local m, why = best.zone, "zone"
+    if not m then m, why = best.level, "level" end
+    if not m then m, why = best.any, "furthest" end
+    if not m then return nil, done end
+    if best.any and best.any > m and chOf[best.any] == chOf[m] then m, why = best.any, why .. ", further on in that chapter" end
+    -- back to a hand-in or objective of a quest in your log just before it (within the window): rather a step too
+    -- early than one of your quests passed
+    local back
+    for k = math.max(1, m - FIND.window + 1), m do
+        local s = steps[idx[k]]
+        if frac[k] < 1 then
+            if k > m - FIND.back then back = back or k end
+            if s.t ~= "accept" then
+                for _, q in ipairs(s.q) do if onQuest(q) then back = back and math.min(back, k) or k end end
+            end
+        end
+        if back and back <= k then break end
+    end
+    if back then return idx[back], done, why .. ", back to an open step" end
+    return math.min(idx[m] + 1, #steps), done, why
+end
+-- go there: quests of yours behind it still in your log are marked skipped; quiet: no chat line when nothing moved
+function ns.findPlace(quiet)
+    local c, steps = ItineraryCharDB, ns.steps()
+    if not (c and steps and #steps > 0) then return end
+    -- (the quest log is complete a moment after login: until then the route walks on as before)
+    if not ns.loginSettled then c.findPlace = true; ns.advance() return end
+    c.findPlace = nil
+    local at, done, why = ns.placeFromQuests()
+    local from = c.step
+    if not at then
+        c.step = 1
+        ns.advance()
+        if not quiet then ns.print("found no quests of this route done yet - starting at step " .. c.step) end
+        if ns.refresh then ns.refresh() end
+        return
+    end
+    -- (a quest of yours the route comes back to from there on isn't behind you)
+    local later = {}
+    for j = at, #steps do
+        local s = steps[j]
+        if QUEST_STEP[s.t] and s.q then for _, q in ipairs(s.q) do later[q] = true end end
+    end
+    local behind = 0
+    for j = 1, at - 1 do
+        local s = steps[j]
+        if QUEST_STEP[s.t] and s.t ~= "accept" and not s.along and s.q and not notApplicable(s) then
+            local open = false
+            for _, q in ipairs(s.q) do if onQuest(q) and not later[q] then open = true end end
+            if open and (gameDone(s) or 0) < 1 and not c.manual[j] then c.manual[j] = true; behind = behind + 1 end
+        end
+    end
+    c.step = at
+    ns.advance()
+    c.lastJump = { from = from, to = c.step, at = date and date("%H:%M:%S") or "", why = { "found your place from your quests: " .. math.floor(done + 0.5) .. " quest steps done (" .. tostring(why) .. ")" } }
+    if not quiet or c.step ~= from then
+        local _, ch = ns.chapterOf(c.step)
+        ns.print(string.format("found your place from the quests you've done: step %d%s%s", c.step,
+            ch and (" (" .. ch.name .. ")") or "",
+            behind > 0 and (" - quests in your log from steps behind it are under the panel as skipped") or ""))
+    end
+    if ns.refresh then ns.refresh() end
+end
+
 -- "along the way" steps that still matter at step i: started before it, not done, not past their end
 -- An along-the-way quest objective ends where the route gets a step of its own for that quest: from
 -- there the main step shows the objectives, so it isn't repeated underneath.
@@ -3154,8 +3347,13 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
         ns.resyncRoute()
         if ns.buildUI then ns.buildUI() end
         if ns.refreshRecStatus then ns.refreshRecStatus() end
-        -- the quest log is complete a moment after login
-        C_Timer.After(3, function() ns.restoreQuests() end)
+        -- the quest log is complete a moment after login: then your place on a route you start fresh (reset, new
+        -- route) is found from the quests you've done
+        C_Timer.After(3, function()
+            ns.loginSettled = true
+            if ItineraryCharDB.findPlace then ns.findPlace(true) end
+            ns.restoreQuests()
+        end)
         -- another addon (our logger) usually asks for /played at login; ask ourselves if nobody did
         C_Timer.After(15, function()
             if not played.total and not askedPlayed and RequestTimePlayed then askedPlayed = true; RequestTimePlayed() end
@@ -3253,15 +3451,14 @@ SlashCmdList.ITINERARY = function(input)
     elseif cmd == "arrow" then if ns.toggleArrow then ns.toggleArrow() end
     elseif cmd == "lock" or cmd == "unlock" then if ns.setLocked then ns.setLocked(cmd == "lock"); ns.setArrowLocked(cmd == "lock") end
     elseif cmd == "find" then
-        -- jump to the first unfinished step from the start (after skipping around)
-        ItineraryCharDB.step = 1; ns.advance(); if ns.refresh then ns.refresh() end
-        ns.print("now at step " .. ItineraryCharDB.step)
+        -- your place from the quests you've done (after skipping around, a reset)
+        ns.findPlace(false)
     elseif cmd == "reset" then
         ItineraryCharDB.step, ItineraryCharDB.manual, ItineraryCharDB.unavail, ItineraryCharDB.unavailQ, ItineraryCharDB.arrived = 1, {}, {}, {}, {}
         ItineraryCharDB.gates = nil
         forgetKeys(ItineraryCharDB)
-        ns.advance(); if ns.refresh then ns.refresh() end
-        ns.print("route progress reset; moved to the first unfinished step (" .. ItineraryCharDB.step .. ")")
+        ns.print("route progress reset")
+        ns.findPlace(false)
     elseif cmd == "factoryreset" then
         if arg == "yes" then ns.factoryReset()
         else ns.print("/iti factoryreset yes = Itinerary as if just installed: all settings, your route edits and own routes, and every character's progress are deleted, then the UI reloads.") end

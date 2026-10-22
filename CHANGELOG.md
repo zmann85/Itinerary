@@ -2,7 +2,16 @@
 
 ## Unreleased
 
+### Added
+- A target button per kind of mob: a step (with its along-the-way objectives) after several kinds of mobs shows
+  one button for each (up to 4, your step's first), with that mob's face; clicking one targets only that kind.
+  The target key goes for all of them as before, and its key label shows on the kind it would take now.
+
 ### Changed
+- Settings > Panel > *Item & target buttons* is now the target buttons' corner: the item buttons start at the
+  other corner on the same side, and both grow towards each other (bottom left: target buttons up from the
+  bottom, item buttons down from the top). Too many for the panel's height: the item buttons move one column
+  out. With the target button off, the item buttons take the chosen corner as before.
 - Your place on a route you start fresh (a new route, *This character* reset, `/iti reset`, a route that's no
   longer installed) and `/iti find` come from the quests you've done: Itinerary looks for where the steps you've
   done (your quest log, the quests you've handed in) stop and the open ones begin, and takes you there - trips,

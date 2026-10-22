@@ -2,8 +2,9 @@
 -- Secure buttons, so they only change out of combat; during combat they keep what they had.
 local ADDON, ns = ...
 
-local MAX, SIZE = 4, 30
-local row, buttons, target = nil, {}, nil
+local MAX, MAXT, SIZE = 4, 4, 30
+-- row: the item buttons; trow: the target buttons (the target button, and one per kind of mob)
+local row, trow, buttons, target, named = nil, nil, {}, nil, {}
 local pending = false
 
 -- Key bindings (Itinerary's Settings > Keys, also the game's Options > Keybindings > AddOns > Itinerary; Bindings.xml)
@@ -422,6 +423,9 @@ function ns.targetDebug()
     if ns.portraitInfo then ns.print(ns.portraitInfo()) end
     ns.print("button: " .. tostring(target and target:IsShown()) .. ", combat " .. tostring(InCombatLockdown()) .. ", macro:")
     print((target and target:GetAttribute("macrotext") or "none"):gsub("\n", " | "))
+    for k, b in ipairs(named) do
+        if b:IsShown() then print(string.format("  button %d: %s | %s", k, tostring(b.name), (b:GetAttribute("macrotext") or ""):gsub("\n", " | "))) end
+    end
     end)
     if not ok then ns.print("target debug error: " .. tostring(err)) end
 end
@@ -708,6 +712,89 @@ function ns.portraitInfo()
         PQ.got, PQ.tried, PQ.last)
 end
 
+-- the tooltip's key line: the key, and where to change it (Itinerary's settings, Keys)
+local function keyLine(b)
+    local k1, k2
+    if GetBindingKey and b.bindName then k1, k2 = GetBindingKey("CLICK " .. b.bindName .. ":LeftButton") end
+    local function name(k) return GetBindingText and GetBindingText(k) or k end
+    local text = k1 and ((k2 and ("Keys: " .. name(k1) .. " or " .. name(k2)) or ("Key: " .. name(k1)))
+            .. " - change " .. (k2 and "them" or "it") .. " under Keys in Itinerary's settings (/iti settings)")
+        or "Bind a key under Keys in Itinerary's settings (/iti settings)"
+    GameTooltip:AddLine(text, 0.5, 0.5, 0.5, true)
+end
+-- the key bound to a button, short (S-1, C-F, M4 ...)
+local function hotkey(b)
+    local key = GetBindingKey and GetBindingKey("CLICK " .. b.bindName .. ":LeftButton")
+    if not key then return "" end
+    key = key:gsub("SHIFT%-", "S-"):gsub("CTRL%-", "C-"):gsub("ALT%-", "A-"):gsub("BUTTON", "M")
+        :gsub("MOUSEWHEELUP", "WU"):gsub("MOUSEWHEELDOWN", "WD"):gsub("NUMPAD", "N")
+    return key
+end
+
+-- A step (with its along-the-way objectives) after several kinds of mobs gets a target button for each kind:
+-- clicking one targets only that kind (the nearest of them the game finds); the target key still goes for
+-- all of them as above. Each button shows its mob's face: one in sight on a nameplate or as your target, else
+-- the one remembered for that name.
+-- the nearest fitting nameplate of each name, in one pass over the plates (and the names seen only on mobs
+-- someone else has tagged)
+local function platesByName(names)
+    local want, best, score, tapped, good = {}, {}, {}, {}, {}
+    for _, n in ipairs(names) do want[n] = n; want[(n:gsub("s$", ""))] = n end
+    for _, p in ipairs(plates()) do
+        local u = p.u
+        local n = want[ns.unitName(u) or ""]
+        if n and not UnitIsDead(u) and not UnitIsPlayer(u) then
+            if UnitCanAttack("player", u) and not (UnitIsTapDenied and UnitIsTapDenied(u)) then
+                good[n] = true
+                local d = 4
+                if near(u, 3) then d = 1 elseif near(u, 2) then d = 2 elseif near(u, 4) then d = 3 end
+                local busy = UnitAffectingCombat(u) and not UnitIsUnit(u .. "target", "player")
+                local sc = d + (busy and 5 or 0)
+                if not score[n] or sc < score[n] then best[n], score[n] = u, sc end
+            else
+                tapped[n] = true
+            end
+        end
+    end
+    local blocked = {}
+    for n in pairs(tapped) do if not good[n] then blocked[n] = true end end
+    return best, blocked
+end
+local function namedFace(b, unit)
+    local n = b.name
+    if b.faceName ~= n then b.faceName, b.faceKey = n, nil end
+    local guid = unit and SetPortraitTexture and UnitExists(unit) and ns.unitGUID(unit)
+    if guid then
+        if b.faceKey ~= guid then SetPortraitTexture(b.face, unit); b.faceKey = guid end
+        learn(unit)
+        b.face:Show(); b.icon:Hide()
+        return
+    end
+    -- out of sight: the face it had for this name, else the remembered one
+    if b.faceKey then b.face:Show(); b.icon:Hide() return end
+    local e = known(n)
+    if e and e.npc and not e.disp then askDisplay(n, e.npc) end
+    if e and e.disp and SetPortraitTextureFromCreatureDisplayID and pcall(SetPortraitTextureFromCreatureDisplayID, b.face, e.disp) then
+        b.faceKey = "disp:" .. e.disp
+        b.face:Show(); b.icon:Hide()
+        return
+    end
+    b.face:Hide(); b.icon:Show()
+end
+-- the target key's label goes on the button of the kind it would go for now
+local function namedKey(pickName)
+    local pick = pickName
+    if not pick and target then pick = firstName() end
+    local want = pick and wanted({ pick }) or {}
+    local key = target and hotkey(target) or ""
+    local done = false
+    for _, b in ipairs(named) do
+        local on = b:IsShown() and b.name and not done and (want[b.name] or want[(b.name:gsub("s$", ""))]) and true or false
+        if on then done = true end
+        b.hotkey:SetText(on and key or "")
+    end
+end
+
 -- out of combat the button follows the nearest fitting mob a few times a second (a secure button can't
 -- change in combat: there the last pick, its face and the names stay)
 do
@@ -725,6 +812,24 @@ do
             target:SetAttribute("macrotext", text)
         end
         setPortrait((ok and plate) or (targetFits() and "target") or nil)
+        -- the buttons for one kind of mob each
+        if named[1] and named[1]:IsShown() then
+            local list = {}
+            for _, b in ipairs(named) do if b:IsShown() and b.name then list[#list + 1] = b.name end end
+            local okP, best, bl = pcall(platesByName, list)
+            if not okP then best, bl = {}, {} end
+            local tname = UnitExists("target") and not UnitIsDead("target") and UnitCanAttack("player", "target") and ns.unitName("target")
+            for _, b in ipairs(named) do
+                if b:IsShown() and b.name then
+                    local u = best[b.name]
+                    local mt = targetMacro({ b.name }, false, u, target.prio, target.main, bl[b.name] and { [b.name] = true } or nil)
+                    if mt ~= b.lastMacro then b.lastMacro = mt; b:SetAttribute("macrotext", mt) end
+                    local tw = tname and wanted({ b.name })[tname]
+                    pcall(namedFace, b, u or (tw and "target") or nil)
+                end
+            end
+            namedKey(ok and plate and ns.unitName(plate) or nil)
+        end
     end)
     -- (a model that wasn't loaded yet when its portrait was drawn: draw it again once the game has it) and
     -- who the creatures you target, hover or see of your step are
@@ -749,25 +854,6 @@ do
     tf:SetScript("OnEvent", function(_, event, unit) pcall(onEvent, event, unit) end)
 end
 
--- the tooltip's key line: the key, and where to change it (Itinerary's settings, Keys)
-local function keyLine(b)
-    local k1, k2
-    if GetBindingKey and b.bindName then k1, k2 = GetBindingKey("CLICK " .. b.bindName .. ":LeftButton") end
-    local function name(k) return GetBindingText and GetBindingText(k) or k end
-    local text = k1 and ((k2 and ("Keys: " .. name(k1) .. " or " .. name(k2)) or ("Key: " .. name(k1)))
-            .. " - change " .. (k2 and "them" or "it") .. " under Keys in Itinerary's settings (/iti settings)")
-        or "Bind a key under Keys in Itinerary's settings (/iti settings)"
-    GameTooltip:AddLine(text, 0.5, 0.5, 0.5, true)
-end
--- the key bound to a button, short (S-1, C-F, M4 ...)
-local function hotkey(b)
-    local key = GetBindingKey and GetBindingKey("CLICK " .. b.bindName .. ":LeftButton")
-    if not key then return "" end
-    key = key:gsub("SHIFT%-", "S-"):gsub("CTRL%-", "C-"):gsub("ALT%-", "A-"):gsub("BUTTON", "M")
-        :gsub("MOUSEWHEELUP", "WU"):gsub("MOUSEWHEELDOWN", "WD"):gsub("NUMPAD", "N")
-    return key
-end
-
 local function updateCooldowns()
     for _, b in ipairs(buttons) do
         if b:IsShown() and b.itemID and getCooldown then
@@ -777,42 +863,64 @@ local function updateCooldowns()
     end
 end
 
--- secure frames must not move in combat, so the row is not anchored to the (moving, resizing) panel;
--- it is placed at the chosen corner here, out of combat (and every frame while you drag the panel)
+-- secure frames must not move in combat, so the rows are not anchored to the (moving, resizing) panel;
+-- they are placed at their corners here, out of combat (and every frame while you drag the panel).
+-- Settings > Panel > Item & target buttons is the target buttons' corner; the item buttons start at the other
+-- corner on the same side of the panel, and both grow towards each other (bottom left: the target buttons
+-- up from the bottom, the item buttons down from the top). With the target button switched off, the item
+-- buttons take the chosen corner.
 local CORNERS = {
     TOPRIGHT    = { "TOPLEFT",     "right", "top",    6 },
     BOTTOMRIGHT = { "BOTTOMLEFT",  "right", "bottom", 6 },
     TOPLEFT     = { "TOPRIGHT",    "left",  "top",    -6 },
     BOTTOMLEFT  = { "BOTTOMRIGHT", "left",  "bottom", -6 },
 }
+local OTHER = { TOPLEFT = "BOTTOMLEFT", BOTTOMLEFT = "TOPLEFT", TOPRIGHT = "BOTTOMRIGHT", BOTTOMRIGHT = "TOPRIGHT" }
 local function corner() return CORNERS[ItineraryDB and ItineraryDB.itemAnchor or ""] and ItineraryDB.itemAnchor or "BOTTOMLEFT" end
+local function targetsShown() return not (ItineraryDB and ItineraryDB.auto and ItineraryDB.auto.targetBtn == false) end
+local function itemCorner() return targetsShown() and OTHER[corner()] or corner() end
 function ns.placeItems()
-    if not row or InCombatLockdown() then return end
+    if not (row and trow) or InCombatLockdown() then return end
     local p = row.panel
     if not (p and p:GetRight() and p:GetTop() and p:GetLeft() and p:GetBottom()) then return end
-    local c = CORNERS[corner()]
     -- the panel may be scaled (Settings > Layout > Panel size): its edges in screen units
     local k = (p:GetEffectiveScale() or 1) / (UIParent:GetEffectiveScale() or 1)
-    local x = (c[2] == "right" and p:GetRight() or p:GetLeft()) * k + c[4]
-    local y = (c[3] == "top" and p:GetTop() or p:GetBottom()) * k
-    row:ClearAllPoints()
-    row:SetPoint(c[1], UIParent, "BOTTOMLEFT", x, y)
+    local function place(f, cn, out)
+        local c = CORNERS[cn]
+        local x = (c[2] == "right" and p:GetRight() or p:GetLeft()) * k + c[4] + out * (c[4] > 0 and 1 or -1)
+        local y = (c[3] == "top" and p:GetTop() or p:GetBottom()) * k
+        f:ClearAllPoints()
+        f:SetPoint(c[1], UIParent, "BOTTOMLEFT", x, y)
+    end
+    place(trow, corner(), 0)
+    -- (more buttons than the panel is tall: the item buttons go one column further out instead of over the
+    -- target buttons)
+    local h = (p:GetTop() - p:GetBottom()) * k
+    local both = targetsShown() and ((trow.n or 0) + (row.n or 0)) * (SIZE + 4) - 4 > h
+    place(row, itemCorner(), both and (SIZE + 4) or 0)
 end
--- buttons stack away from the corner: down from a top corner, up from a bottom one
-local function stack(b, k)
-    local top = corner():find("^TOP")
+-- buttons stack away from their row's corner: down from a top corner, up from a bottom one
+local function stack(b, k, f, cn)
     b:ClearAllPoints()
-    if top then b:SetPoint("TOP", row, "TOP", 0, -k * (SIZE + 4))
-    else b:SetPoint("BOTTOM", row, "BOTTOM", 0, k * (SIZE + 4)) end
+    if cn:find("^TOP") then b:SetPoint("TOP", f, "TOP", 0, -k * (SIZE + 4))
+    else b:SetPoint("BOTTOM", f, "BOTTOM", 0, k * (SIZE + 4)) end
 end
 
 local function update()
     if not row then return end
     if InCombatLockdown() then pending = true; return end -- secure buttons only change outside combat
     pending = false
-    ns.placeItems()
     local names, friendly, prio, main = targetNames()
-    local y = 0
+    -- one button per kind of mob (your step's own first, the one particular mob first among them); for an
+    -- NPC to talk to, the target button itself
+    local order = {}
+    if #names > 0 and not friendly then
+        for t = 3, 0, -1 do
+            for _, n in ipairs(names) do if nameTier(n, prio, main) == t then order[#order + 1] = n end end
+        end
+    end
+    local perKind = targetsShown() and #order > 0
+    local nT = 0
     if #names > 0 then
         target.names, target.friendly, target.prio, target.main = names, friendly, prio, main
         target:SetAttribute("type", "macro")
@@ -826,14 +934,15 @@ local function update()
         end
         target.hotkey:SetText(hotkey(target))
         target:Show()
-        -- hidden by setting: invisible and not clickable, but its key binding keeps working
-        if ItineraryDB and ItineraryDB.auto and ItineraryDB.auto.targetBtn == false then
+        -- hidden by setting, or a button per kind of mob shows instead: invisible and not clickable, but its key
+        -- binding keeps working
+        if not targetsShown() or perKind then
             target:SetAlpha(0); target:EnableMouse(false)
-            target:ClearAllPoints(); target:SetPoint("CENTER", row, "CENTER")
+            target:ClearAllPoints(); target:SetPoint("CENTER", trow, "CENTER")
         else
             target:SetAlpha(1); target:EnableMouse(true)
-            stack(target, 0)
-            y = 1
+            stack(target, 0, trow, corner())
+            nT = 1
         end
     else
         target.names, target.sig = nil, nil
@@ -842,10 +951,30 @@ local function update()
         target:SetAttribute("macrotext", nil)
         target:Hide()
     end
+    for k = 1, MAXT do
+        local b, n = named[k], perKind and order[k] or nil
+        if n then
+            b.name = n
+            b.lastMacro = targetMacro({ n }, false, nil, prio, main)
+            b:SetAttribute("type", "macro")
+            b:SetAttribute("macrotext", b.lastMacro)
+            stack(b, nT, trow, corner())
+            nT = nT + 1
+            b:Show()
+            namedFace(b, nil)
+        else
+            b.name, b.lastMacro = nil, nil
+            b:SetAttribute("macrotext", nil)
+            b:Hide()
+        end
+    end
+    if perKind then namedKey(nil) end
     local items = questItems()
+    local nI = 0
     for i = 1, MAX do
         local b, id = buttons[i], items[i]
-        stack(b, y + i - 1)
+        stack(b, i - 1, row, itemCorner())
+        if id then nI = nI + 1 end
         b.hotkey:SetText(hotkey(b))
         if type(id) == "table" then
             b.itemID, b.macro = nil, id.macro
@@ -872,7 +1001,11 @@ local function update()
     end
     local up = ItineraryDB.panel.shown
     if ns.panelUp then up = ns.panelUp() end
-    row:SetShown((#items > 0 or #names > 0) and up and true or false)
+    row:SetShown(nI > 0 and up and true or false)
+    -- (shown with the target button invisible too: its key needs it)
+    trow:SetShown(#names > 0 and up and true or false)
+    trow.n, row.n = nT, nI
+    ns.placeItems()
     updateCooldowns()
 end
 -- (what the buttons ask about the plan and the class skills: worked out once per update)
@@ -881,11 +1014,14 @@ ns.updateItems = function() return ns.memoRun(update) end
 function ns.buildItems(panel)
     local ar, ag, ab = accent()
     row = CreateFrame("Frame", "ItineraryItems", UIParent)
-    row:SetSize(SIZE, (SIZE + 4) * (MAX + 1))
+    row:SetSize(SIZE, (SIZE + 4) * MAX)
     row.panel = panel
     row:SetPoint("CENTER")
-    local function make(name)
-        local b = CreateFrame("Button", name, row, "SecureActionButtonTemplate")
+    trow = CreateFrame("Frame", "ItineraryTargets", UIParent)
+    trow:SetSize(SIZE, (SIZE + 4) * MAXT)
+    trow:SetPoint("CENTER")
+    local function make(name, parent)
+        local b = CreateFrame("Button", name, parent or row, "SecureActionButtonTemplate")
         b.bindName = name
         b:SetSize(SIZE, SIZE)
         b:RegisterForClicks("AnyUp", "AnyDown")
@@ -902,7 +1038,7 @@ function ns.buildItems(panel)
         local hl = b:CreateTexture(nil, "HIGHLIGHT"); hl:SetAllPoints(b.icon); hl:SetColorTexture(ar, ag, ab, 0.25)
         return b
     end
-    target = make("ItineraryTarget")
+    target = make("ItineraryTarget", trow)
     -- (the round mask every face shares)
     local mask = target.CreateMaskTexture and target:CreateMaskTexture()
     if mask and mask.SetTexture then
@@ -961,6 +1097,30 @@ function ns.buildItems(panel)
     end)
 
     target:Hide()
+    for k = 1, MAXT do
+        local b = make("ItineraryTargetKind" .. k, trow)
+        b.icon:SetTexture("Interface\\Icons\\Ability_Hunter_SniperShot")
+        b.face = b:CreateTexture(nil, "ARTWORK", nil, 1)
+        b.face:SetPoint("TOPLEFT", 1, -1); b.face:SetPoint("BOTTOMRIGHT", -1, 1)
+        local m = b.CreateMaskTexture and b:CreateMaskTexture()
+        if m and m.SetTexture then
+            m:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
+            m:SetPoint("TOPLEFT", 1, -1); m:SetPoint("BOTTOMRIGHT", -1, 1)
+            if type(b.face.AddMaskTexture) == "function" then b.face:AddMaskTexture(m) end
+        end
+        b.face:Hide()
+        b:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:AddLine(self.name or "", 1, 1, 1)
+            GameTooltip:AddLine("Click: target only these", 0.75, 0.75, 0.75)
+            GameTooltip:AddLine("Your target key goes for the nearest of all of them (its key shows on the one it would take now)", 0.5, 0.5, 0.5, true)
+            keyLine(target)
+            GameTooltip:Show()
+        end)
+        b:SetScript("OnLeave", function() GameTooltip:Hide() end)
+        b:Hide()
+        named[k] = b
+    end
     for i = 1, MAX do
         local b = make("ItineraryItem" .. i)
         b.cd = CreateFrame("Cooldown", nil, b, "CooldownFrameTemplate")
@@ -988,7 +1148,7 @@ function ns.buildItems(panel)
         b:Hide()
         buttons[i] = b
     end
-    row:Hide()
+    row:Hide(); trow:Hide()
     update()
 end
 

@@ -201,11 +201,21 @@ the game's key bindings under *Itinerary*. A button's tooltip shows its keys.
     remembers the faces of the NPCs and mobs you target, hover or meet on your step (for all your
     characters), so the button can show them before they're in sight. Someone you've never met: the usual
     icon (crosshair for mobs, owl eye for NPCs).
-  - Settings > Keys (all on by default): *Show target button* (off hides the button; its key still works),
+  - **One button per kind of mob**: when your step and its along-the-way objectives are after mobs, each kind
+    gets a button of its own (up to 4: your step's first, the one particular mob first among them), with that
+    mob's face. Clicking one targets only that kind - the nearest of them the game finds - and marks and tags
+    it like the key does. The **target key** still goes for all of them as described above; its key shows on
+    the button of the kind it would take right now. An NPC to talk to keeps the one button.
+  - Settings > Keys (all on by default): *Show target button* (off hides the buttons; the key still works),
     *Talk on second press* (outside combat, for 8 seconds or until you talk), *Tag with a spell* (auto
     attack until you know one), *Mark the target* (the skull and the orange circle).
 
-Which corner of the panel the buttons sit at: Settings > Panel > *Item & target buttons*.
+**Where they sit**: Settings > Panel > *Item & target buttons* is the corner the **target buttons** start at;
+the **item buttons** start at the other corner on the same side of the panel, and both grow towards each
+other. Bottom left: the target buttons go up from the bottom left corner, the item buttons down from the top
+left one; top left the other way round; the same on the right. When there are more buttons than the panel is
+tall, the item buttons move one column further out instead of covering the target buttons. With *Show target
+button* off, the item buttons take the chosen corner.
 
 ---
 

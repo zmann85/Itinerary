@@ -243,7 +243,7 @@ local OPTIONS = {
     { tab = 7, label = "Panel grows", desc = "Up: the bottom edge stays where you put it and the panel grows upward. Down: the top edge stays and it grows downward.",
       choices = { { "Up", "up" }, { "Down", "down" } }, get = function() return ItineraryDB.panel.grow == "down" and "down" or "up" end,
       set = function(v) ItineraryDB.panel.grow = v; if ns.anchorPanel then ns.anchorPanel(true) end; if ns.refresh then ns.refresh() end end },
-    { tab = 7, kind = "anchor", label = "Item & target buttons", desc = "Which corner of the route panel the quest item and target buttons sit at. They stack away from that corner." },
+    { tab = 7, kind = "anchor", label = "Item & target buttons", desc = "The corner of the route panel the target buttons start at. The quest item buttons start at the other corner on the same side; both grow towards each other." },
     { tab = 7, label = "Panel position", desc = "Unlock to drag the route panel, then lock it again. Alt + right-click on the panel does the same.",
       choices = { { "Locked", true }, { "Unlocked", false } }, get = function() return ItineraryDB.panel.locked and true or false end,
       set = function(v) ns.setLocked(v) end },

@@ -11,10 +11,6 @@
 - Along-the-way tasks that ended before the route's next step of its own were never shown - Falling With Style's
   Walk on Air (and its button) on the Skyborne start, and about 50 a route: travel hints, objectives and kills the
   guide has you do alongside. They now last through that next step, where the guide shows them too.
-- An along-the-way objective whose quest the route hands in later only "if it's done" vanished once its stretch was
-  over - jump down without Walk on Air, hand in Harmony in Balance, and Falling With Style was never asked for
-  again. While you have such a quest and it isn't done, its objective (and its button) now stays along the way up
-  to the route's last chance to hand it in. Hide it with its × if you don't want it.
 - A bag on your bag bar or in the reagent bag slot counts as one you have, for a step's items and the panel's
   counts (the game's item count can leave those out).
 - A step that collects items for a quest you're on (the Small Spider Legs for Recipe of the Kaldorei) was

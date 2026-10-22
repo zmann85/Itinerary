@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.16 (2026-10-22)
 
 ### Added
 - Your first profession's apprentice bag (Apprentice's Herb Pouch, Mining Pack, Skinning Satchel) is bought with

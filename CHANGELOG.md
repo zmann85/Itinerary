@@ -10,6 +10,8 @@
   target of its own (the one you just tagged, or one someone else tagged), goes on with the game's tab target
   (twice at most) and casts no tag spell on a busy one - also in combat. For tagging one fresh mob after the
   other in contested places; the next enemy can be another mob close by.
+- Talent points you haven't spent are an instruction (*Spend your 2 talent points*) until you spend them; click it
+  to open your talents, its × hides it until your next level. Settings > Trainer > *Talent points* (on).
 - Settings > Keys > *Tag spell* (under *Tag with a spell*, per class): Automatic (the first of the list you
   know), another one of the list, auto attack, or any spell you type. One you don't know yet stays Automatic
   until you learn it.

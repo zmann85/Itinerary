@@ -826,6 +826,9 @@ local function buildPanel()
             -- an instruction with a place: point the arrow there (again: back to the route)
             if button == "LeftButton" and not row.dragged and row.go and not IsModifiedClick("CHATLINK") then
                 ns.setManualTarget(row.go)
+            elseif button == "LeftButton" and not row.dragged and row.click and not IsModifiedClick("CHATLINK") then
+                -- (an instruction that opens something: your talents)
+                pcall(row.click)
             end
         end)
         linkHandlers(row)
@@ -1495,7 +1498,7 @@ function ns.showRecCard(list)
             -- (numbers left out: a distance or a countdown ticking along isn't a new instruction to fade in)
             sig[#sig + 1] = (tostring(e[1]):gsub("%d", ""))
             local label, desc = goText(e)
-            row.go, row.spells = e.go, e.spells
+            row.go, row.spells, row.click = e.go, e.spells, e.click
             if ns.setRowDismiss then ns.setRowDismiss(row, e) end
             row.label:SetText(label)
             row.desc:SetText(desc or ""); row.desc:SetShown(desc and desc ~= "" and true or false)
@@ -1539,6 +1542,29 @@ ns.inDungeon = inDungeon
 -- the panel is up: shown, and not put away in a dungeon
 function ns.panelUp()
     return ItineraryDB.panel.shown and not ns.dungeonHidden()
+end
+
+-- Talent points you haven't spent (Settings > Trainer > Talent points, on): an instruction until you spend them;
+-- clicking it opens your talents
+function ns.unspentTalents()
+    if GetUnspentTalentPoints then
+        local ok, n = pcall(GetUnspentTalentPoints)
+        if ok and type(n) == "number" then return n end
+    end
+    if UnitCharacterPoints then
+        local ok, n = pcall(UnitCharacterPoints, "player")
+        if ok and type(n) == "number" then return n end
+    end
+    return 0
+end
+function ns.openTalents()
+    if ToggleTalentFrame then ToggleTalentFrame()
+    elseif PlayerSpellsUtil and PlayerSpellsUtil.ToggleClassTalentFrame then PlayerSpellsUtil.ToggleClassTalentFrame() end
+end
+do
+    local tf = CreateFrame("Frame")
+    for _, e in ipairs({ "CHARACTER_POINTS_CHANGED", "PLAYER_TALENT_UPDATE" }) do pcall(tf.RegisterEvent, tf, e) end
+    tf:SetScript("OnEvent", function() if ns.update then ns.update() end end)
 end
 
 local function refreshNow()
@@ -1659,6 +1685,12 @@ local function refreshNow()
                               dismissText = untilLevel, dismiss = function() C.dismissed[key] = lvl end }
         end
     end
+    -- talent points to spend
+    local tp = (not gs) and not (g.auto and g.auto.talentRec == false) and ns.unspentTalents() or 0
+    if tp > 0 and C.dismissed.talents ~= lvl then
+        rec[#rec + 1] = { tp == 1 and "Spend your talent point" or ("Spend your " .. tp .. " talent points"), "Click to open your talents",
+                          click = ns.openTalents, dismissText = untilLevel, dismiss = function() C.dismissed.talents = lvl end }
+    end
     -- (the × on an along-the-way entry hides it on this character; Settings > Panel shows it again)
     local HIDE_TITLE, HIDE_TEXT = "Hide this", "It won't show under Along the way again on this character. Settings > Panel > Hidden along the way brings it back."
     for _, e in ipairs((not gs) and ns.campingSide and ns.campingSide() or {}) do
@@ -1738,7 +1770,7 @@ local function refreshNow()
             used = used + 1
             local row = panel.rows[used]
             local label, desc = goText(e)
-            row.go, row.spells = e.go, e.spells
+            row.go, row.spells, row.click = e.go, e.spells, e.click
             if ns.setRowDismiss then ns.setRowDismiss(row, e) end
             row.label:SetText(label); row.label:SetTextColor(r, g, b, 0.95)
             row.desc:SetText(desc or ""); row.desc:SetShown(desc and desc ~= "" and true or false)

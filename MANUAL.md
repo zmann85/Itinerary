@@ -95,7 +95,8 @@ From top to bottom:
   - **‹ ›**: one step back or forward.
 - **INSTRUCTIONS**, in their own card under the panel (Settings > Panel > *Instructions*: *In the panel* puts
   them inside it): things to keep doing next to your step. Examples: sell junk, use your hearthstone,
-  learn new skills at a trainer close by, a weapon master, a profession trainer, a place to head for.
+  learn new skills at a trainer close by, a weapon master, a profession trainer, talent points to spend, a place
+  to head for.
   - The route's errands at a vendor are instructions too, not stops of their own: selling junk and repairs
     at a named vendor (*... at Brannol Eaglemoon*), food and water, bags. They're done when you open that vendor
     (selling junk: any vendor). So is every **optional buy**: a weapon "if you can afford it", items for a
@@ -327,6 +328,10 @@ and prices.
   default), **All** (every weapon your class can use) or **Off**.
 - Buying them for you is **off** by default (*Buy weapon skills*).
 - Every weapon master you open is remembered with his skills and prices.
+
+**Talent points.** Talent points you haven't spent show as an instruction, *Spend your 2 talent points*, until you
+spend them; click it to open your talents. Its × hides it until your next level. Settings > Trainer > *Talent
+points* (on) switches it off.
 
 **Instruction or step?** Settings > Trainer > *Trainer visits* decides how a trainer close by is shown:
 - **Instruction** (default): it shows next to your step and the arrow stays on the route.

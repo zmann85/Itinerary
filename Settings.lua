@@ -195,6 +195,8 @@ local OPTIONS = {
       set = function(v) A().weapons = v; if ns.refresh then ns.refresh() end end },
     { tab = 5, label = "Buy weapon skills", desc = "Buys the weapon skills from Weapon skills when you open a weapon master, keeping the money for your next class skills. Off: you pick them yourself.",
       choices = ON_OFF, get = function() return A().buyWeapons == true end, set = function(v) A().buyWeapons = v end },
+    { tab = 5, label = "Talent points", desc = "Instruction: talent points you haven't spent show in the instructions until you spend them. Click it to open your talents.",
+      choices = ON_OFF, get = function() return A().talentRec ~= false end, set = function(v) A().talentRec = v; if ns.refresh then ns.refresh() end end },
     { tab = 5, kind = "skills" },
     -- Professions
     { tab = 6, label = "Learn at the trainer", desc = "Learns the professions you picked (and their next rank) when you open their trainer, if the money for your next class skills stays. Hold Shift to do it by hand.",

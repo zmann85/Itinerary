@@ -888,6 +888,30 @@ function ns.prepareRoute(r)
         end
         if not s.along then nextMain = j end
     end
+    -- an along-the-way objective whose quest the route hands in further on only "if it's done" (Falling With Style's
+    -- Walk on Air, "you can complete it later"; about 140 quests across the routes): while you have the quest and it
+    -- isn't done, it stays along the way up to that last chance (ns.alongActive: readyTill), with its buttons, so a
+    -- quest you passed by isn't forgotten (the user: "you might never be forced to finish the quest")
+    local lastReady = {}
+    for j = #steps, 1, -1 do
+        local s = steps[j]
+        if s.t == "turnin" and s.q and s.cond and not s.along then
+            for _, c in ipairs(s.cond) do
+                if c[1] == "ready" then
+                    for _, q in ipairs(s.q) do if q == c[2] and not lastReady[q] then lastReady[q] = j end end
+                end
+            end
+        end
+    end
+    for _, s in ipairs(steps) do
+        s.readyTill = nil
+        if s.along and s.t == "complete" and s.q and s.till then
+            for _, q in ipairs(s.q) do
+                local L = lastReady[q]
+                if L and L > s.till and (not s.readyTill or L > s.readyTill) then s.readyTill = L end
+            end
+        end
+    end
 
     local HBD = LibStub and LibStub("HereBeDragons-2.0", true)
     if not HBD then return end
@@ -2427,6 +2451,11 @@ function ns.hiddenAlongList()
     return out
 end
 
+-- (an along objective kept to its quest's last "if it's done" hand-in: only while that quest is in your log, not done)
+local function openInLog(s)
+    for _, q in ipairs(s.q or {}) do if onQuest(q) and not readyToTurnIn(q) then return true end end
+    return false
+end
 function ns.alongActive(i)
     local out, steps = {}, ns.steps()
     local _, _, first = ns.chapterOf(i)
@@ -2435,7 +2464,8 @@ function ns.alongActive(i)
         local s = steps[j]
         -- (an item collect taken over by the current step still counts as its tier below)
         local tier = s.t == "do" and s.col
-        if s.along and (not s.till or s.till >= i) and not ns.stepDone(j) and (tier or not (j ~= i and takenOver(s, cur)))
+        if s.along and (not s.till or s.till >= i or (s.readyTill and s.readyTill >= i and openInLog(s)))
+           and not ns.stepDone(j) and (tier or not (j ~= i and takenOver(s, cur)))
            and not (j ~= i and comingUp(s, steps, i)) and not ((s.need or s.needs or s.buffItem) and ns.itemStepIdle(s))
            and not alongHidden(s) then
             out[#out + 1] = j

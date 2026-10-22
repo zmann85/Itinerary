@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.17 (2026-10-22)
 
 ### Fixed
 - A "get the flight path" step was passed as soon as you got there once any flight map had opened (the Ironforge

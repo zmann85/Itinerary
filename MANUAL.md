@@ -744,16 +744,16 @@ than your screen scrolls with the mouse wheel.
 
 | Tab | What's there |
 |---|---|
-| General | Route panel and minimap button, hide them in dungeons, the game's quest tracker, route pack order and the packs' own choices, factory reset, forget this character |
-| Quests | Accept and hand in (under it: which quests - route or all, escorts wait for your group), share quests in a group, quest dialogue, object name tags, quest sparkles, pick gear rewards, best-selling reward coin, sell junk |
+| General | Route panel, in dungeons (panel, arrow and buttons step aside), minimap button, the game's quest tracker, route pack order and the packs' own choices, factory reset, forget this character |
+| Quests | Accept and hand in (under it: which quests - route or all, escorts wait for your group), share quests in a group, quest dialogue, object name tags (quest objects, all or off), quest sparkles, pick gear rewards, best-selling reward coin, sell junk |
 | Route | What the route does for you: group quests (or their solo versions), skip overlevelled steps, bank steps, auction house steps (or self-found) |
-| Travel | Take flights, set hearthstone, spirit healer, map pins (on the world map, on the minimap, the line between them) |
-| Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills, buy weapon skills, your class's skill list (worth a visit / auto-buy) |
-| Professions | Learn at the trainer, main professions, first profession, secondary professions, gather mode, gather data (shipped, own, both), gathering tracking, node icons, gathering tools |
+| Travel | Take flights, set hearthstone, spirit healer, map pins (on the world map and on the minimap: off, current, next 3 or next 5; the line between them) |
+| Trainer | Buy class skills (only worthwhile ones), open the training window, trainer visits (instruction or step), weapon skills (route, all or off), buy weapon skills, talent points, your class's skill list (worth a visit / auto-buy) |
+| Professions | Learn at the trainer, main professions, first profession, secondary professions, gather mode, gather data (shipped, own, both), gathering tracking, node icons, gathering tools (with your first profession's apprentice bag) |
 | Panel | Color scheme (Itinerary, Amethyst, Frost, Ember, Slate), instructions (own card or in the panel), the along-the-way entries you hid, item and spell links, panel style (card or minimal), opacity, size, text on a see-through panel (shadow or outline), grow direction, item & target button corner, lock |
-| Arrow | Arrow on/off, arrow look, instructions at the arrow, death skips at the arrow, their size, tooltip, click-through, lock |
-| Keys | Key bindings for the target and item buttons (two keys each); show the target button, talk on second press, tag with a spell, mark the target |
-| Sounds | The sound when a step is done: one of Itinerary's, your own sound files, or a sound your other add-ons share |
+| Arrow | Arrow on/off, arrow look (Itinerary, Gold, White, Guide, Classic, Big), instructions at the arrow, death skips at the arrow, the instruction size, tooltip, click-through, lock |
+| Keys | Key bindings for the target button and quest items 1-4 (two keys each); show the target button, skip mobs already in a fight, talk on second press, tag with a spell (under it: the tag spell), mark the target |
+| Sounds | The sound when a step is done: one of Itinerary's (or off), your own sound files, or a sound your other add-ons share |
 
 <details>
 <summary><b>Screenshots of every settings tab</b> (click to open)</summary>
@@ -761,12 +761,14 @@ than your screen scrolls with the mouse wheel.
 | General | Quests |
 |---|---|
 | <img src="manual/settings-general.png" alt="General" width="330"> | <img src="manual/settings-quests.png" alt="Quests" width="330"> |
-| **Travel** | **Trainer** |
-| <img src="manual/settings-travel.png" alt="Travel" width="330"> | <img src="manual/settings-trainer.png" alt="Trainer" width="330"> |
-| **Professions** | **Panel** |
-| <img src="manual/settings-professions.png" alt="Professions" width="330"> | <img src="manual/settings-panel.png" alt="Panel" width="330"> |
-| **Arrow** | **Keys** |
-| <img src="manual/settings-arrow.png" alt="Arrow" width="330"> | <img src="manual/settings-keys.png" alt="Keys" width="330"> |
+| **Route** | **Travel** |
+| <img src="manual/settings-route.png" alt="Route" width="330"> | <img src="manual/settings-travel.png" alt="Travel" width="330"> |
+| **Trainer** | **Professions** |
+| <img src="manual/settings-trainer.png" alt="Trainer" width="330"> | <img src="manual/settings-professions.png" alt="Professions" width="330"> |
+| **Panel** | **Arrow** |
+| <img src="manual/settings-panel.png" alt="Panel" width="330"> | <img src="manual/settings-arrow.png" alt="Arrow" width="330"> |
+| **Keys** | **Sounds** |
+| <img src="manual/settings-keys.png" alt="Keys" width="330"> | <img src="manual/settings-sounds.png" alt="Sounds" width="330"> |
 
 </details>
 

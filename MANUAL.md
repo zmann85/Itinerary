@@ -239,7 +239,7 @@ You rarely have to touch anything:
 - **Quest steps** tick off from your quest log: accepted, objectives done, turned in.
 - **Travel steps** tick off when you arrive. Flights, hearths, flight paths and setting your hearthstone
   tick off when you do them. A flight path you have already ticks off right away: Itinerary notes your
-  flight paths whenever the flight map opens.
+  flight paths (the ones the map can fly you to) whenever the flight map opens.
 - **Abandon steps** tick off when the quest isn't in your log (never taken, or handed in already), and when
   it's finished and the route hands it in later.
 - **Errands at a vendor** (vendor trash, food and water, bags, repairs, optional buys) are instructions, not

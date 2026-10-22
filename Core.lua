@@ -104,6 +104,8 @@ local function defaults()
     c.levelAt = c.levelAt or {} -- [level] = /played seconds when this character reached it
     -- the old built-in Ghaan run now lives in your own routes: a character that followed it keeps following it
     if c.route == "ghaan-run2" and g.ghaanMovedTo then c.route = g.ghaanMovedTo end
+    -- (the old list of your flight paths also had the ones you haven't found: see ns.noteFlightPaths)
+    c.fps = nil
     if ns.autoDefaults then ns.autoDefaults() end
 end
 
@@ -3055,20 +3057,21 @@ end
 
 -- mark the current step done when an event matches it (flew, hearthed, trained...)
 -- The flight paths this character has, from the flight map whenever it opens ("Menethil Harbor, Wetlands" ->
--- c.fps["Menethil Harbor, Wetlands"]), and how many flight masters each zone has (c.fpZone): a "get the flight
+-- c.fpHave["Menethil Harbor, Wetlands"]), and how many flight masters each zone has (c.fpZone): a "get the flight
 -- path" step for one you have already is done (Menethil Harbor from the Darkshore boat, then again on the way to
 -- the Ruins of Lordaeron)
 function ns.noteFlightPaths()
     local c = ItineraryCharDB
     if not (c and NumTaxiNodes and TaxiNodeName and TaxiNodeGetType) then return end
-    c.fps, c.fpZone = c.fps or {}, c.fpZone or {}
+    c.fpHave, c.fpZone = c.fpHave or {}, c.fpZone or {}
     local seen = {}
     for i = 1, (NumTaxiNodes() or 0) do
         local name, kind = TaxiNodeName(i), TaxiNodeGetType(i)
-        if name and kind and kind ~= "NONE" then
-            -- (REACHABLE / CURRENT: yours; DISTANT: yours, not reachable from here)
-            c.fps[name] = true
-        end
+        -- yours: the one you're at (CURRENT) and the ones you can fly to (REACHABLE). WoW Forever's flight map
+        -- also lists the flight paths you haven't found yet (DISTANT, greyed out - and its unused nodes like
+        -- "Generic, World target"), so anything else doesn't count. One you have that the map can't reach from
+        -- here is done when you talk to its flight master.
+        if name and (kind == "CURRENT" or kind == "REACHABLE") then c.fpHave[name] = true end
         local zone = name and name:match(",%s*(.+)$")
         if zone then seen[zone] = (seen[zone] or 0) + 1 end
     end
@@ -3077,9 +3080,9 @@ end
 local function fpKnown(s)
     local c = ItineraryCharDB
     local want = s.name and s.name:match("^([^,]+)")
-    if not (c and c.fps and want) then return false end
+    if not (c and c.fpHave and want) then return false end
     want = want:lower()
-    for name in pairs(c.fps) do
+    for name in pairs(c.fpHave) do
         local city, zone = name:match("^([^,]+),%s*(.+)$")
         city, zone = (city or name):lower(), zone or ""
         -- the town ("Menethil Harbor"), or the zone when it has just the one flight master ("Westfall")

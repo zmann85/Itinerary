@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- A "get the flight path" step was passed as soon as you got there once any flight map had opened (the Ironforge
+  flight path on arriving by tram): WoW Forever's flight map also lists the flight paths you haven't found yet, and
+  those counted as yours. Only the one you're at and the ones you can fly to count now; the old list is dropped.
+
 ## v2.1.16 (2026-10-22)
 
 ### Added

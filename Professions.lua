@@ -187,6 +187,80 @@ local function reagentSlotUsed()
     return (ok and inv and GetInventoryItemID("player", inv) ~= nil) or false
 end
 ns.profBagSlotUsed = reagentSlotUsed
+-- The bag you bought goes into the reagent bag slot: the game puts a bag you buy in your first free bag slot (the
+-- user, 2026-10-22: "blizzard automatically puts it in your first open bag slot when you buy a satchel"). Picked up
+-- from where it went - an empty slot on the bag bar, or a bag - and put in the reagent bag slot, while that's free,
+-- out of combat and with nothing on your cursor; on the next bag updates after the buy, three tries at most, else
+-- the chat line says to do it by hand.
+local placeBag -- { id = the bag's item id, tries = n, untilT = when to give up }
+local REG_BAGS = 4 -- the bag bar's regular bags (1-4); 0 is your backpack
+local function bagInv(b)
+    local toInv = (C_Container and C_Container.ContainerIDToInventoryID) or ContainerIDToInventoryID
+    if not toInv then return nil end
+    local ok, inv = pcall(toInv, b)
+    return ok and inv or nil
+end
+local function cursorBusy() return CursorHasItem and CursorHasItem() or false end
+local function placeGiveUp(why)
+    local p = placeBag
+    placeBag = nil
+    if p then ns.print("put the " .. BAGNAME[p.id] .. " in your reagent bag slot by hand" .. (why and (" (" .. why .. ")") or "")) end
+end
+function ns.placeProfBag()
+    local p = placeBag
+    if not p then return end
+    local R = Enum and Enum.BagIndex and Enum.BagIndex.ReagentBag
+    local rInv = R and bagInv(R)
+    local C2 = C_Container
+    if not (rInv and GetInventoryItemID and PutItemInBag and C2 and C2.GetContainerNumSlots) then return placeGiveUp() end
+    local inR = GetInventoryItemID("player", rInv)
+    if inR == p.id then
+        placeBag = nil
+        ns.print("put the " .. BAGNAME[p.id] .. " in your reagent bag slot")
+        return true
+    end
+    if inR then return placeGiveUp("something is in it already") end
+    if (GetTime and GetTime() or 0) > p.untilT or p.tries >= 3 then return placeGiveUp() end
+    if (InCombatLockdown and InCombatLockdown()) or cursorBusy() then return end -- (again after the fight / later)
+    local function move(pickup)
+        p.tries = p.tries + 1
+        pickup()
+        if cursorBusy() then PutItemInBag(rInv) end
+        if cursorBusy() and ClearCursor then ClearCursor() end -- (it didn't go in: back where it was)
+    end
+    -- on the bag bar, in a regular bag slot (an empty bag: a full one can't be taken off)
+    for b = 1, REG_BAGS do
+        local inv = bagInv(b)
+        if inv and GetInventoryItemID("player", inv) == p.id then
+            local free = C2.GetContainerNumFreeSlots and C2.GetContainerNumFreeSlots(b)
+            if free and free < (C2.GetContainerNumSlots(b) or 0) then return placeGiveUp("it has things in it") end
+            if not PickupInventoryItem then return placeGiveUp() end
+            move(function() PickupInventoryItem(inv) end)
+            return
+        end
+    end
+    -- in a bag
+    for b = 0, REG_BAGS do
+        for s = 1, C2.GetContainerNumSlots(b) or 0 do
+            if C2.GetContainerItemID(b, s) == p.id then
+                if not C2.PickupContainerItem then return placeGiveUp() end
+                move(function() C2.PickupContainerItem(b, s) end)
+                return
+            end
+        end
+    end
+end
+local function placeAfterBuy(id)
+    placeBag = { id = id, tries = 0, untilT = (GetTime and GetTime() or 0) + 20 }
+    -- (the item arrives a moment after the buy: on the next bag update, and a timer in case that's missed)
+    if C_Timer and C_Timer.After then
+        C_Timer.After(1, ns.placeProfBag)
+        C_Timer.After(3, ns.placeProfBag)
+    end
+end
+local bagEv = CreateFrame("Frame")
+for _, e in ipairs({ "BAG_UPDATE_DELAYED", "PLAYER_REGEN_ENABLED", "MERCHANT_CLOSED" }) do pcall(bagEv.RegisterEvent, bagEv, e) end
+bagEv:SetScript("OnEvent", function() if placeBag then ns.placeProfBag() end end)
 -- its bag is planned once a vendor that sells it is known (it's not sold everywhere: planned before that, its
 -- money would hold up everything after it)
 local function bagWanted(p)
@@ -923,7 +997,8 @@ scanMerchant = function()
                         boughtHere[id] = true
                         money = money - (h[2] or it.cost)
                         if it.kind == "bag" then
-                            ns.print("bought an " .. BAGNAME[id] .. " for " .. PROF[it.prof].name .. " - put it in your reagent bag slot by hand (right-click puts it in a regular bag slot)")
+                            ns.print("bought an " .. BAGNAME[id] .. " for " .. PROF[it.prof].name)
+                            placeAfterBuy(id)
                         else
                             ns.print("bought a " .. (TOOLNAME[id] or "tool") .. " for " .. PROF[it.prof].name)
                         end

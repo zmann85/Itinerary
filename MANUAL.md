@@ -352,7 +352,8 @@ points* (on) switches it off.
   *Mining Pack*, *Skinning Satchel*) comes right after its tool, at a vendor that sells it (on Zephras Isle,
   Uualia Suncrest). Only that one: you have one reagent bag slot, and in a regular slot it would take the place
   of a bag. None while you have one of the three (in your bags or on your bag bar) or something is in your
-  reagent bag slot. Put it in the reagent bag slot by hand.
+  reagent bag slot. The game puts a bag you buy in your first free bag slot; Itinerary moves it to the reagent
+  bag slot right after (out of combat). If that doesn't work, the chat says to do it by hand.
 - **Next rank**: when Journeyman, Expert or Artisan is ready, a trainer is close by and you can pay for
   it, you get an instruction to go learn it.
 - **Which trainer**: not every trainer teaches every rank. Kitta Firewind at the Tower of Azora only

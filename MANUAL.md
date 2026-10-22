@@ -209,6 +209,17 @@ the game's key bindings under *Itinerary*. A button's tooltip shows its keys.
   - Settings > Keys (all on by default): *Show target button* (off hides the buttons; the key still works),
     *Talk on second press* (outside combat, for 8 seconds or until you talk), *Tag with a spell* (auto
     attack until you know one), *Mark the target* (the skull and the orange circle).
+  - **Tag spell** (under *Tag with a spell*, for each class): *Automatic* takes the first spell of the list above
+    that you know; pick another one of the list or *Auto attack*, or type the name of any spell you know. One
+    you don't know yet is Automatic until you learn it.
+  - **Skip mobs already in a fight** (off): for contested places. The key passes over a mob that's already
+    fighting someone - the one you just tagged, or one someone else tagged - and goes on to the next enemy
+    (up to twice per press), with no skull and no tag spell on a busy one; spam it (a mouse wheel works well)
+    to tag one fresh mob after the other. This works in combat too: a macro can see whether a mob has a
+    target of its own. It can't see who tagged it or which mobs carry your spell, and the next enemy comes
+    from the game's tab target, which doesn't know your step's mobs: it can be another mob close by. A mob
+    that only chases someone, or fights a pet, counts as busy. The buttons for one kind of mob stay with
+    their kind.
 
 **Where they sit**: Settings > Panel > *Item & target buttons* is the corner the **target buttons** start at;
 the **item buttons** start at the other corner on the same side of the panel, and both grow towards each

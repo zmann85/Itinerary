@@ -6,6 +6,13 @@
 - A target button per kind of mob: a step (with its along-the-way objectives) after several kinds of mobs shows
   one button for each (up to 4, your step's first), with that mob's face; clicking one targets only that kind.
   The target key goes for all of them as before, and its key label shows on the kind it would take now.
+- Settings > Keys > *Skip mobs already in a fight* (off): the target key passes over a mob that already has a
+  target of its own (the one you just tagged, or one someone else tagged), goes on with the game's tab target
+  (twice at most) and casts no tag spell on a busy one - also in combat. For tagging one fresh mob after the
+  other in contested places; the next enemy can be another mob close by.
+- Settings > Keys > *Tag spell* (under *Tag with a spell*, per class): Automatic (the first of the list you
+  know), another one of the list, auto attack, or any spell you type. One you don't know yet stays Automatic
+  until you learn it.
 
 ### Changed
 - Settings > Panel > *Item & target buttons* is now the target buttons' corner: the item buttons start at the

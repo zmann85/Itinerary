@@ -274,10 +274,13 @@ local OPTIONS = {
     { tab = 9, kind = "key", bind = "ItineraryTarget", label = "Target button", desc = "Targets the quest mobs of your step (or the NPC to talk to)." },
     { tab = 9, label = "Show target button", desc = "Off hides the button next to the panel; its key binding above still works.",
       choices = ON_OFF, get = function() return A().targetBtn ~= false end, set = function(v) A().targetBtn = v; if ns.updateItems then ns.updateItems() end end },
+    { tab = 9, label = "Skip mobs already in a fight", desc = "For contested places: the target key passes over a mob that's already fighting someone - one you tagged, or one someone else did - and goes on to the next enemy (the game's tab target, so it can be another mob close by), with no tag spell on a busy one. Spam it to tag one fresh mob after the other. Also in combat. The buttons for one kind of mob stay with their kind.",
+      choices = ON_OFF, get = function() return A().skipBusy and true or false end, set = function(v) A().skipBusy = v or nil; if ns.updateItems then ns.updateItems() end end },
     { tab = 9, label = "Talk on second press", desc = "When the target button found a friendly NPC, pressing its key again talks to them (Interact with Target) - spam it on a contested escort to take the quest first. Outside combat; back to normal after 8 seconds or once you talk.",
       choices = ON_OFF, get = function() return A().interact ~= false end, set = function(v) A().interact = v end },
     { tab = 9, label = "Tag with a spell", desc = "The target button also casts an instant spell on the enemy it finds (Judgement, Earth Shock, Shadow Word: Pain, Curse of Agony, Fire Blast, Arcane Shot, Moonfire, Throw, Charge), auto attack until you know one. Spam it on a contested respawn to tag it first.",
       choices = ON_OFF, get = function() return A().tagSpell ~= false end, set = function(v) A().tagSpell = v; if ns.updateItems then ns.updateItems() end end },
+    { tab = 9, kind = "tagspell", label = "Tag spell", parent = "Tag with a spell" },
     { tab = 9, label = "Mark the target", desc = "The target button puts a skull on the enemy it finds, and an orange circle on a friendly NPC or player.",
       choices = ON_OFF, get = function() return A().skull ~= false end, set = function(v) A().skull = v; if ns.updateItems then ns.updateItems() end end },
     { tab = 9, kind = "key", bind = "ItineraryItem1", label = "Quest item 1", desc = "The top item button (nearest the panel's corner)." },
@@ -628,6 +631,79 @@ local function buildRow(opt, i)
                 ph:SetShown(#ns.ownSounds() == 0)
             end
             self.sub:SetText("Put .ogg or .mp3 files in Interface\\AddOns\\Itinerary_Sounds\\ (a folder of your own next to Itinerary - an update doesn't touch it) and type their names in the box, separated by commas. The game only finds files that were there when it started: restart it after adding one (a /reload isn't enough).")
+        end)
+    elseif opt.kind == "tagspell" then
+        -- your own tag spell, for this class: one of the list, auto attack, or any spell you type
+        row.lbl:SetText(opt.label)
+        local BW = 220
+        row.lbl:SetWidth(W - PAD * 2 - BW - 12)
+        local e = CreateFrame("EditBox", nil, row)
+        e:SetSize(BW, SEG_H)
+        e:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, -8)
+        e:SetAutoFocus(false)
+        e:SetFont(fontPath(), 12, "")
+        e:SetTextColor(1, 1, 1, 0.9)
+        e:SetTextInsets(6, 6, 0, 0)
+        local bg = e:CreateTexture(nil, "BACKGROUND"); bg:SetAllPoints(); bg:SetColorTexture(ns.themeBtn(1))
+        addEdges(e, 1, 1, 1, 0.18)
+        local ph = text(e, 12, 1, 1, 1, 0.3)
+        ph:SetPoint("LEFT", 6, 0); ph:SetText("or type a spell's name")
+        local function commit(t)
+            local n = (t or ""):gsub("^%s+", ""):gsub("%s+$", ""):gsub("^%[(.*)%]$", "%1")
+            ns.setTagPick(n ~= "" and n or nil)
+            if ns.updateItems then ns.updateItems() end
+            refresh()
+        end
+        e:SetScript("OnEscapePressed", function(self) self.dirty = false; self:ClearFocus(); refresh() end)
+        e:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
+        e:SetScript("OnEditFocusGained", function() ph:Hide() end)
+        e:SetScript("OnEditFocusLost", function(self)
+            if self.dirty then self.dirty = false; commit(self:GetText()) else refresh() end
+        end)
+        e:SetScript("OnTextChanged", function(self, user) if user then self.dirty = true end end)
+        row.tagBox = e
+        local function pick(v) return function()
+            if InCombatLockdown() then ns.print("the target button can only change outside combat") return end
+            ns.setTagPick(v); if ns.updateItems then ns.updateItems() end
+        end end
+        chipRow(row, 4, function()
+            local cur = ns.tagPick and ns.tagPick()
+            local _, class = UnitClass("player")
+            local out = { { "Automatic", cur == nil, false, pick(nil), "The first of the list you know" } }
+            local listed = {}
+            for _, id in ipairs((ns.tagSpells or {})[class] or {}) do
+                local name = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or (GetSpellInfo and GetSpellInfo(id))
+                if name then
+                    listed[name] = true
+                    local has = ns.tagKnownByName and ns.tagKnownByName(name)
+                    out[#out + 1] = { name, cur == name, not has, pick(name), has and nil or "Not in your spellbook yet: Automatic until you learn it" }
+                end
+            end
+            out[#out + 1] = { "Auto attack", cur == "attack", false, pick("attack"), "No spell: start attacking" }
+            if cur and cur ~= "attack" and not listed[cur] then
+                local has = ns.tagKnownByName and ns.tagKnownByName(cur)
+                out[#out + 1] = { cur, true, not has, pick(cur), has and "Typed by you" or "Not in your spellbook (yet): Automatic until you know it" }
+            end
+            return out
+        end, function(self)
+            local cur = ns.tagPick and ns.tagPick()
+            if not e:HasFocus() then
+                local typed = cur and cur ~= "attack" and cur or ""
+                local _, class = UnitClass("player")
+                for _, id in ipairs((ns.tagSpells or {})[class] or {}) do
+                    local name = (C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or (GetSpellInfo and GetSpellInfo(id))
+                    if name == typed then typed = "" end
+                end
+                e:SetText(typed)
+                ph:SetShown(typed == "")
+            end
+            local auto = ns.tagAuto and ns.tagAuto()
+            local now
+            if cur == "attack" then now = "auto attack"
+            elseif cur and ns.tagKnownByName and ns.tagKnownByName(cur) then now = cur
+            else now = auto or "auto attack" end
+            self.sub:SetText("What the target button casts on the enemy it finds, for this class: Automatic takes the first one of the list you know (now: "
+                .. (auto or "none yet - auto attack") .. "), or pick one, or type the name of any spell you know (Enter). Casts now: " .. now .. ".")
         end)
     elseif opt.kind == "sharedsound" then
         -- the sounds your other add-ons share (LibSharedMedia), a page at a time

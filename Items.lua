@@ -326,8 +326,43 @@ local function known(id)
     if IsPlayerSpell and IsPlayerSpell(id) then return true end
     return IsSpellKnown and IsSpellKnown(id) or false
 end
+-- a spell picked by name (Settings > Keys > Tag spell): its ID when you know it
+local function knownByName(name)
+    if type(name) ~= "string" or name == "" then return nil end
+    local id
+    if C_Spell and C_Spell.GetSpellInfo then
+        local info = C_Spell.GetSpellInfo(name)
+        id = type(info) == "table" and info.spellID or nil
+    end
+    if not id and GetSpellInfo then id = select(7, GetSpellInfo(name)) end
+    return id and known(id) and id or nil
+end
+ns.tagKnownByName = knownByName
+-- your own pick for this class: a spell's name, "attack" (auto attack) or nil (the first one of the list you know)
+function ns.tagPick()
+    local _, class = UnitClass("player")
+    local P = ItineraryDB.auto and ItineraryDB.auto.tagPick
+    return P and P[class] or nil
+end
+function ns.setTagPick(v)
+    local _, class = UnitClass("player")
+    ItineraryDB.auto.tagPick = ItineraryDB.auto.tagPick or {}
+    ItineraryDB.auto.tagPick[class] = v
+end
+-- what Automatic casts now (nil: auto attack)
+function ns.tagAuto()
+    local _, class = UnitClass("player")
+    for _, id in ipairs(TAG[class] or {}) do
+        local name = known(id) and ((C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or (GetSpellInfo and GetSpellInfo(id)))
+        if name then return name end
+    end
+end
 local function tagLine()
     if ItineraryDB.auto and ItineraryDB.auto.tagSpell == false then return "" end
+    local pick = ns.tagPick()
+    if pick == "attack" then return "\n/startattack [harm,nodead]" end
+    -- (a spell you don't know yet - or a typo - is Automatic until you do)
+    if pick and knownByName(pick) then return "\n/cast [harm,nodead] " .. pick end
     local _, class = UnitClass("player")
     for _, id in ipairs(TAG[class] or {}) do
         local name = known(id) and ((C_Spell and C_Spell.GetSpellName and C_Spell.GetSpellName(id)) or (GetSpellInfo and GetSpellInfo(id)))
@@ -430,7 +465,8 @@ function ns.targetDebug()
     if not ok then ns.print("target debug error: " .. tostring(err)) end
 end
 
-local function targetMacro(names, friendly, plate, prio, main, blocked)
+-- (forKey: the target key's macro - a per-kind button targets only its kind)
+local function targetMacro(names, friendly, plate, prio, main, blocked, forKey)
     local lines = {}
     -- The last line that finds something wins. Lowest first: names seen only on mobs someone else has tagged,
     -- then by tier - along-the-way mobs, the one an along-the-way step is after, your step's own mobs, the one
@@ -450,6 +486,14 @@ local function targetMacro(names, friendly, plate, prio, main, blocked)
         if first and nameTier(first, prio, main) == t then add(first) end
     end
     local tail = "\n/targetlasttarget [dead]"
+    -- Settings > Keys > Skip mobs already in a fight: one that has a target of its own is fighting someone
+    -- already (you, after your tag, or whoever tagged it) - the game lets a macro see that even in combat, not
+    -- who tagged it. Then on with the game's tab target, twice at most, and no tag spell on a busy one.
+    -- (Tab doesn't know the step's names: it can land on another enemy close by.)
+    local skip = not friendly and forKey and ItineraryDB.auto and ItineraryDB.auto.skipBusy
+    if skip then
+        tail = tail .. "\n/targetenemy [@targettarget,exists]\n/targetenemy [@targettarget,exists]\n/stopmacro [@targettarget,exists]"
+    end
     -- a mark on what you found, picked by what was actually targeted: an orange circle on friendly NPCs and
     -- players, a skull on enemies. Only a macro may do this (Lua gets blocked); "!" keeps an existing mark
     -- instead of toggling it off (how the Forever client's /tm works)
@@ -806,7 +850,7 @@ do
         acc = 0
         if not (target and target.names and target:IsShown()) or InCombatLockdown() then return end
         local ok, plate, blocked = pcall(nearestPlate, target.names, target.friendly, target.prio, target.main)
-        local text = targetMacro(target.names, target.friendly, ok and plate or nil, target.prio, target.main, ok and blocked or nil)
+        local text = targetMacro(target.names, target.friendly, ok and plate or nil, target.prio, target.main, ok and blocked or nil, true)
         if text ~= target.lastMacro then
             target.lastMacro = text
             target:SetAttribute("macrotext", text)
@@ -924,7 +968,7 @@ local function update()
     if #names > 0 then
         target.names, target.friendly, target.prio, target.main = names, friendly, prio, main
         target:SetAttribute("type", "macro")
-        target.lastMacro = targetMacro(names, friendly, nil, prio, main)
+        target.lastMacro = targetMacro(names, friendly, nil, prio, main, nil, true)
         target:SetAttribute("macrotext", target.lastMacro)
         target.icon:SetTexture(friendly and "Interface\\Icons\\Ability_EyeOfTheOwl" or "Interface\\Icons\\Ability_Hunter_SniperShot")
         local sig = table.concat(names, "|") .. (friendly and "+" or "-")

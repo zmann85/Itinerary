@@ -23,6 +23,10 @@
 - At the class trainer, a skill left because the money for your professions comes first (their tools and learning
   them, up to level 4) now says so in chat, like one left for the class skill reserve. It was left without a word
   (Stealth on a level 2 rogue).
+- Finding your place from your quests (after a reset, a new route, `/iti find`): a few quests handed in or picked
+  up early, just ahead of where you are (a quest finished on the way, the next hub's quests taken already), could
+  move you past steps of yours - sometimes by dozens of steps - and a lot of them right after your place could
+  send you back to the route's start. Your place now stays where it is.
 
 ## v2.1.15 (2026-10-22)
 

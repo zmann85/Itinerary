@@ -295,7 +295,8 @@ overlevelled steps* (on) switches it off: then you do every step.
 **Lost?**
 - `/iti find` finds your place from the quests you've done: where the steps you've done stop and the open ones
   begin, as the game knows it (your quest log and the quests you've handed in). Quests you skipped here and
-  there, trips, hearths and flights don't hold it up. When it's unclear, the place where the route goes on in
+  there, trips, hearths and flights don't hold it up, and a few quests handed in or picked up early, just ahead
+  of you, don't move it past steps of yours. When it's unclear, the place where the route goes on in
   your zone wins, then a chapter for your level. Quests in your log from steps behind it show in the skipped
   line. The same happens by itself when your place starts over: a new route, *This character* reset, or a
   route that's no longer installed.

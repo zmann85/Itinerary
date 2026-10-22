@@ -2106,23 +2106,31 @@ end
 -- say how far you are, as the game knows it (your quest log and the quests you've handed in, not your marks; an
 -- optional step only when it's done):
 -- - Your place is just after an edge: a done quest step with mostly done ones before it (half or more of the 16
---   before, over a third of the 48 before) and mostly open ones after it (a third or less of the 16 after). Quests you
---   skipped here and there don't make an edge, nor do a few done out of order far ahead; a zone you left out makes
---   one in front of it.
+--   before, over a third of the 48 before) and mostly open ones after it (a third or less of the 16 after, or under
+--   40% of the 48 after). Quests you skipped here and there don't make an edge, nor do a few done out of order far
+--   ahead; a zone you left out makes one in front of it.
 -- - A short stretch of a chapter after one you left out (a dungeon after a skipped zone) is an edge too when its start
 --   is mostly done (60%) - but only where you are: in its zone, at its level.
+-- - Quests handed in or picked up early, just ahead of your place, make an edge of their own: one within 48 of the
+--   edge before it with at most 12 done since, more open than done (at least 3 open) and an objective or hand-in of
+--   a quest in your log among the open ones - or three times as many open and nothing done of a quest the route
+--   only takes there - isn't one. (Quests skipped there and never taken leave nothing in your log; you've got there
+--   when you've done quests you took there.)
 -- - Of the edges: the furthest where the route goes on in the zone you're in, else the furthest in a chapter for your
 --   level, else the furthest; a further one in the same chapter wins over it (quests skipped together make an edge in
---   the middle of what you've done). Then back to an open hand-in or objective of a quest in your log among the 16
---   before it.
+--   the middle of what you've done). A weak one further on in your zone (a later visit's hand-ins done early) gives
+--   way to a strong one at your level when one of yours is still open in between. Then back to an open hand-in or
+--   objective of a quest in your log among the 16 before it.
 -- The trips and hearth settings in between are passed with it; quests of yours still in your log whose steps are all
 -- behind it are marked skipped (the skipped list shows them). With hardly anything done (a new character) the route
 -- starts at its beginning as before. Measured on six routes (tfind.lua: every 7th or every 3rd quest skipped, a zone
 -- left out whole): next to no quest passed that you hadn't skipped, a few steps to skip by hand - most of them where
--- a whole zone was left out (you land at its start).
+-- a whole zone was left out (you land at its start). With 1-6 quests handed in, picked up, or both, 15-250 steps
+-- ahead of your place (scans/tfindearly2.lua) the place stays in all but a few cases.
 -- (back: also back to any open step among the last few before the edge; once: a step the route repeats for the same
 -- quests counted once - both off: they passed no fewer quests and left more steps to skip by hand)
-local FIND = { window = 16, before = 0.5, after = 1 / 3, min = 4, back = 0, once = false, weak = 0.6, long = 48, longMin = 0.35 }
+local FIND = { window = 16, before = 0.5, after = 1 / 3, min = 4, back = 0, once = false, weak = 0.6, long = 48, longMin = 0.35,
+    afterLong = 0.4, early = 12 }
 ns.placeTuning = FIND -- (for the tests)
 -- a quest step done as far as the game says: 1 all of its quests, 0 none (nil: none of them for you)
 local function gameDone(s)
@@ -2155,8 +2163,11 @@ end
 -- the step to go on from (nil with hardly anything done), how much was found done, and why that place
 function ns.placeFromQuests()
     local steps = ns.steps()
-    local idx, frac, done, seen = {}, {}, 0, {}
+    local idx, frac, mine, done, seen, firstAccept = {}, {}, {}, 0, {}, {}
     for i, s in ipairs(steps) do
+        if s.t == "accept" and s.q and not s.along then
+            for _, q in ipairs(s.q) do firstAccept[q] = firstAccept[q] or i end
+        end
         if QUEST_STEP[s.t] and not s.along and s.q and #s.q > 0 and not notApplicable(s) then
             -- (FIND.once: a step the route repeats for the same quests counted once)
             local new = false
@@ -2167,12 +2178,23 @@ function ns.placeFromQuests()
             local f = (new or not FIND.once) and gameDone(s)
             if f and not (s.opt and f == 0) then
                 idx[#idx + 1], frac[#frac + 1], done = i, f, done + f
+                -- an objective or hand-in still open for a quest in your log: a step of yours you haven't got to
+                local p = 0
+                if f < 1 and s.t ~= "accept" then
+                    for k, q in ipairs(s.q) do
+                        if onQuest(q) then
+                            local oi = s.qo and s.qo[k] or 0
+                            if s.t == "turnin" or not (oi > 0 and objectiveDone(q, oi) or (oi == 0 and readyToTurnIn(q))) then p = 1 end
+                        end
+                    end
+                end
+                mine[#mine + 1] = p
             end
         end
     end
     if done < 2 then return nil, done end
-    local n, P = #idx, { [0] = 0 }
-    for m = 1, n do P[m] = P[m - 1] + frac[m] end
+    local n, P, PM = #idx, { [0] = 0 }, { [0] = 0 }
+    for m = 1, n do P[m], PM[m] = P[m - 1] + frac[m], PM[m - 1] + mine[m] end
     local function window(a, b)
         a, b = math.max(1, a), math.min(n, b)
         if b < a then return nil, 0 end
@@ -2189,11 +2211,14 @@ function ns.placeFromQuests()
             firstIn[k] = firstIn[k] or m
         end
     end
-    local best = {}
+    local best, lastEdge = {}, nil
     for m = 1, n do
         if frac[m] >= 0.5 then
             local before, got = window(m - FIND.window + 1, m)
             local after = window(m + 1, m + FIND.window)
+            -- (or mostly open over the 48 after: quests handed in or picked up early just ahead of you don't hide
+            -- your place)
+            local afterL = window(m + 1, m + FIND.long)
             -- (and over the 48 before: a few quests done out of order after a long gap aren't where you are)
             local strong = before >= FIND.before and got >= math.min(FIND.min, done)
                 and (window(m - FIND.long + 1, m)) >= FIND.longMin
@@ -2201,7 +2226,35 @@ function ns.placeFromQuests()
             -- done is an edge too, but only where you are: in its zone, at its level
             local a = math.max(firstIn[chOf[m]], m - FIND.window + 1)
             local weak = not strong and m - a + 1 >= 2 and (window(a, m)) >= FIND.weak
-            if (strong or weak) and (not after or after <= FIND.after) then
+            local edge = (strong or weak) and (not after or after <= FIND.after or (afterL and afterL <= FIND.afterLong))
+            -- a few quests done not far ahead of the edge before it (handed in or picked up early): more of the
+            -- route's steps open than done since (at least 3), and one of them an objective or hand-in of a quest
+            -- in your log - or, with three times as many open, none of the done ones an objective or hand-in of a
+            -- quest the route takes there - not a place of its own. (Quests skipped there and never taken leave
+            -- nothing in your log; you've got there when you've done quests you took there.)
+            local early = false
+            if edge and lastEdge and m - lastEdge <= FIND.long then
+                local got2 = P[m] - P[lastEdge]
+                local open2 = m - lastEdge - got2
+                if got2 <= FIND.early and got2 < open2 and open2 >= 3 then
+                    early = PM[m] > PM[lastEdge]
+                    if not early and got2 * 3 < open2 then
+                        early = true
+                        local from = idx[lastEdge]
+                        for k = lastEdge + 1, m do
+                            local s = steps[idx[k]]
+                            if frac[k] >= 0.5 and s.t ~= "accept" then
+                                for _, q in ipairs(s.q) do
+                                    if firstAccept[q] and firstAccept[q] > from then early = false end
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+            if ns.placeDebug and early then ns.placeDebug[#ns.placeDebug + 1] = { step = idx[m], early = true, before = before, after = after } end
+            if edge and not early then
+                lastEdge = m
                 local i = idx[m]
                 -- where the route goes on from there: the zone you're in, a chapter for your level
                 local zone = false
@@ -2218,7 +2271,8 @@ function ns.placeFromQuests()
                 -- (a weak one needs both: a zone the route comes back to later, or a few quests done out of order in
                 -- a chapter for your level, don't do)
                 if strong then best.any = m end
-                if zone and (strong or level) then best.zone = m end
+                if zone and (strong or level) then best.zone, best.zoneWeak = m, not strong end
+                if zone and strong and level then best.zoneStrong = m end
                 if level and (strong or zone) then best.level = m end
             end
         end
@@ -2226,6 +2280,10 @@ function ns.placeFromQuests()
     -- the zone's (else the level's) edge - but a further one in the same chapter is still where you are (quests
     -- skipped together make an edge in the middle of what you've done)
     local m, why = best.zone, "zone"
+    -- (a chapter's start done further on in your zone, after a strong edge there at your level with an objective or
+    -- hand-in of a quest in your log still open in between: rather that edge - quests of the later visit handed in
+    -- early; a chapter you left out holds none of yours)
+    if m and best.zoneWeak and best.zoneStrong and PM[m] > PM[best.zoneStrong] then m = best.zoneStrong end
     if not m then m, why = best.level, "level" end
     if not m then m, why = best.any, "furthest" end
     if not m then return nil, done end

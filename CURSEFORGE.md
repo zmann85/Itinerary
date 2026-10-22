@@ -28,7 +28,7 @@ The **brass compass** on the minimap: click shows or hides the panel, right-clic
 
 - A **waypoint arrow** to the step's NPC, objective area or travel path, with the distance and the instruction above it. Several arrow styles and colour schemes.
 - Your **next stops as numbered pins** on the world map and minimap, with a dotted line between them
-- **Quest item buttons** for the step's usable items and the hearthstone, and a **target button** that finds the step's mobs or NPC and shows their face (key bindings for all of them)
+- **Quest item buttons** for the step's usable items and the hearthstone, and **target buttons** that find the step's mobs or NPC and show their faces: one per kind of mob, and a key that goes for the nearest of all of them, tags it with a spell of your choice and can pass over mobs already in a fight (key bindings for all of them)
 - **Name tags** on the quest objects you can click near you, with the objective under the name
 
 ---
@@ -42,11 +42,11 @@ Every part can be switched off. Hold **Shift** while talking to an NPC to do thi
 - **Travel**: take the route's flight, set your hearthstone, resurrect at the spirit healer on death skips
 - **Trainers**: opens the training window where something is waiting; buying class skills (worthwhile ones first, keeping money back) is there when you want it
 - **Professions**: learn your professions at their trainer and buy the gathering tools
-- **Groups**: share every quest you accept with your group (optional); an escort that starts right away waits until nobody near you still has the quest before it to hand in
+- **Groups**: share every quest you accept with your group (optional; someone busy or out of range gets it again); an escort that starts right away waits until nobody near you still has the quest before it to hand in
 
 ## Trainers and professions
 
-- An instruction when a **class trainer, weapon master or profession trainer** with something for you is close by, with a tooltip of what's ready to learn and what it costs
+- An instruction when a **class trainer, weapon master or profession trainer** with something for you is close by, with a tooltip of what's ready to learn and what it costs - and one while you have **talent points** to spend
 - Pick up to two main professions plus secondary ones. Itinerary plans the money for learning them and their tools.
 - **Gather mode** (`/iti gather`): a farming route from one herb or ore spawn spot to the next, with map pins. Nodes you find are remembered.
 

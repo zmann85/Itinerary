@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.15 (2026-10-22)
 
 ### Added
 - A target button per kind of mob: a step (with its along-the-way objectives) after several kinds of mobs shows

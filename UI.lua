@@ -564,7 +564,8 @@ local function alongInfo(st)
         end
         return label or clean(st.note) or "?", label and clean(st.note) or nil, "side"
     end
-    if st.col then
+    -- (a buy errand with its items - the Skyborne Rogue's "Buy and equip a [Shortsword]" - is an instruction, below)
+    if st.col and not st.errand then
         local parts = {}
         local count = ns.itemCount or (C_Item and C_Item.GetItemCount) or GetItemCount -- (bags on the bag bar count)
         local nameOf = (C_Item and C_Item.GetItemNameByID) or function(id) return GetItemInfo and (GetItemInfo(id)) end
@@ -616,7 +617,9 @@ local function alongInfo(st)
     if st.trainRec then
         return (st.cls and "Train new skills" or (st.name or "Visit the trainer")) .. (st.npc and (" at " .. st.npc) or ""), clean(st.note), "rec"
     end
-    -- an errand at a vendor ("Vendor trash at Rallic Finn", "Buy Ice Cold Milk"): who it's at
+    -- an errand at a vendor ("Vendor trash at Rallic Finn", "Buy Ice Cold Milk"): who it's at. A buy with its items
+    -- ("Buy and equip a [Shortsword]") is one too, with the count on it (it showed under Along the way as
+    -- "[Shortsword] 0/1", not as an instruction to click for the arrow)
     if st.errand then
         local label, desc = clean(st.name) or "Visit the vendor", clean(st.note)
         if st.npc and not label:find(st.npc, 1, true) then
@@ -624,6 +627,23 @@ local function alongInfo(st)
                 label = label .. " at " .. st.npc
             else
                 desc = "At " .. st.npc .. (desc and desc ~= "" and ("\n" .. desc) or "")
+            end
+        end
+        if st.col then
+            local count = ns.itemCount or (C_Item and C_Item.GetItemCount) or GetItemCount
+            local nameOf = (C_Item and C_Item.GetItemNameByID) or function(id) return GetItemInfo and (GetItemInfo(id)) end
+            local h = ns.hintHex()
+            if #st.col == 1 then
+                local c = st.col[1]
+                label = label .. "  " .. h .. math.min(count(c[1]) or 0, c[2]) .. "/" .. c[2] .. "|r"
+            else
+                -- (several: each with its count above the rest of the hint)
+                local parts = {}
+                for _, c in ipairs(st.col) do
+                    local n = nameOf(c[1])
+                    parts[#parts + 1] = (n and itemLink(c[1], n) or ("item " .. c[1])) .. " " .. h .. math.min(count(c[1]) or 0, c[2]) .. "/" .. c[2] .. "|r"
+                end
+                desc = table.concat(parts, "   ") .. (desc and desc ~= "" and ("\n" .. desc) or "")
             end
         end
         return label, desc, "rec"

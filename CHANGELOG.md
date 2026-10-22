@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+- A step that collects items for a quest you're on (the Small Spider Legs for Recipe of the Kaldorei) was
+  passed when you had already done the next step (The Glowing Fruit picked up on the way), and the route then
+  waited at the hand-in. It now waits until you have the items, and a hand-in you get to without them takes you
+  back to them.
+- Route editor: a text box goes back to the start of its text when you leave it, also without a change (a long
+  hint you had moved through showed only its end). Picking another step while you're still in a box shows that
+  step's text in it, and what you typed is saved to the step you typed it for - it went to the step you picked.
+
 ## v2.1.15 (2026-10-22)
 
 ### Added

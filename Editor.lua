@@ -645,7 +645,12 @@ local function editbox(parent, w, onCommit)
     U().addEdges(e, 1, 1, 1, 0.15)
     e:SetScript("OnEscapePressed", function(self) self:ClearFocus(); if refresh then refresh() end end)
     e:SetScript("OnEnterPressed", function(self) self:ClearFocus() end)
-    e:SetScript("OnEditFocusLost", function(self) if self.dirty then self.dirty = false; onCommit(self:GetText()) end end)
+    -- (back to the start when you leave it, changed or not: a long text you moved through to its end showed
+    -- only its end from then on)
+    e:SetScript("OnEditFocusLost", function(self)
+        if self.dirty then self.dirty = false; onCommit(self:GetText()) end
+        self:SetCursorPosition(0)
+    end)
     e:SetScript("OnTextChanged", function(self, user) if user then self.dirty = true end end)
     return e
 end
@@ -1096,7 +1101,18 @@ local function build()
     local fparent = P1 -- the page the next field goes on
     local function field(key, lbl, tip, get, set)
         local l = ui.text(fparent, 11, 1, 1, 1, 0.45); l:SetPoint("TOPLEFT", 0, y); l:SetText(lbl)
-        local e = editbox(fparent, FW - 90, function(text) local s = selected(); if s then set(s, text); refresh() end end)
+        -- (what you typed goes to the step the box shows - box.forId, set with its text - not to whatever step is
+        -- selected when you leave the box)
+        local e
+        e = editbox(fparent, FW - 90, function(text)
+            local s = selected()
+            if e.forId and e.forId ~= sel then
+                s = nil
+                local r = ns.route()
+                for _, x in ipairs(r and r.editList or {}) do if sid(x) == e.forId then s = x break end end
+            end
+            if s then set(s, text); refresh() end
+        end)
         e:SetPoint("TOPLEFT", 90, y + 5)
         e:SetScript("OnEnter", function() GameTooltip:SetOwner(e, "ANCHOR_RIGHT"); GameTooltip:AddLine(tip, 1, 1, 1, true); GameTooltip:Show() end)
         e:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -2129,9 +2145,16 @@ local function build()
             (s.edOrphan and "  ·  its place in the route is gone, so it's at the end" or ""))
         local kind = kindOf(s)
         for t, b in pairs(win.d.types) do b:SetActive(kind == t) end
+        -- another step selected while you're in one of the boxes (a click in the step list): leave the box first -
+        -- what you typed goes to its own step - so it shows this step's text, not the last one's
+        local left = false
+        for _, f in pairs(fields) do
+            if f.box:HasFocus() and f.box.forId and f.box.forId ~= sid(s) then f.box:ClearFocus(); left = true end
+        end
+        if left then refresh() return end -- (again with the box left and its text saved)
         for _, f in pairs(fields) do
             -- (from the start: the cursor at the end scrolls a long text out of the box)
-            if not f.box:HasFocus() then f.box:SetText(f.get(s)); f.box:SetCursorPosition(0) end
+            if not f.box:HasFocus() then f.box:SetText(f.get(s)); f.box:SetCursorPosition(0); f.box.forId = sid(s) end
         end
         local qstep = s.t == "accept" or s.t == "turnin" or s.t == "complete"
         fields.q.box:SetAlpha((qstep or kind == "abandon") and 1 or 0.4)

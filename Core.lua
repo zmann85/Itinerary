@@ -1963,6 +1963,30 @@ local function whyDone(i)
     end
     return "done " .. table.concat(t, " ")
 end
+-- an item collect for a quest you're on ("Kill Webwood Lurkers and loot their Small Spider Legs" for Recipe of the
+-- Kaldorei, the route's ".collect" steps; not a buy, not along the way): the quest it is for, while that quest
+-- isn't ready to hand in and the route hands it in after this step. Such a step isn't passed because the next
+-- quest step is done - picking up The Glowing Fruit first doesn't mean you have the legs, and the hand-in would
+-- wait for them - and a hand-in you got to without them goes back to it.
+local function collectFor(steps, i)
+    local s = steps[i]
+    if not s or s.t ~= "do" or s.along or not s.col or not s.cond or s.ah or s.errand then return nil end
+    local n = s.name or ""
+    if n:find("^Buy ") or n:find("^Stock up") then return nil end
+    for _, c in ipairs(s.cond) do
+        local q = c[2]
+        if c[1] == "open" and onQuest(q) and not readyToTurnIn(q) then
+            for j = i + 1, math.min(#steps, i + 80) do
+                local sj = steps[j]
+                if sj.t == "turnin" and not sj.along and sj.q then
+                    for _, x in ipairs(sj.q) do if x == q then return q end end
+                end
+            end
+        end
+    end
+    return nil
+end
+ns.collectFor = collectFor
 function ns.advance()
     local steps, c = ns.steps(), ItineraryCharDB
     local moved = false
@@ -1987,6 +2011,8 @@ function ns.advance()
         if steps[i].along or ns.stepDone(i) then
             if not steps[i].along and #log < 40 then log[#log + 1] = i .. " " .. steps[i].t .. ": " .. whyDone(i) end
             c.step = i + 1; moved = true
+        elseif collectFor(steps, i) then
+            break -- (the items for a quest you're on: see collectFor)
         elseif not QUEST_STEP[steps[i].t] or steps[i].opt then
             local later, lj = false, nil
             for j = i + 1, math.min(#steps, i + LOOKAHEAD) do
@@ -2024,6 +2050,10 @@ function ns.advance()
                 -- (its variant condition doesn't matter here: the quest itself is open and not done)
                 if sj.t == "complete" and not sj.along and sj.q and not ns.stepDone(j) then
                     for _, q in ipairs(sj.q) do if open[q] then c.step, moved = j, true break end end
+                elseif not ns.stepDone(j) then
+                    -- (or the items you still need for it: Recipe of the Kaldorei's Small Spider Legs)
+                    local q = collectFor(steps, j)
+                    if q and open[q] then c.step, moved = j, true end
                 end
             end
         end

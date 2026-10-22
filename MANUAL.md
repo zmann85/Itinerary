@@ -244,6 +244,10 @@ You rarely have to touch anything:
 - **Errands at a vendor** (vendor trash, food and water, bags, repairs, optional buys) are instructions, not
   steps: they're done when you open that vendor (optional buys: when you have the items or close the vendor or
   auction house), or left behind after a few steps.
+- **Items to collect** for a quest (*Kill Webwood Lurkers and loot their Small Spider Legs* for Recipe of the
+  Kaldorei) tick off when you have them. While you're on that quest the route waits there, even when you've
+  already done the next step (picked up The Glowing Fruit on the way), and a hand-in you get to without the
+  items takes you back to them.
 - **Trainer steps** tick off when you've trained. **Grind steps** tick off at the XP they ask for.
 - **Your Hearthstone**: "Grind until your Hearthstone is ready" (or has less than 5 minutes left) ticks off by
   itself when it gets there. A hearth step is passed while your Hearthstone is on cooldown (the route's other

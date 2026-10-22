@@ -1302,6 +1302,7 @@ local function trainerBuy()
     buying = false
     -- skills you could pay for, left because of the reserve: say so once per visit
     if not reserveSaid then
+        local lvl = UnitLevel("player") or 1
         for _, o in ipairs(order) do
             local name, category, rank = serviceInfo(o[1])
             local cost = GetTrainerServiceCost(o[1]) or 0
@@ -1310,6 +1311,18 @@ local function trainerBuy()
                 reserveSaid = true
                 ns.print("left " .. name .. " (" .. coins(cost) .. ") at the trainer: buying class skills keeps " .. coins(reserve)
                     .. " (Settings > Trainer)")
+                break
+            end
+            -- (or because the money for your professions comes first below level 4: that was silent - the
+            -- user's Skyborne rogue left Stealth with nothing said)
+            local keep = ((o[2] == 1 or lvl < 4) and ns.profReserve) and ns.profReserve() or 0
+            if name and category == "available" and not skip[name] and not boughtNow[name .. (rank or "")]
+               and cost <= spendable and cost + keep > spendable and not (early and o[2] == 1)
+               and not (worthWaiting and o[2] == 1) then
+                reserveSaid = true
+                ns.print("left " .. name .. " (" .. coins(cost) .. ") at the trainer: "
+                    .. (lvl < 4 and "up to level 4 the money for your professions comes first" or "the money for your professions comes first")
+                    .. " (" .. coins(keep) .. ": their tools and learning them; Settings > Professions)")
                 break
             end
         end

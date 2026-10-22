@@ -10,6 +10,9 @@
 - Route editor: a text box goes back to the start of its text when you leave it, also without a change (a long
   hint you had moved through showed only its end). Picking another step while you're still in a box shows that
   step's text in it, and what you typed is saved to the step you typed it for - it went to the step you picked.
+- At the class trainer, a skill left because the money for your professions comes first (their tools and learning
+  them, up to level 4) now says so in chat, like one left for the class skill reserve. It was left without a word
+  (Stealth on a level 2 rogue).
 
 ## v2.1.15 (2026-10-22)
 

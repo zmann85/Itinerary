@@ -4,11 +4,12 @@
 local ADDON, ns = ...
 
 ---------------------------------------------------------------- data
--- key -> name, apprentice spell, gathering?, tool item, book item (starting-zone quest reward)
+-- key -> name, apprentice spell, gathering?, tool item, book item (starting-zone quest reward), and WoW Forever's
+-- apprentice bag for it (bought with the tool where it's sold: Uualia Suncrest on Zephras Isle)
 local PROF = {
-    mining         = { name = "Mining",         spell = 2575, gather = true, tool = 2901, book = 247840 },
-    herbalism      = { name = "Herbalism",      spell = 2366, gather = true,              book = 247841 },
-    skinning       = { name = "Skinning",       spell = 8613, gather = true, tool = 7005, book = 247846 },
+    mining         = { name = "Mining",         spell = 2575, gather = true, tool = 2901, book = 247840, bag = 277115 },
+    herbalism      = { name = "Herbalism",      spell = 2366, gather = true,              book = 247841, bag = 277113 },
+    skinning       = { name = "Skinning",       spell = 8613, gather = true, tool = 7005, book = 247846, bag = 277114 },
     blacksmithing  = { name = "Blacksmithing",  spell = 2018, tool = 5956 },
     engineering    = { name = "Engineering",    spell = 4036 },
     alchemy        = { name = "Alchemy",        spell = 2259 },
@@ -24,6 +25,7 @@ local PRIMARY = { "mining", "herbalism", "skinning", "blacksmithing", "engineeri
 local SECONDARY = { "cooking", "firstaid", "fishing" }
 local boughtHere = {} -- tools bought at the vendor you have open (the bags catch up a moment later)
 local TOOLNAME = { [2901] = "Mining Pick", [7005] = "Skinning Knife", [5956] = "Blacksmith Hammer", [6256] = "Fishing Pole" }
+local BAGNAME = { [277113] = "Apprentice's Herb Pouch", [277114] = "Apprentice's Skinning Satchel", [277115] = "Apprentice's Mining Pack" }
 -- quests early on whose reward choice includes the gathering books
 local BOOK_QUESTS = { [234] = true, [91743] = true, [6395] = true, [4402] = true, [93552] = true }
 -- vendors known to sell the tools: from the Itinerary_Data add-on (ns.addToolVendors) when it's installed; more are
@@ -166,6 +168,16 @@ end
 local function count(id)
     local f = (C_Item and C_Item.GetItemCount) or GetItemCount
     return f and (f(id) or 0) or 0
+end
+-- a profession bag you have: in your bags or on the bag bar / in the reagent bag slot (Core's ns.bagsWorn)
+local function haveBag(id)
+    return count(id) > 0 or (ns.bagsWorn and ns.bagsWorn(id) > 0) or false
+end
+-- its bag is planned once a vendor that sells it is known (it's not sold everywhere: planned before that, its
+-- money would hold up everything after it)
+local function bagWanted(p)
+    return p.bag and not haveBag(p.bag) and not boughtHere[p.bag]
+        and ItineraryDB and ItineraryDB.vendors and ItineraryDB.vendors[p.bag] and next(ItineraryDB.vendors[p.bag]) ~= nil
 end
 
 ---------------------------------------------------------------- where things are
@@ -357,6 +369,12 @@ spendPlan = function()
                 -- covers them and the trainer)
                 local learning = not ns.profKnown(k) and not viaBook
                 plan[#plan + 1] = { kind = "tool", prof = k, cost = ns.toolPrice(p.tool),
+                                    wait = learning and not (lvl < 4 and p.gather) }
+            end
+            -- its apprentice bag (the user: "Auto-buy it with the tool"), right after the tool
+            if bagWanted(p) then
+                local learning = not ns.profKnown(k) and not viaBook
+                plan[#plan + 1] = { kind = "bag", prof = k, cost = ns.toolPrice(p.bag),
                                     wait = learning and not (lvl < 4 and p.gather) }
             end
         end
@@ -691,6 +709,8 @@ function ns.profLearnable(k, npc)
 end
 local TOOL_PROF = {}
 for k, p in pairs(PROF) do if p.tool then TOOL_PROF[p.tool] = k end end
+local BAG_PROF = {}
+for k, p in pairs(PROF) do if p.bag then BAG_PROF[p.bag] = k end end
 local scanMerchant = nil
 function ns.profStepIrrelevant(s)
     local c = C()
@@ -845,6 +865,7 @@ local function merchantInfo(i)
 end
 local TOOL_BY_NAME = {}
 for id, n in pairs(TOOLNAME) do TOOL_BY_NAME[n] = id end
+for id, n in pairs(BAGNAME) do TOOL_BY_NAME[n] = id end
 scanMerchant = function()
     if not (MerchantFrame and MerchantFrame:IsShown()) and not ns.testMerchant then return end
     local m, x, y = playerPos()
@@ -858,8 +879,8 @@ scanMerchant = function()
         end
         local name, price = merchantInfo(i)
         -- Forever may use its own item ids: match the tool by name too
-        if not (id and TOOL_PROF[id]) and name and TOOL_BY_NAME[name] then id = TOOL_BY_NAME[name] end
-        if id and TOOL_PROF[id] then
+        if not (id and (TOOL_PROF[id] or BAG_PROF[id])) and name and TOOL_BY_NAME[name] then id = TOOL_BY_NAME[name] end
+        if id and (TOOL_PROF[id] or BAG_PROF[id]) then
             here[id] = { i, price }
             if m and npc then
                 ItineraryDB.vendors = ItineraryDB.vendors or {}
@@ -877,16 +898,20 @@ scanMerchant = function()
     if a and a.tools ~= false and not (IsShiftKeyDown and IsShiftKeyDown()) then
         local money = GetMoney() or 0
         for _, it in ipairs(ns.spendPlan()) do
-            if it.kind == "tool" then
-                local id = PROF[it.prof].tool
+            if it.kind == "tool" or it.kind == "bag" then
+                local id = it.kind == "bag" and PROF[it.prof].bag or PROF[it.prof].tool
                 local h = here[id]
                 if h then
-                    local ok, before = ns.canAfford("tool", it.prof, money)
+                    local ok, before = ns.canAfford(it.kind, it.prof, money)
                     if ok then
                         BuyMerchantItem(h[1], 1)
                         boughtHere[id] = true
                         money = money - (h[2] or it.cost)
-                        ns.print("bought a " .. (TOOLNAME[id] or "tool") .. " for " .. PROF[it.prof].name)
+                        if it.kind == "bag" then
+                            ns.print("bought an " .. BAGNAME[id] .. " for " .. PROF[it.prof].name .. " - put it in your reagent bag slot by hand (right-click puts it in a regular bag slot)")
+                        else
+                            ns.print("bought a " .. (TOOLNAME[id] or "tool") .. " for " .. PROF[it.prof].name)
+                        end
                     elseif it.wait then
                         -- not learned yet: comes after learning it
                     elseif not boughtHere.told then
@@ -896,7 +921,7 @@ scanMerchant = function()
                             or (first and first.kind == "learn") and ("learning " .. PROF[first.prof].name .. " comes first")
                             or (first and first.kind == "tool" and first.prof ~= it.prof) and ("the " .. (TOOLNAME[PROF[first.prof].tool] or "tool") .. " comes first")
                             or "not enough money"
-                        ns.print("not buying a " .. (TOOLNAME[id] or "tool") .. " yet: " .. why)
+                        ns.print("not buying " .. (it.kind == "bag" and ("an " .. BAGNAME[id]) or ("a " .. (TOOLNAME[id] or "tool"))) .. " yet: " .. why)
                     end
                 end
             end

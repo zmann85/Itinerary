@@ -873,6 +873,21 @@ function ns.prepareRoute(r)
         end
         if s.t == "turnin" and s.q then for _, q in ipairs(s.q) do turnedLater[q] = true end end
     end
+    -- an along-the-way step whose stretch (its own step to its end) holds no step you can be on was never shown:
+    -- the guide's "done with the next step" chains where that next step is along the way too (Falling With Style's
+    -- Walk on Air, which ends with the along-the-way hand-in of Harmony in Balance; "Travel to Lost Rigger Cove"
+    -- before the travel step; about 50 a route). It lasts through the route's next step then, where the guide
+    -- shows it as well (the user, 2026-10-22: "the Falling with Style quest step just gets skipped")
+    local nextMain
+    for j = #steps, 1, -1 do
+        local s = steps[j]
+        if s.along and s.till and nextMain and s.till < nextMain then
+            local any = false
+            for k = j, s.till do if steps[k] and not steps[k].along then any = true break end end
+            if not any then s.till = nextMain end
+        end
+        if not s.along then nextMain = j end
+    end
 
     local HBD = LibStub and LibStub("HereBeDragons-2.0", true)
     if not HBD then return end
@@ -1414,10 +1429,35 @@ end
 
 -- Steps for when you have an item ("Eat the Herb Baked Eggs": need), and food buffs: which buff
 -- eating an item gives is learned the first time you eat it (ItineraryDB.itemBuffs[item] = aura spell ID)
+-- a bag on the bag bar (and in the reagent bag slot) counts as one you have: the game's item count may not include
+-- bags you've put there (the user: "make sure it also detects when you put the bag into your bag bar")
+local function bagsWorn(id)
+    local toInv = (C_Container and C_Container.ContainerIDToInventoryID) or ContainerIDToInventoryID
+    if not (id and toInv and GetInventoryItemID) then return 0 end
+    local n = 0
+    for b = 1, 5 do
+        local ok, inv = pcall(toInv, b)
+        if ok and inv and GetInventoryItemID("player", inv) == id then n = n + 1 end
+    end
+    return n
+end
+ns.bagsWorn = bagsWorn
+local function isBag(id)
+    local f = (C_Item and C_Item.GetItemInfoInstant) or GetItemInfoInstant
+    if not f then return false end
+    local ok, _, _, _, _, _, classID = pcall(f, id)
+    return ok and classID == 1 -- (Enum.ItemClass.Container)
+end
 local function itemCount(id)
     local f = (C_Item and C_Item.GetItemCount) or GetItemCount
-    return f and (f(id) or 0) or 0
+    local n = f and (f(id) or 0) or 0
+    if isBag(id) then
+        local worn = bagsWorn(id)
+        if worn > n then n = worn end -- (whether or not the game counts it already)
+    end
+    return n
 end
+ns.itemCount = itemCount
 local function eachBuff(fn)
     for k = 1, 40 do
         local name, spellId, expires
@@ -1907,8 +1947,7 @@ function ns.stepDone(i)
     elseif s.t == "do" and s.r and not s.col then
         return ItineraryCharDB.arrived[i] and true or false
     elseif s.t == "do" and s.col then
-        local count = (C_Item and C_Item.GetItemCount) or GetItemCount
-        for _, c in ipairs(s.col) do if (count(c[1]) or 0) < c[2] then return false end end
+        for _, c in ipairs(s.col) do if itemCount(c[1]) < c[2] then return false end end
         return true
     end
     return false
@@ -3228,9 +3267,8 @@ local function alongFinished(s, j, c)
         end
         return true
     end
-    local count = (C_Item and C_Item.GetItemCount) or GetItemCount
     for _, col in ipairs(s.col) do
-        if (count(col[1]) or 0) < (col[2] or 1) then return false end
+        if itemCount(col[1]) < (col[2] or 1) then return false end
     end
     return true
 end

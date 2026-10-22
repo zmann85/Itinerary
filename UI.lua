@@ -473,7 +473,7 @@ end
 -- items to get on this step ("collect"): link and live count, yellow while short, green when you have them
 local function collectLines(s)
     if not s.col then return nil end
-    local count = (C_Item and C_Item.GetItemCount) or GetItemCount
+    local count = ns.itemCount or (C_Item and C_Item.GetItemCount) or GetItemCount -- (bags on the bag bar count)
     local nameOf = (C_Item and C_Item.GetItemNameByID) or function(id) return GetItemInfo and (GetItemInfo(id)) end
     local out = {}
     for _, c in ipairs(s.col) do
@@ -547,7 +547,7 @@ local function alongInfo(st)
             else open = open + 1; shown[#shown + 1] = (l[1]:gsub("(%d+%s*/%s*%d+)", ns.hintHex() .. "%1|r", 1)) end
         end
         if st.col then
-            local count = (C_Item and C_Item.GetItemCount) or GetItemCount
+            local count = ns.itemCount or (C_Item and C_Item.GetItemCount) or GetItemCount -- (bags on the bag bar count)
             local nameOf = (C_Item and C_Item.GetItemNameByID) or function(id) return GetItemInfo and (GetItemInfo(id)) end
             for _, c in ipairs(st.col) do
                 local have, n = math.min(count(c[1]) or 0, c[2]), nameOf(c[1])
@@ -566,7 +566,7 @@ local function alongInfo(st)
     end
     if st.col then
         local parts = {}
-        local count = (C_Item and C_Item.GetItemCount) or GetItemCount
+        local count = ns.itemCount or (C_Item and C_Item.GetItemCount) or GetItemCount -- (bags on the bag bar count)
         local nameOf = (C_Item and C_Item.GetItemNameByID) or function(id) return GetItemInfo and (GetItemInfo(id)) end
         for _, c in ipairs(st.col) do
             local n = nameOf(c[1])

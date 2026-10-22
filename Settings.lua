@@ -216,7 +216,7 @@ local OPTIONS = {
     { tab = 6, label = "Node icons", desc = "The game's interact icons: an icon floats over the nearest herb, ore vein or chest within about 20 yards, in any direction (SoftTargetInteract). Off puts your own values back.",
       choices = ON_OFF, get = function() return A().nodeIcons ~= false end,
       set = function(v) A().nodeIcons = v; if ns.applyNodeIcons then ns.applyNodeIcons(true) end end },
-    { tab = 6, label = "Gathering tools", desc = "Buys the tools for your professions at vendors. Below level 4 only the first profession's tool; the second profession waits. From level 4: all new damage spells first, then learning the second profession and its tool.",
+    { tab = 6, label = "Gathering tools", desc = "Buys the tools for your professions at vendors, and a profession's apprentice bag (Herb Pouch, Mining Pack, Skinning Satchel) after its tool where a vendor sells it. Below level 4 only the first profession's tool; the second profession waits. From level 4: all new damage spells first, then learning the second profession and its tool.",
       choices = ON_OFF, get = function() return A().tools ~= false end, set = function(v) A().tools = v end },
     -- Panel
     { tab = 7, label = "Color scheme", desc = "The colours of the panel, arrow, instructions card and windows. Itinerary: green and gold (follows EllesmereUI). Amethyst: purple on dark grey. Frost: blue. Ember: orange. Slate: grey and white. Changing it reloads the UI.",

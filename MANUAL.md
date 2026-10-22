@@ -346,7 +346,9 @@ points* (on) switches it off.
   (usually after the first quest and selling junk). The second comes free from the starting zone's
   **book reward**, which Itinerary picks for you; the book then gets an item button.
 - **Tools**: the gathering tools are bought at the first vendor you open when the money covers them
-  *and* learning your first profession.
+  *and* learning your first profession. A profession's apprentice bag (*Apprentice's Herb Pouch*, *Mining
+  Pack*, *Skinning Satchel*) comes right after its tool, at a vendor that sells it (on Zephras Isle, Uualia
+  Suncrest); one in your bags or on your bag bar counts as had. Put it in the reagent bag slot by hand.
 - **Next rank**: when Journeyman, Expert or Artisan is ready, a trainer is close by and you can pay for
   it, you get an instruction to go learn it.
 - **Which trainer**: not every trainer teaches every rank. Kitta Firewind at the Tower of Azora only

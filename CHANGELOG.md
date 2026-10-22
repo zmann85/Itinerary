@@ -2,7 +2,17 @@
 
 ## Unreleased
 
+### Added
+- Your profession's apprentice bag (Apprentice's Herb Pouch, Mining Pack, Skinning Satchel) is bought with its
+  gathering tool, at a vendor that sells it (Settings > Professions > *Gathering tools*). The Skyborne start's
+  "Buy a [Skinning Knife]" step with the satchel ended with only the knife.
+
 ### Fixed
+- Along-the-way tasks that ended before the route's next step of its own were never shown - Falling With Style's
+  Walk on Air (and its button) on the Skyborne start, and about 50 a route: travel hints, objectives and kills the
+  guide has you do alongside. They now last through that next step, where the guide shows them too.
+- A bag on your bag bar or in the reagent bag slot counts as one you have, for a step's items and the panel's
+  counts (the game's item count can leave those out).
 - A step that collects items for a quest you're on (the Small Spider Legs for Recipe of the Kaldorei) was
   passed when you had already done the next step (The Glowing Fruit picked up on the way), and the route then
   waited at the hand-in. It now waits until you have the items, and a hand-in you get to without them takes you

@@ -3,9 +3,11 @@
 ## Unreleased
 
 ### Added
-- Your profession's apprentice bag (Apprentice's Herb Pouch, Mining Pack, Skinning Satchel) is bought with its
-  gathering tool, at a vendor that sells it (Settings > Professions > *Gathering tools*). The Skyborne start's
-  "Buy a [Skinning Knife]" step with the satchel ended with only the knife.
+- Your first profession's apprentice bag (Apprentice's Herb Pouch, Mining Pack, Skinning Satchel) is bought with
+  its gathering tool, at a vendor that sells it (Settings > Professions > *Gathering tools*). Only one: you have
+  one reagent bag slot, so none for your second profession, and none while you have one of the three or
+  something is in that slot. The Skyborne start's "Buy a [Skinning Knife]" step with the satchel ended with only
+  the knife.
 
 ### Fixed
 - Along-the-way tasks that ended before the route's next step of its own were never shown - Falling With Style's

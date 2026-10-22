@@ -173,10 +173,24 @@ end
 local function haveBag(id)
     return count(id) > 0 or (ns.bagsWorn and ns.bagsWorn(id) > 0) or false
 end
+-- one apprentice bag only, for your first main profession (the user: you have one reagent bag slot, and in a
+-- regular bag slot it takes the place of a real bag): none while you have one of them or the slot holds a bag
+local function anyProfBag()
+    for id in pairs(BAGNAME) do if haveBag(id) or boughtHere[id] then return true end end
+    return false
+end
+local function reagentSlotUsed()
+    local slot = Enum and Enum.BagIndex and Enum.BagIndex.ReagentBag
+    local toInv = (C_Container and C_Container.ContainerIDToInventoryID) or ContainerIDToInventoryID
+    if not (slot and toInv and GetInventoryItemID) then return false end
+    local ok, inv = pcall(toInv, slot)
+    return (ok and inv and GetInventoryItemID("player", inv) ~= nil) or false
+end
+ns.profBagSlotUsed = reagentSlotUsed
 -- its bag is planned once a vendor that sells it is known (it's not sold everywhere: planned before that, its
 -- money would hold up everything after it)
 local function bagWanted(p)
-    return p.bag and not haveBag(p.bag) and not boughtHere[p.bag]
+    return p.bag and not anyProfBag() and not reagentSlotUsed()
         and ItineraryDB and ItineraryDB.vendors and ItineraryDB.vendors[p.bag] and next(ItineraryDB.vendors[p.bag]) ~= nil
 end
 
@@ -371,8 +385,9 @@ spendPlan = function()
                 plan[#plan + 1] = { kind = "tool", prof = k, cost = ns.toolPrice(p.tool),
                                     wait = learning and not (lvl < 4 and p.gather) }
             end
-            -- its apprentice bag (the user: "Auto-buy it with the tool"), right after the tool
-            if bagWanted(p) then
+            -- its apprentice bag (the user: "Auto-buy it with the tool"), right after the tool - for your first main
+            -- profession only (the picker's First profession)
+            if mainN == 1 and bagWanted(p) then
                 local learning = not ns.profKnown(k) and not viaBook
                 plan[#plan + 1] = { kind = "bag", prof = k, cost = ns.toolPrice(p.bag),
                                     wait = learning and not (lvl < 4 and p.gather) }

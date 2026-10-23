@@ -517,7 +517,10 @@ local function npcIdOf(guid)
     if kind == "Creature" or kind == "Vehicle" then return tonumber(id) end
 end
 -- Display IDs are read with a model frame: the model loads a moment after SetUnit (or SetCreature with the NPC ID,
--- from the game's creature cache), so it waits for that (up to 2 s) and does one creature at a time.
+-- from the game's creature cache), so it waits for that (up to 2 s) and does one creature at a time. Until the new
+-- model is there the frame keeps answering with the last one's display ID (ClearModel doesn't change that, and for
+-- a creature the game doesn't have yet it stays so): a number only counts once it's another one. (Two creatures
+-- in a row with the same model: the second isn't remembered, its face shows once it's in sight.)
 local probe -- (false: this client can't)
 local PQ = { list = {}, job = false, retry = false, tried = 0, got = 0, last = "none yet", asked = {} }
 local function savedDisp(job, d)
@@ -550,6 +553,11 @@ local function probeRead()
     d = ok and tonumber(d) or nil
     return (d and d > 0) and d or nil
 end
+-- the display ID of the creature asked for: not the one the frame had before
+local function probeNew(job)
+    local d = probeRead()
+    if d and d ~= job.before then return d end
+end
 local function probeFrame()
     if probe == nil then
         local ok, m = pcall(CreateFrame, "PlayerModel", nil, UIParent)
@@ -563,8 +571,9 @@ local function probeFrame()
                 local job = PQ.job
                 if not job then return end
                 job.t = job.t + (tonumber(el) or 0)
-                local d = probeRead()
-                if d then probeDone(d, job.how) elseif job.t > 2 then probeDone(nil, job.how .. ", no model after 2 s") end
+                local d = probeNew(job)
+                if d then probeDone(d, job.how)
+                elseif job.t > 2 then probeDone(nil, job.how .. (job.before and probeRead() == job.before and ", still the last one's model after 2 s" or ", no model after 2 s")) end
             end
             probe:SetScript("OnUpdate", check)
             pcall(probe.SetScript, probe, "OnModelLoaded", function() check(nil, 0) end)
@@ -583,6 +592,7 @@ function probeStart(job)
     if not job then return end
     PQ.job, job.t = job, 0
     PQ.tried = PQ.tried + 1
+    job.before = probeRead()
     probe:Show()
     local ok
     if job.unit and UnitExists(job.unit) and job.guid and ns.unitGUID(job.unit) == job.guid then
@@ -593,7 +603,7 @@ function probeStart(job)
         ok = pcall(probe.SetCreature, probe, job.npc)
     end
     if not ok then probeDone(nil, "can't load it") return end
-    local d = probeRead()
+    local d = probeNew(job)
     if d then probeDone(d, job.how .. ", at once") end
 end
 -- read the display ID of a unit in sight (up to 3 tries a session per NPC) or of an NPC ID (once)

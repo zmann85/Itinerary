@@ -93,6 +93,9 @@ local function defaults()
     def(g, "pinsMini", 5)
     def(g, "pinsLine", true)
     def(g.arrow, "instrSize", 14)
+    -- (until 2.1.18 a remembered face could be the creature's read just before it - a human with a Voidwalker's
+    -- face, many of them after the beta: they're read again, once, as you meet them)
+    if (g.facesRead or 0) < 1 then g.portraits = nil; g.facesRead = 1 end
 
     ItineraryCharDB = ItineraryCharDB or {}
     local c = ItineraryCharDB

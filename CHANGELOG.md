@@ -5,8 +5,13 @@
 ### Changed
 - The target button only remembers the faces of NPCs and mobs your route has (or that it's after right now), not
   every creature you target or hover. That list grew all the way through leveling (about 850 after the beta, kept
-  in every character's memory). The faces it already knows all stay: the list is shared by all your characters.
+  in every character's memory).
 - Your party members' quest progress no longer makes Itinerary look over your route again; only your own does.
+
+### Fixed
+- A remembered face could belong to the creature read just before it: a human NPC with a Voidwalker's face, many of
+  them after the beta. A face is now remembered only once the game has that creature's own model. The
+  faces remembered so far are cleared once and come back as you meet them again.
 
 ## v2.1.17 (2026-10-22)
 

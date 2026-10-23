@@ -1565,26 +1565,56 @@ function ns.panelUp()
 end
 
 -- Talent points you haven't spent (Settings > Trainer > Talent points, on): an instruction until you spend them;
--- clicking it opens your talents
+-- clicking it opens your talents. WoW Forever keeps them as a talent tree's currency (C_ClassTalents / C_Traits:
+-- its quantity is what's unspent; GetUnspentTalentPoints and UnitCharacterPoints don't exist there, and
+-- GetNumUnspentTalents answers 0). Asked again only after a change (talents, level).
+local tpKnown -- (nil: ask the game)
+local function traitPoints()
+    if not (C_ClassTalents and C_ClassTalents.GetActiveConfigID and C_Traits and C_Traits.GetConfigInfo and C_Traits.GetTreeCurrencyInfo) then return nil end
+    local ok, n = pcall(function()
+        local c = C_ClassTalents.GetActiveConfigID()
+        local info = c and C_Traits.GetConfigInfo(c)
+        local total, any = 0, false
+        for _, t in ipairs(info and info.treeIDs or {}) do
+            for _, x in ipairs(C_Traits.GetTreeCurrencyInfo(c, t, false) or {}) do
+                if type(x) == "table" and type(x.quantity) == "number" then total, any = total + x.quantity, true end
+            end
+        end
+        return any and total or nil
+    end)
+    return ok and n or nil
+end
 function ns.unspentTalents()
-    if GetUnspentTalentPoints then
-        local ok, n = pcall(GetUnspentTalentPoints)
-        if ok and type(n) == "number" then return n end
+    if tpKnown then return tpKnown end
+    local n = traitPoints()
+    if not n and GetUnspentTalentPoints then
+        local ok, v = pcall(GetUnspentTalentPoints)
+        if ok and type(v) == "number" then n = v end
     end
-    if UnitCharacterPoints then
-        local ok, n = pcall(UnitCharacterPoints, "player")
-        if ok and type(n) == "number" then return n end
+    if not n and UnitCharacterPoints then
+        local ok, v = pcall(UnitCharacterPoints, "player")
+        if ok and type(v) == "number" then n = v end
     end
-    return 0
+    tpKnown = n -- (nothing yet - right after login the talent data may not be there: asked again next time)
+    return n or 0
 end
 function ns.openTalents()
-    if ToggleTalentFrame then ToggleTalentFrame()
-    elseif PlayerSpellsUtil and PlayerSpellsUtil.ToggleClassTalentFrame then PlayerSpellsUtil.ToggleClassTalentFrame() end
+    if ToggleTalentFrame then ToggleTalentFrame() return end
+    if PlayerSpellsUtil and PlayerSpellsUtil.ToggleClassTalentFrame then PlayerSpellsUtil.ToggleClassTalentFrame() return end
+    -- (the talent window is an add-on of the game's that loads when first opened)
+    local load = (C_AddOns and C_AddOns.LoadAddOn) or LoadAddOn
+    if not PlayerSpellsFrame and load then pcall(load, "Blizzard_PlayerSpells") end
+    if PlayerSpellsFrame then
+        if PlayerSpellsFrame:IsShown() then HideUIPanel(PlayerSpellsFrame) else ShowUIPanel(PlayerSpellsFrame) end
+    end
 end
 do
     local tf = CreateFrame("Frame")
-    for _, e in ipairs({ "CHARACTER_POINTS_CHANGED", "PLAYER_TALENT_UPDATE" }) do pcall(tf.RegisterEvent, tf, e) end
-    tf:SetScript("OnEvent", function() if ns.update then ns.update() end end)
+    for _, e in ipairs({ "CHARACTER_POINTS_CHANGED", "PLAYER_TALENT_UPDATE", "TRAIT_TREE_CURRENCY_INFO_UPDATED", "TRAIT_CONFIG_UPDATED",
+                         "TRAIT_CONFIG_LIST_UPDATED", "ACTIVE_COMBAT_CONFIG_CHANGED", "PLAYER_LEVEL_UP" }) do
+        pcall(tf.RegisterEvent, tf, e)
+    end
+    tf:SetScript("OnEvent", function() tpKnown = nil; if ns.update then ns.update() end end)
 end
 
 local function refreshNow()

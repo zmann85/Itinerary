@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.19 (2026-10-23)
 
 ### Fixed
 - The *Talent points* instruction never showed on WoW Forever: its talents are a talent tree of the newer kind, and

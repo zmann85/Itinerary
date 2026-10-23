@@ -622,22 +622,27 @@ function askDisplay(name, npc, unit)
 end
 -- The faces that come with Itinerary_Data (ns.DATA_FACES, "\nName=npcID:displayID" for the creatures the routes
 -- name, read on the beta): the button shows them before you've met a creature. Looked up by name, once each.
-local shipped, nShipped = {}, nil
+-- (each name's answer kept as one number, npcID * 2^20 + displayID, or false; what it returns is one table filled
+-- again on every call: use it right away)
+local shipped, nShipped, shippedOne = {}, nil, { shipped = true }
+local P20 = 2 ^ 20
 function ns.shippedFace(name)
     if type(name) ~= "string" then return nil end
-    local e = shipped[name]
-    if e == nil then
-        e = false
+    local v = shipped[name]
+    if v == nil then
+        v = false
         local s = ns.DATA_FACES
         if type(s) == "string" then
             local _, last = s:find("\n" .. name .. "=", 1, true)
             local npc, d = nil, nil
             if last then npc, d = s:match("^(%d+):(%d+)", last + 1) end
-            if d then e = { npc = tonumber(npc), disp = tonumber(d), shipped = true } end
+            if d then v = tonumber(npc) * P20 + tonumber(d) end
         end
-        shipped[name] = e
+        shipped[name] = v
     end
-    return e or nil
+    if not v then return nil end
+    shippedOne.npc, shippedOne.disp = math.floor(v / P20), v % P20
+    return shippedOne
 end
 local function shippedCount()
     if nShipped == nil then nShipped = type(ns.DATA_FACES) == "string" and select(2, ns.DATA_FACES:gsub("=", "")) or 0 end

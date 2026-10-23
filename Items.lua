@@ -641,7 +641,8 @@ ns.portraitRouteNames = routeNames
 -- button is after right now (a mob named only by a quest objective), account-wide:
 -- ItineraryDB.portraits[name] = { npc = NPC ID, disp = display ID }
 -- (until 2.1.18 every creature you targeted or hovered: ~850 after the beta, ~230 bytes each in every
--- character's memory, and a model read for each)
+-- character's memory, and a model read for each. The faces remembered before stay: the list is account-wide,
+-- and one character's route doesn't say which of them your other characters' routes need)
 local function learn(unit)
     if not (ItineraryDB and unit and UnitExists(unit)) or UnitIsPlayer(unit) then return end
     local npc, name = npcIdOf(ns.unitGUID(unit)), ns.unitName(unit)
@@ -904,21 +905,12 @@ do
     end)
     -- (a model that wasn't loaded yet when its portrait was drawn: draw it again once the game has it) and
     -- who the creatures you target, hover or see of your step are
-    for _, e in ipairs({ "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "NAME_PLATE_UNIT_ADDED", "PLAYER_LOGIN" }) do
+    for _, e in ipairs({ "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "NAME_PLATE_UNIT_ADDED" }) do
         pcall(tf.RegisterEvent, tf, e)
-    end
-    -- once (2.1.18): the list from before kept every creature; only the ones your route has stay (the others
-    -- come back as you meet them on a route that has them)
-    local function prunePortraits()
-        local P, rn = ItineraryDB and ItineraryDB.portraits, routeNames()
-        if not (P and rn) or (ItineraryDB.portraitsPruned or 0) >= 1 then return end
-        for name in pairs(P) do if not rn[name] then P[name] = nil end end
-        ItineraryDB.portraitsPruned = 1
     end
     -- (every creature read goes through ns.unitName / ns.unitGUID: in a dungeon fight the game keeps names and
     -- GUIDs secret, and one used as a key or compared would raise an error on every mouseover)
     local function onEvent(event, unit)
-        if event == "PLAYER_LOGIN" then C_Timer.After(5, function() pcall(prunePortraits) end) return end
         if event == "PLAYER_TARGET_CHANGED" then pcall(learn, "target"); pcall(captureFace, "target") return end
         if event == "UPDATE_MOUSEOVER_UNIT" then pcall(learn, "mouseover"); pcall(captureFace, "mouseover") return end
         if event == "NAME_PLATE_UNIT_ADDED" then

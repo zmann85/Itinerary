@@ -8,7 +8,7 @@ Itinerary is a leveling companion for WoW Forever. A route panel shows the curre
 
 ## Getting started
 
-1. Unzip the download into `Interface\AddOns`. You get two folders: **Itinerary** and **Itinerary_Data** (where trainers, vendors and gathering spots are).
+1. Unzip the download into `Interface\AddOns`. You get two folders: **Itinerary** and **Itinerary_Data** (where trainers, vendors and gathering spots are, and the faces of the routes' NPCs and mobs).
 2. Log in. The **route panel** and the **waypoint arrow** appear, and a new character is asked once which professions it will take.
 3. No route yet? Open the **recorder** (`/iti recorder`) and press Record, or paste a shared route with `/iti import`.
 
@@ -28,7 +28,7 @@ The **brass compass** on the minimap: click shows or hides the panel, right-clic
 
 - A **waypoint arrow** to the step's NPC, objective area or travel path, with the distance and the instruction above it. Several arrow styles and colour schemes.
 - Your **next stops as numbered pins** on the world map and minimap, with a dotted line between them
-- **Quest item buttons** for the step's usable items and the hearthstone, and **target buttons** that find the step's mobs or NPC and show their faces: one per kind of mob, and a key that goes for the nearest of all of them, tags it with a spell of your choice and can pass over mobs already in a fight (key bindings for all of them)
+- **Quest item buttons** for the step's usable items and the hearthstone, and **target buttons** that find the step's mobs or NPC and show their faces (before you've even met them): one per kind of mob, and a key that goes for the nearest of all of them, tags it with a spell of your choice and can pass over mobs already in a fight (key bindings for all of them)
 - **Name tags** on the quest objects you can click near you, with the objective under the name
 
 ---
@@ -77,6 +77,6 @@ Every part can be switched off. Hold **Shift** while talking to an NPC to do thi
 
 Itinerary is made by Ghaan. All rights reserved: you may install it, use it and read its code, but not pass it on or reuse its parts elsewhere (`LICENSE.txt`). The libraries and the credited sounds keep their own licenses.
 
-**Itinerary_Data** comes in the same download but is a separate add-on under the GNU GPL v3. Its positions come from the WoW Forever data of [QuestieDB](https://github.com/Questie/Questie) and from what Itinerary players found in game.
+**Itinerary_Data** comes in the same download but is a separate add-on under the GNU GPL v3. Its positions and NPC IDs come from the WoW Forever data of [QuestieDB](https://github.com/Questie/Questie) and from what Itinerary players found in game; the faces were read in game.
 
 World of Warcraft is a trademark of Blizzard Entertainment. Itinerary is not affiliated with or endorsed by Blizzard Entertainment.

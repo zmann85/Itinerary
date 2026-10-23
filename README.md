@@ -8,8 +8,8 @@ automation, built around routes you record and edit yourself.
 <p align="center"><img src="manual/route-panel.png" alt="The route panel" width="469"></p>
 
 Itinerary ships **without routes**. Record your own with the recorder, import one somebody shared, or
-install a route pack (a separate addon with its own license). Trainer, vendor and gathering positions come
-in the `Itinerary_Data` add-on (GPL v3, in the `Itinerary_Data` folder of this repo); a release zip has both
+install a route pack (a separate addon with its own license). Trainer, vendor and gathering positions and the
+routes' creature faces come in the `Itinerary_Data` add-on (GPL v3, in the `Itinerary_Data` folder of this repo); a release zip has both
 folders. Without it Itinerary learns them as you meet them.
 
 ## What it does

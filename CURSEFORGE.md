@@ -40,7 +40,7 @@ Every part can be switched off. Hold **Shift** while talking to an NPC to do thi
 - **Quests**: accept and hand in the route's quests, click through quest dialogue, a gold coin on the best-selling reward
 - **Vendors and bank**: sell grey items at any vendor; on the route's bank steps, opening the bank puts the items in or takes them out
 - **Travel**: take the route's flight, set your hearthstone, resurrect at the spirit healer on death skips
-- **Trainers**: opens the training window where something is waiting; buying class skills (worthwhile ones first, keeping money back) is there when you want it
+- **Trainers**: go straight to the training window at the trainers you came for; if you switch it on, also buy your new class skills, the most useful ones first, always keeping a little gold back
 - **Professions**: learn your professions at their trainer and buy the gathering tools, plus your first profession's apprentice bag, put straight into your reagent bag slot
 - **Groups**: share every quest you accept with your group (optional; someone busy or out of range gets it again); an escort that starts right away waits until nobody near you still has the quest before it to hand in
 

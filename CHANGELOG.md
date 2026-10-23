@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## v2.1.18 (2026-10-23)
 
 ### Added
 - The target button shows the faces of the routes' NPCs and mobs before you've met them: Itinerary_Data (1.6) now

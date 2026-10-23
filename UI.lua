@@ -1576,7 +1576,8 @@ local function traitPoints()
         local info = c and C_Traits.GetConfigInfo(c)
         local total, any = 0, false
         for _, t in ipairs(info and info.treeIDs or {}) do
-            for _, x in ipairs(C_Traits.GetTreeCurrencyInfo(c, t, false) or {}) do
+            -- (true: without the clicks not applied yet - points count as spent once you press Apply)
+            for _, x in ipairs(C_Traits.GetTreeCurrencyInfo(c, t, true) or {}) do
                 if type(x) == "table" and type(x.quantity) == "number" then total, any = total + x.quantity, true end
             end
         end

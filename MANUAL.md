@@ -35,8 +35,8 @@ professions and flights.
    - install a **route pack**, a separate add-on folder next to Itinerary.
 5. The **`Itinerary_Data`** folder that comes with Itinerary tells it where every class trainer,
    profession trainer, weapon master and tool vendor stands, so trainer instructions work from the start,
-   and it holds the herb and ore spots for gather mode. It's optional: without it, Itinerary learns
-   trainers and vendors as you meet them.
+   and it holds the herb and ore spots for gather mode and the faces of the routes' NPCs and mobs (for the
+   target button). It's optional: without it, Itinerary learns trainers, vendors and faces as you meet them.
 
 The **minimap button** (the brass compass):
 
@@ -200,9 +200,9 @@ the game's key bindings under *Itinerary*. A button's tooltip shows its keys.
     nameplate it picked, or your target when that's one of them (the tooltip names it). Hovering one of them
     with the mouse picks up their face too. The face stays when they walk out of range or you clear your
     target, and comes back on a later step for them. Itinerary also
-    remembers the faces of the NPCs and mobs your route has that you target, hover or meet on your step (for
-    all your characters), so the button can show them before they're in sight. Someone you've never met: the
-    usual icon (crosshair for mobs, owl eye for NPCs).
+    knows the faces of the NPCs and mobs the routes name (they come with `Itinerary_Data`) and remembers the
+    ones you target, hover or meet on your step (for all your characters), so the button can show them before
+    they're in sight. Someone it has no face for: the usual icon (crosshair for mobs, owl eye for NPCs).
   - **One button per kind of mob**: when your step and its along-the-way objectives are after mobs, each kind
     gets a button of its own (up to 4: your step's first, the one particular mob first among them), with that
     mob's face. Clicking one targets only that kind - the nearest of them the game finds - and marks and tags
@@ -835,7 +835,8 @@ pass it on or reuse its parts elsewhere - see `LICENSE.txt` in the add-on folder
   SoundBible.com, under Creative Commons Attribution 3.0 (`sounds/CREDITS.txt`). *Coins*, *Sonar*, *Xylophone*
   and *Fanfare* were made for Itinerary.
 - **Itinerary_Data** comes in the same download but is a separate add-on under the GNU GPL v3; its positions
-  come from the WoW Forever data of QuestieDB and from what Itinerary players found in game.
+  and NPC IDs come from the WoW Forever data of QuestieDB and from what Itinerary players found in game (the
+  faces' display IDs were read in game).
 - **Routes** come separately (route packs, shared texts, your own recordings), each with its own terms.
 
 World of Warcraft is a trademark of Blizzard Entertainment. Itinerary is not affiliated with or endorsed by

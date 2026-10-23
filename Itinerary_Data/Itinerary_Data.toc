@@ -1,8 +1,8 @@
 ## Interface: 16001
 ## Title: Itinerary - Data
-## Notes: Where trainers, weapon masters, flight masters and tool vendors stand, where herbs and ore can spawn (gather mode) and which objects give a quest's items (name tags): the shipped set from QuestieDB (GPL v3) and our own finds.
+## Notes: Where trainers, weapon masters, flight masters and tool vendors stand, where herbs and ore can spawn (gather mode), which objects give a quest's items (name tags) and the faces of the routes' creatures (target button): the shipped set from QuestieDB (GPL v3) and our own finds.
 ## Author: Ghaan
-## Version: 1.5
+## Version: 1.6
 ## IconTexture: Interface\AddOns\Itinerary\icon
 ## RequiredDeps: Itinerary
 
@@ -10,3 +10,4 @@ Trainers.lua
 Nodes.lua
 OwnNodes.lua
 QuestObjects.lua
+Faces.lua

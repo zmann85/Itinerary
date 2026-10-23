@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Added
+- The target button shows the faces of the routes' NPCs and mobs before you've met them: Itinerary_Data (1.6) now
+  has them, read in game on the beta. A creature it has no face for is read in game as before.
+
 ### Changed
 - The target button only remembers the faces of NPCs and mobs your route has (or that it's after right now), not
   every creature you target or hover. That list grew all the way through leveling (about 850 after the beta, kept

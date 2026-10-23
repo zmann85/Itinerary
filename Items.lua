@@ -620,6 +620,29 @@ function askDisplay(name, npc, unit)
         probeStart(job)
     end
 end
+-- The faces that come with Itinerary_Data (ns.DATA_FACES, "\nName=npcID:displayID" for the creatures the routes
+-- name, read on the beta): the button shows them before you've met a creature. Looked up by name, once each.
+local shipped, nShipped = {}, nil
+function ns.shippedFace(name)
+    if type(name) ~= "string" then return nil end
+    local e = shipped[name]
+    if e == nil then
+        e = false
+        local s = ns.DATA_FACES
+        if type(s) == "string" then
+            local _, last = s:find("\n" .. name .. "=", 1, true)
+            local npc, d = nil, nil
+            if last then npc, d = s:match("^(%d+):(%d+)", last + 1) end
+            if d then e = { npc = tonumber(npc), disp = tonumber(d), shipped = true } end
+        end
+        shipped[name] = e
+    end
+    return e or nil
+end
+local function shippedCount()
+    if nShipped == nil then nShipped = type(ns.DATA_FACES) == "string" and select(2, ns.DATA_FACES:gsub("=", "")) or 0 end
+    return nShipped
+end
 local function wanted(names)
     local want = {}
     for _, n in ipairs(names or {}) do want[n] = true; want[(n:gsub("s$", ""))] = true end
@@ -659,6 +682,9 @@ local function learn(unit)
     if not (npc and name and name ~= "" and name ~= (UNKNOWNOBJECT or "Unknown")) then return end
     local rn = routeNames()
     if not ((rn and rn[name]) or (target and type(target.names) == "table" and wanted(target.names)[name])) then return end
+    -- (its face came with Itinerary_Data: nothing to read)
+    local sf = ns.shippedFace(name)
+    if sf and sf.npc == npc then return end
     ItineraryDB.portraits = ItineraryDB.portraits or {}
     local e = ItineraryDB.portraits[name]
     if e and e.npc == npc and e.disp then return end
@@ -681,9 +707,12 @@ local function firstName()
     return names[1]
 end
 local function known(name)
+    if type(name) ~= "string" then return nil end
     local P = ItineraryDB and ItineraryDB.portraits
-    if not (P and name) then return nil end
-    return P[name] or P[(name:gsub("s$", ""))]
+    local one = name:gsub("s$", "")
+    local e = P and (P[name] or P[one])
+    if e and e.disp then return e end
+    return ns.shippedFace(name) or ns.shippedFace(one) or e
 end
 -- Faces are kept for the session like the target frame's: one texture per name, drawn when that one is in sight
 -- and shown again while the step still goes for that name (the latest 24 names).
@@ -786,10 +815,10 @@ function ns.portraitInfo()
     local fn = target and firstName()
     local e = fn and known(fn)
     local shown = F.shown and F.key[F.shown]
-    return string.format("portrait: %s; faces known: %d; %s: %s; drawing from display IDs: %s, reading them: %s (%d of %d read; last %s)",
+    return string.format("portrait: %s; faces known: %d (shipped: %d); %s: %s; drawing from display IDs: %s, reading them: %s (%d of %d read; last %s)",
         target and type(target.portraitUnit) == "string" and ("live " .. target.portraitUnit)
             or (shown and ((shown:find("^disp:") and "remembered " or "kept ") .. tostring(F.name)) or "icon"),
-        n, tostring(fn), e and ("NPC " .. tostring(e.npc) .. ", display " .. tostring(e.disp)) or "not met yet",
+        n, shippedCount(), tostring(fn), e and ("NPC " .. tostring(e.npc) .. ", display " .. tostring(e.disp) .. (e.shipped and " (shipped)" or "")) or "not met yet",
         SetPortraitTextureFromCreatureDisplayID and "yes" or "no", probe and "yes" or (probe == false and "no" or "not tried yet"),
         PQ.got, PQ.tried, PQ.last)
 end

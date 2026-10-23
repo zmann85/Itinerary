@@ -3656,6 +3656,9 @@ f:SetScript("OnEvent", function(_, event, a1, a2, a3)
         local inInstance = IsInInstance and IsInInstance()
         if inInstance then eventDone("dungeon") end
         ns.update()
+    elseif event == "UNIT_QUEST_LOG_CHANGED" then
+        -- (it comes for your party members' quest logs too: only yours moves the route)
+        if a1 == "player" then ns.update() end
     else
         ns.update()
     end

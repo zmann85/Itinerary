@@ -200,9 +200,9 @@ the game's key bindings under *Itinerary*. A button's tooltip shows its keys.
     nameplate it picked, or your target when that's one of them (the tooltip names it). Hovering one of them
     with the mouse picks up their face too. The face stays when they walk out of range or you clear your
     target, and comes back on a later step for them. Itinerary also
-    remembers the faces of the NPCs and mobs you target, hover or meet on your step (for all your
-    characters), so the button can show them before they're in sight. Someone you've never met: the usual
-    icon (crosshair for mobs, owl eye for NPCs).
+    remembers the faces of the NPCs and mobs your route has that you target, hover or meet on your step (for
+    all your characters), so the button can show them before they're in sight. Someone you've never met: the
+    usual icon (crosshair for mobs, owl eye for NPCs).
   - **One button per kind of mob**: when your step and its along-the-way objectives are after mobs, each kind
     gets a button of its own (up to 4: your step's first, the one particular mob first among them), with that
     mob's face. Clicking one targets only that kind - the nearest of them the game finds - and marks and tags

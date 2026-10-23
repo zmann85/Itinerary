@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- The target button only remembers the faces of NPCs and mobs your route has (or that it's after right now), not
+  every creature you target or hover. That list grew all the way through leveling (about 850 after the beta, kept
+  in every character's memory); at the first login with this version it's cleaned down to your route's.
+- Your party members' quest progress no longer makes Itinerary look over your route again; only your own does.
+
 ## v2.1.17 (2026-10-22)
 
 ### Fixed

@@ -610,12 +610,44 @@ function askDisplay(name, npc, unit)
         probeStart(job)
     end
 end
--- Who a creature is, for every NPC and mob you target or hover and your step's ones on nameplates (account-wide):
+local function wanted(names)
+    local want = {}
+    for _, n in ipairs(names or {}) do want[n] = true; want[(n:gsub("s$", ""))] = true end
+    return want
+end
+-- The creatures your route can ask the target button for: its steps' mobs, NPCs and targets (a guide's plural
+-- "Ice Claw Bears" also as "Ice Claw Bear") and the flight masters. Worked out once per step list.
+local routeNamesOf = setmetatable({}, { __mode = "k" })
+local function routeNames()
+    local steps = ns.steps and ns.steps()
+    if type(steps) ~= "table" or #steps == 0 then return nil end
+    local set = routeNamesOf[steps]
+    if set then return set end
+    set = {}
+    local function add(n)
+        if type(n) == "string" and n ~= "" then set[n] = true; set[(n:gsub("s$", ""))] = true end
+    end
+    for _, s in ipairs(steps) do
+        add(s.npc)
+        for _, n in ipairs(s.mobs or {}) do add(n) end
+        for _, n in ipairs(s.targets or {}) do add(n) end
+    end
+    for _, f in ipairs(ns.DATA_FLIGHT_MASTERS or {}) do add(f.npc) end
+    routeNamesOf[steps] = set
+    return set
+end
+ns.portraitRouteNames = routeNames
+-- Who a creature is, for the NPCs and mobs you target or hover that your route has (above) or that the target
+-- button is after right now (a mob named only by a quest objective), account-wide:
 -- ItineraryDB.portraits[name] = { npc = NPC ID, disp = display ID }
+-- (until 2.1.18 every creature you targeted or hovered: ~850 after the beta, ~230 bytes each in every
+-- character's memory, and a model read for each)
 local function learn(unit)
     if not (ItineraryDB and unit and UnitExists(unit)) or UnitIsPlayer(unit) then return end
     local npc, name = npcIdOf(ns.unitGUID(unit)), ns.unitName(unit)
     if not (npc and name and name ~= "" and name ~= (UNKNOWNOBJECT or "Unknown")) then return end
+    local rn = routeNames()
+    if not ((rn and rn[name]) or (target and type(target.names) == "table" and wanted(target.names)[name])) then return end
     ItineraryDB.portraits = ItineraryDB.portraits or {}
     local e = ItineraryDB.portraits[name]
     if e and e.npc == npc and e.disp then return end
@@ -623,11 +655,6 @@ local function learn(unit)
     askDisplay(name, npc, unit)
 end
 ns.learnPortrait = learn
-local function wanted(names)
-    local want = {}
-    for _, n in ipairs(names or {}) do want[n] = true; want[(n:gsub("s$", ""))] = true end
-    return want
-end
 -- your target, when it's one of the step's mobs (alive, attackable) or its NPC
 local function targetFits()
     if not (target and type(target.names) == "table" and UnitExists("target")) or UnitIsPlayer("target") or UnitIsDead("target") then return false end
@@ -877,12 +904,21 @@ do
     end)
     -- (a model that wasn't loaded yet when its portrait was drawn: draw it again once the game has it) and
     -- who the creatures you target, hover or see of your step are
-    for _, e in ipairs({ "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "NAME_PLATE_UNIT_ADDED" }) do
+    for _, e in ipairs({ "UNIT_PORTRAIT_UPDATE", "UNIT_MODEL_CHANGED", "PLAYER_TARGET_CHANGED", "UPDATE_MOUSEOVER_UNIT", "NAME_PLATE_UNIT_ADDED", "PLAYER_LOGIN" }) do
         pcall(tf.RegisterEvent, tf, e)
+    end
+    -- once (2.1.18): the list from before kept every creature; only the ones your route has stay (the others
+    -- come back as you meet them on a route that has them)
+    local function prunePortraits()
+        local P, rn = ItineraryDB and ItineraryDB.portraits, routeNames()
+        if not (P and rn) or (ItineraryDB.portraitsPruned or 0) >= 1 then return end
+        for name in pairs(P) do if not rn[name] then P[name] = nil end end
+        ItineraryDB.portraitsPruned = 1
     end
     -- (every creature read goes through ns.unitName / ns.unitGUID: in a dungeon fight the game keeps names and
     -- GUIDs secret, and one used as a key or compared would raise an error on every mouseover)
     local function onEvent(event, unit)
+        if event == "PLAYER_LOGIN" then C_Timer.After(5, function() pcall(prunePortraits) end) return end
         if event == "PLAYER_TARGET_CHANGED" then pcall(learn, "target"); pcall(captureFace, "target") return end
         if event == "UPDATE_MOUSEOVER_UNIT" then pcall(learn, "mouseover"); pcall(captureFace, "mouseover") return end
         if event == "NAME_PLATE_UNIT_ADDED" then

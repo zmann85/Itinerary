@@ -117,7 +117,7 @@ local OPTIONS = {
       set = function(v) ItineraryDB.hideTracker = not v; if ns.applyTracker then ns.applyTracker() end end },
     { tab = 1, kind = "packs", label = "Route packs", desc = "When two packs have a route for a new character, the higher one in this list wins. A newly installed pack goes to the bottom. In the route list (the button in the panel footer) you can also make any route your default for a race and class." },
     { tab = 1, kind = "wipe", factory = true, keepDesc = true, label = "Factory reset", desc = "Itinerary as if just installed: all settings, your route edits and own routes, and every character's progress (each one the next time it logs in). Reloads the UI." },
-    { tab = 1, kind = "wipe", keepDesc = true, label = "This character", desc = "Forgets everything Itinerary saved for this character: route progress, trainer prices, professions. For a new character that reuses a deleted one's name (that's also detected on its own). Settings stay." },
+    { tab = 1, kind = "wipe", keepDesc = true, label = "This character", desc = "Forgets everything Itinerary saved for this character: route progress, trainer prices, professions. For a new character that reuses a deleted one's name (that's also detected on its own). Settings and its level times stay." },
     -- Quests
     { tab = 2, label = "Accept and hand in", desc = "Picks up quests and hands in finished ones when you talk to the NPC. With a choice of rewards you pick yourself (except the gathering book for your profession).",
       choices = ON_OFF, get = function() return A().quests end, set = function(v) A().quests = v end },
@@ -533,7 +533,7 @@ local function buildRow(opt, i)
         b:SetScript("OnClick", function(self)
             if self.armed and GetTime() - self.armed < 5 then
                 self.armed = nil
-                if opt.factory then ns.factoryReset() else ns.wipeCharacter() end
+                if opt.factory then ns.factoryReset() else ns.wipeCharacter(nil, true) end
             else
                 self.armed = GetTime()
                 self.text:SetText("Click again to wipe"); self:SetActive(true)

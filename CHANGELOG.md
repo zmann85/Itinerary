@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Resetting a character (Settings > Quests > *This character*, or `/iti wipe yes`) keeps its level times (when it
+  reached each level). Route progress, trainer and profession data are forgotten as before; a new character with a
+  deleted one's name and a factory reset still start with none.
+
 ## v2.1.18 (2026-10-23)
 
 ### Added

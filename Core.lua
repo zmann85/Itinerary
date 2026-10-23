@@ -121,11 +121,14 @@ function ns.factoryReset()
 end
 
 -- Forget everything about this character: route progress, trainer and profession data, picked route.
--- (Account-wide settings stay.) /iti wipe, or Settings > Quests > This character.
+-- (Account-wide settings stay.) /iti wipe, or Settings > Quests > This character: keepLevels - its level times
+-- stay (when it reached each level: its history, not route progress). The wipes at login for another character
+-- that has this one's name don't keep them.
 
-function ns.wipeCharacter(why)
+function ns.wipeCharacter(why, keepLevels)
     local guid = UnitGUID and UnitGUID("player")
-    ItineraryCharDB = { epoch = ItineraryDB and ItineraryDB.epoch }
+    local levels = keepLevels and ItineraryCharDB and ItineraryCharDB.levelAt or nil
+    ItineraryCharDB = { epoch = ItineraryDB and ItineraryDB.epoch, levelAt = levels }
     defaults()
     ItineraryCharDB.guid = guid
     if ns.routes and next(ns.routes) and ns.pickRoute then
@@ -3691,8 +3694,8 @@ SlashCmdList.ITINERARY = function(input)
         if arg == "yes" then ns.factoryReset()
         else ns.print("/iti factoryreset yes = Itinerary as if just installed: all settings, your route edits and own routes, and every character's progress are deleted, then the UI reloads.") end
     elseif cmd == "wipe" then
-        if arg == "yes" then ns.wipeCharacter()
-        else ns.print("/iti wipe yes = forget everything Itinerary saved for this character (route progress, trainer, professions). Settings stay.") end
+        if arg == "yes" then ns.wipeCharacter(nil, true)
+        else ns.print("/iti wipe yes = forget everything Itinerary saved for this character (route progress, trainer, professions). Settings and its level times stay.") end
     elseif cmd == "routes" then
         -- your class first, then the rest (/iti routes all lists every one)
         local _, class = UnitClass("player")

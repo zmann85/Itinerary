@@ -794,7 +794,7 @@ than your screen scrolls with the mouse wheel.
 | `/iti arrow`, `/iti pins`, `/iti minimap` | Toggle the arrow, map pins, minimap button |
 | `/iti lock`, `/iti unlock` | Lock or unlock panel and arrow |
 | `/iti reset` | Forget your marks on this route and find your place again |
-| `/iti wipe yes` | Forget everything saved for this character (settings stay) |
+| `/iti wipe yes` | Forget everything saved for this character (settings and its level times stay) |
 | `/iti factoryreset yes` | Itinerary as if just installed (all settings, routes and progress) |
 | `/iti debug` | Details about the current step, trainers and weapons (for bug reports) |
 | `/iti target` | What the target button looks for and which nameplate it picks |

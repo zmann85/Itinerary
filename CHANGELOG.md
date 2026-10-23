@@ -4,8 +4,8 @@
 
 ### Fixed
 - The *Talent points* instruction never showed on WoW Forever: its talents are a talent tree of the newer kind, and
-  the old ways of asking for unspent points don't exist there. It reads the tree's points now, and clicking it
-  opens the talent window.
+  the old ways of asking for unspent points don't exist there. It reads the tree's points now (spent once you press
+  Apply in the talent window), and clicking it opens the talent window.
 
 ### Changed
 - Resetting a character (Settings > Quests > *This character*, or `/iti wipe yes`) keeps its level times (when it
